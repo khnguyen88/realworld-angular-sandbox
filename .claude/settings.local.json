@@ -6,7 +6,8 @@
       "Bash(git commit *)",
       "Bash(pnpm install *)",
       "Bash(npm *)",
-      "Bash(corepack enable *)"
+      "Bash(corepack enable *)",
+      "WebFetch(domain:angular.dev)"
     ]
   }
 }
