@@ -48,6 +48,32 @@ The app connects to a deployed backend. Browse the [API documentation](https://a
 | Formatting      | Prettier                                                    |
 | Package manager | pnpm                                                        |
 
+## Memory Compiler
+
+This project integrates [claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler) to automatically capture, compile, and inject knowledge from Claude Code conversations.
+
+**How it works:**
+
+- **SessionEnd / PreCompact hooks** capture conversation transcripts
+- **`flush.py`** (background) uses the Claude Agent SDK to extract key decisions, lessons, and patterns into daily markdown logs
+- **`compile.py`** transforms daily logs into structured, cross-referenced knowledge articles
+- **SessionStart hook** injects the compiled knowledge index into each new session
+
+**Setup:**
+
+1. Clone the repo into `memory-compiler/`
+2. Run `uv sync --directory memory-compiler` to install Python dependencies
+3. Hooks are configured in `.claude/settings.local.json`, pointing to `memory-compiler/hooks/`
+4. The `memory-compiler/` directory is gitignored — it's treated as a read-only third-party tool. Knowledge base content (daily logs, compiled articles) lives inside it on disk only
+
+**Commands (run from project root):**
+
+```bash
+uv run --directory memory-compiler python scripts/compile.py     # Compile daily logs → knowledge
+uv run --directory memory-compiler python scripts/query.py "..."  # Query the knowledge base
+uv run --directory memory-compiler python scripts/lint.py         # Run knowledge base health checks
+```
+
 ## Prerequisites
 
 - **Node.js** >= 20
