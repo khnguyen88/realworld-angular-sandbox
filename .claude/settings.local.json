@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "PowerShell(Move-Item *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(pnpm install *)",
+      "Bash(npm *)",
+      "Bash(corepack enable *)"
     ]
   }
 }
