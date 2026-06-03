@@ -4,13 +4,13 @@
 
 **Goal:** Bring the local fork (`khnguyen88/realworld-angular-sandbox`) current with upstream `realworld-angular/realworld-angular`, preserving the 9 sandbox-only commits on top, and open a PR for review.
 
-**Architecture:** Add the missing `upstream` remote, fetch, create a feature branch `sync/upstream-2026-06` from the upstream tip, then rebase the 9 sandbox-only commits onto it using a per-file conflict policy. Verify with `pnpm install`, `pnpm run build`, `pnpm run lint`, `pnpm run test`. Open a PR.
+**Architecture:** Add the missing `upstream` remote, fetch, create a feature branch `sync/upstream-2026-06` from the upstream tip, then **cherry-pick** the 9 sandbox-only commits onto it using a per-file conflict policy. (Rebase is impossible — the local and upstream histories share no common ancestor; cherry-pick applies each commit's diff via 3-way merge.) Verify with `pnpm install`, `pnpm run build`, `pnpm run lint`, `pnpm run test`. Open a PR.
 
 **Tech Stack:** Git, pnpm, Angular 21, Vitest, ESLint, Prettier, GitHub CLI (`gh`).
 
 **Note on worktree:** The writing-plans skill recommends a worktree. We are not using one for this plan: the feature branch is the isolation boundary, the spec explicitly forbids force-push against `main`, and rollback is a single `git branch -D`. A worktree would add machinery without isolation benefit.
 
-**Note on TDD:** This plan is operational (rebase + verification), not feature development. There are no new tests to write. Verification commands are the test surface. The pre-existing 5-error red in the test suite is preserved (not fixed) and verified not to grow.
+**Note on TDD:** This plan is operational (cherry-pick + verification), not feature development. There are no new tests to write. Verification commands are the test surface. The pre-existing 5-error red in the test suite is preserved (not fixed) and verified not to grow.
 
 ---
 
@@ -21,10 +21,10 @@ This plan modifies no source files. It produces a single deliverable — a synce
 | Path                             | Action                        | Responsibility                                                                                  |
 | -------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | `.git/config`                    | Modify (via `git remote add`) | Add `upstream` remote pointing at `https://github.com/realworld-angular/realworld-angular.git`. |
-| `sync/upstream-2026-06` (branch) | Create                        | Target branch for the rebase and the source of the PR.                                          |
-| `SYNC-NOTES.md`                  | Create at repo root           | Records rebase decisions, conflict resolutions, and verification results.                       |
+| `sync/upstream-2026-06` (branch) | Create                        | Target branch for the cherry-pick and the source of the PR.                                     |
+| `SYNC-NOTES.md`                  | Create at repo root           | Records cherry-pick decisions, conflict resolutions, and verification results.                  |
 
-No source files under `src/`, no `package.json` changes beyond what the rebase applies, no test changes.
+No source files under `src/`, no `package.json` changes beyond what the cherry-pick applies, no test changes.
 
 ---
 
@@ -80,7 +80,7 @@ git merge-base --is-ancestor 2464e99 upstream/main && echo "local-clone is ances
 
 Expected: prints a 40-character SHA, then `local-clone is ancestor of upstream`. If the second line says WARN, the local clone diverged and the spec assumption is wrong — stop and surface to the user.
 
-- [ ] **Step 5: Note the SHA for the rebase**
+- [ ] **Step 5: Note the SHA for later use**
 
 Capture the SHA from step 4 as `UPSTREAM_TIP`. Save it to a scratch variable for later tasks:
 
@@ -136,7 +136,7 @@ Run:
 ls src/
 ```
 
-If upstream has a `design-system/` directory (or any other top-level path) that local does not, the rebase will add it — no action needed; this is informational.
+If upstream has a `design-system/` directory (or any other top-level path) that local does not, the cherry-pick will add it — no action needed; this is informational.
 
 - [ ] **Step 3: Check whether upstream has `.claude/` or only `.agents/`**
 
@@ -191,69 +191,78 @@ Run:
 git status --short
 ```
 
-Expected: empty output (no untracked, no modified). If anything is dirty, the rebase will get confused — stop and surface.
+Expected: empty output (no untracked, no modified). If anything is dirty, the cherry-pick will get confused — stop and surface.
 
 - [ ] **Step 4: Commit nothing**
 
 ---
 
-## Task 4: Begin the rebase — replay the 9 sandbox commits
+## Task 4: Begin the cherry-pick — replay the 9 sandbox commits
 
-**Files:** None modified directly. The rebase modifies the index and working tree.
+**Files:** None modified directly. Cherry-pick modifies the index and working tree.
 
-This task is the start of the long rebase. The 9 commits will be replayed one by one. Each commit may produce conflicts; the resolution for each known path is defined in Task 5. Unresolvable conflicts stop the rebase (Task 6).
+This task is the start of the cherry-pick sequence. The 9 commits will be replayed one by one. Each commit may produce conflicts; the resolution for each known path is defined in Task 5. Unresolvable conflicts stop the cherry-pick (Task 6).
 
-- [ ] **Step 1: Identify the list of local-only commits to replay**
-
-Run:
-
-```bash
-git log --oneline upstream/main..main
-```
-
-Expected: prints the 9 sandbox commits in chronological order (oldest first), for example:
-
-```
-b5925c6 docs: add standalone Mermaid architecture diagram
-82dcc52 docs: add implementation plan for project summary documentation
-87541d1 docs: add design spec for project summary documentation
-ff20f46 feat: add Angular agent skills (angular-developer, angular-new-app) to .claude/skills
-fe6637f docs: add implementation plan for Angular agent skills integration
-29655c0 docs: add design spec for Angular agent skills integration
-99878b2 created claude MD
-0b8e7db installed dependencies
-c69605d added angular mcp server
-01a3113 Added memory compiler to track changes
-```
-
-Save the oldest commit's SHA as `LOCAL_BASE`:
+- [ ] **Step 1: Identify the list of local-only commits to cherry-pick (oldest first)**
 
 Run:
 
 ```bash
-export LOCAL_BASE=$(git log --reverse --format=%H upstream/main..main | head -1)
-echo "LOCAL_BASE=$LOCAL_BASE"
+git log --reverse --format=%H upstream/main..main
 ```
 
-- [ ] **Step 2: Start the rebase**
+Expected: prints 9 SHAs in chronological order, oldest first. Save the list as a variable.
 
-Run:
+Run (PowerShell):
+
+```powershell
+$commits = git log --reverse --format=%H upstream/main..main
+Write-Host "Commits to cherry-pick (oldest first):"
+$commits | ForEach-Object { Write-Host "  $_" }
+```
+
+Or in bash:
 
 ```bash
-git rebase --onto upstream/main $LOCAL_BASE main
+mapfile -t commits < <(git log --reverse --format=%H upstream/main..main)
+echo "Commits to cherry-pick (oldest first):"
+printf '  %s\n' "${commits[@]}"
 ```
 
-Wait — re-read the design. The intent is: replay the 9 sandbox commits (oldest first) on top of `upstream/main`. The standard rebase syntax is `git rebase --onto <newbase> <upstream> <branch>`. Here `<upstream>` is the local commit _before_ the first sandbox commit (the initial clone `2464e99`), and `<branch>` is the local `main`.
+Expected: 9 SHAs, e.g. `01a3113`, `c69605d`, `0b8e7db`, `99878b2`, `29655c0`, `fe6637f`, `ff20f46`, `87541d1`, `82dcc52`, `b5925c6`. (Order matches the spec's commit list.)
 
-Run:
+- [ ] **Step 2: Cherry-pick the 9 commits in order**
+
+Run (PowerShell):
+
+```powershell
+$commits = git log --reverse --format=%H upstream/main..main
+foreach ($c in $commits) {
+  Write-Host "=== Cherry-picking $c ==="
+  git cherry-pick $c
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Cherry-pick stopped at $c (conflicts or error). Resolve in Task 5, then continue."
+    break
+  }
+}
+```
+
+Or in bash:
 
 ```bash
-git rebase --onto upstream/main 2464e99 main
+mapfile -t commits < <(git log --reverse --format=%H upstream/main..main)
+for c in "${commits[@]}"; do
+  echo "=== Cherry-picking $c ==="
+  git cherry-pick "$c" || {
+    echo "Cherry-pick stopped at $c (conflicts or error). Resolve in Task 5, then continue."
+    break
+  }
+done
 ```
 
-Expected: command begins processing. The rebase is interactive with respect to conflicts but non-interactive with respect to the commit list (no editor opens).
+Expected: each cherry-pick either succeeds (the commit is replayed onto the current branch) or stops on a conflict. The loop breaks on the first failure so the conflicts can be resolved interactively in Task 5.
 
-- [ ] **Step 3: Check rebase status**
+- [ ] **Step 3: Check cherry-pick status**
 
 Run:
 
@@ -261,9 +270,11 @@ Run:
 git status
 ```
 
-Expected: either "rebase in progress" with conflicts to resolve, or "all conflicts fixed: run `git rebase --continue`" if the first commits applied cleanly. The status will guide Task 5.
+Expected: either a clean working tree (if all 9 cherry-picks succeeded without conflicts) or "Cherry-picking in progress" with a list of unmerged paths (conflicts to resolve in Task 5).
 
-- [ ] **Step 4: Commit nothing — rebase modifies the index; commits are produced by the rebase, not by you**
+- [ ] **Step 4: Commit nothing — cherry-pick creates the commits automatically**
+
+If cherry-pick succeeds for a commit, it creates the commit on the branch with the original commit's message. If it stops on a conflict, the conflict resolution in Task 5 followed by `git cherry-pick --continue` produces the commit.
 
 ---
 
@@ -273,40 +284,33 @@ Expected: either "rebase in progress" with conflicts to resolve, or "all conflic
 
 This task is repeated up to 9 times — once per sandbox commit. Each replay may produce a fresh set of conflicts. Follow the per-path policy below for each conflict surfaced. If a conflict is not covered by the policy, stop and surface to the user (Task 6).
 
-**Pre-flight (run once):** set `git` to take upstream's version of any conflict marker by default, then re-overlay as needed:
+**Pre-flight (run once):** confirm `git` config is reasonable:
 
 ```bash
-git config --local rebase.autoSquash false  # default; do not auto-squash
+git config --local --get rerere.enabled || echo "rerere off (fine)"
 ```
 
-Do not run `git config --local rerere.enabled true` unless rerere is already enabled. If unsure:
-
-```bash
-git config --local --get rerere.enabled
-```
-
-If the result is `true`, rerere is on and the rebase may auto-resolve repeated conflicts — useful, but the resolution still must be verified by inspection.
+If rerere is on, cherry-pick may auto-resolve repeated conflicts; the resolution still must be verified by inspection. Default rerere state in this repo is unknown — check first.
 
 ### Path-by-path policy
 
-For each conflict that appears during the rebase, apply the matching rule:
+For each conflict surfaced by `git cherry-pick`, apply the matching rule. **In cherry-pick, `--ours` is the current branch (the upstream tip) and `--theirs` is the commit being applied (the local sandbox commit).** This is the opposite of rebase. Watch the direction carefully.
 
 #### `package.json`
 
-- [ ] **If conflict:** Open `package.json`. Take the upstream version of the file in full (the upstream side of the conflict markers, plus the unchanged lines from upstream's header). Do **not** preserve local dev-deps — none of the 9 sandbox commits added a `dependencies` or `devDependencies` entry, so there is nothing to preserve. (Verify by running `git show 2464e99:package.json | diff - <(git show upstream/main:package.json)` — if there are differences outside the upstream-bumped deps, stop and surface.)
+- [ ] **If conflict:** Take the upstream version of the file. None of the 9 sandbox commits modified `package.json` (verify by checking `git log --all -- package.json` — only the initial clone and upstream should have touched it). If a sandbox commit did touch it, hand-merge instead.
 
 ```bash
-# Take upstream's version
-git checkout --theirs package.json
+git checkout --ours package.json
 git add package.json
 ```
 
 #### `pnpm-lock.yaml`
 
-- [ ] **If conflict:** Do **not** hand-merge. Resolve the conflict by taking upstream's lockfile, then regenerate after the rebase completes:
+- [ ] **If conflict:** Do **not** hand-merge. Resolve the conflict by taking upstream's lockfile, then regenerate after the cherry-pick sequence completes:
 
 ```bash
-git checkout --theirs pnpm-lock.yaml
+git checkout --ours pnpm-lock.yaml
 git add pnpm-lock.yaml
 ```
 
@@ -317,7 +321,7 @@ The regeneration step is Task 7, Step 1.
 - [ ] **If conflict:** Take upstream verbatim:
 
 ```bash
-git checkout --theirs <path>
+git checkout --ours <path>
 git add <path>
 ```
 
@@ -326,23 +330,23 @@ git add <path>
 - [ ] **If conflict:** Take upstream's `README.md`. The local sandbox's new test READMEs (`README-TESTING.md`, `README-TEST-INSIGHTS.md`) are separate files and do not conflict.
 
 ```bash
-git checkout --theirs README.md
+git checkout --ours README.md
 git add README.md
 ```
 
 #### `.claude/`
 
 - [ ] **If conflict:** Apply per-file policy:
-  - `.claude/settings.json` (local-only): take local. If upstream has its own `.claude/settings.json`, hand-merge by appending upstream's top-level keys and keeping local-only keys.
+  - `.claude/settings.json` (local-only): take local (`--theirs` in cherry-pick direction).
   - `.claude/settings.local.json` (local-only, contains hook paths): take local. If upstream adds `.claude/settings.local.json`, hand-merge the `hooks` object — local hook paths point at `memory-compiler/hooks/` and must remain.
-  - Any other `.claude/*` file: take upstream if upstream has it; take local if local-only.
+  - Any other `.claude/*` file: take upstream (`--ours`) if upstream has it; take local (`--theirs`) if local-only.
 
 ```bash
 # Default for unknown .claude/ entries
-git checkout --theirs <path>
-
-# For local-only entries (.claude/settings.json, .claude/settings.local.json):
 git checkout --ours <path>
+
+# For local-only entries:
+git checkout --theirs <path>
 ```
 
 #### `.agents/skills/angular-developer`
@@ -350,7 +354,7 @@ git checkout --ours <path>
 - [ ] **If conflict:** Take upstream verbatim. The local sandbox added `angular-new-app` (a different directory), which is not in conflict:
 
 ```bash
-git checkout --theirs .agents/skills/angular-developer
+git checkout --ours .agents/skills/angular-developer
 git add .agents/skills/angular-developer
 ```
 
@@ -359,7 +363,7 @@ git add .agents/skills/angular-developer
 - [ ] **If conflict (unlikely; this is local-only):** Take local:
 
 ```bash
-git checkout --ours .agents/skills/angular-new-app
+git checkout --theirs .agents/skills/angular-new-app
 git add .agents/skills/angular-new-app
 ```
 
@@ -368,8 +372,8 @@ git add .agents/skills/angular-new-app
 - [ ] **If conflict:** Take upstream's, then append any local-only entries:
 
 ```bash
-git checkout --theirs skills-lock.json
-# Manually append local-only keys from the pre-rebase version:
+git checkout --ours skills-lock.json
+# Manually append local-only keys from the pre-cherry-pick version:
 git show main:skills-lock.json > /tmp/local-skills-lock.json
 # Use any JSON tool to merge — for example, jq:
 jq -s '.[0] * .[1]' skills-lock.json /tmp/local-skills-lock.json > /tmp/merged-skills-lock.json
@@ -388,8 +392,8 @@ git add skills-lock.json
 
 ```bash
 # Per-path
-git checkout --ours <path>     # for local-only docs
-git checkout --theirs <path>   # for upstream docs
+git checkout --ours <path>   # for upstream docs
+git checkout --theirs <path> # for local-only docs
 ```
 
 #### `src/` (any subpath)
@@ -397,24 +401,24 @@ git checkout --theirs <path>   # for upstream docs
 - [ ] **If conflict (unlikely — sandbox commits don't touch `src/`):** Take upstream. No overlay needed.
 
 ```bash
-git checkout --theirs <path>
+git checkout --ours <path>
 ```
 
 #### Any other path
 
-- [ ] **If conflict and not covered above:** Stop the rebase (do **not** `git rebase --continue`):
+- [ ] **If conflict and not covered above:** Stop the cherry-pick (do **not** `git cherry-pick --continue`):
 
 ```bash
-git rebase --abort
+git cherry-pick --abort
 ```
 
 Then surface the conflict to the user with the path and the conflicting commits. Do not attempt to resolve ad-hoc.
 
-### Continuing the rebase
+### Continuing the cherry-pick
 
 After all conflicts in a commit are resolved and staged:
 
-- [ ] **Continue the rebase**
+- [ ] **Continue the cherry-pick**
 
 Run:
 
@@ -422,27 +426,28 @@ Run:
 git status
 ```
 
-Expected: "all conflicts fixed: run `git rebase --continue`". If yes:
+Expected: "all conflicts fixed: run `git cherry-pick --continue`". If yes:
 
 ```bash
-git rebase --continue
+git cherry-pick --continue
 ```
 
-If the rebase prompts for a commit message, accept the default (the original sandbox commit message).
+If the cherry-pick prompts for a commit message, accept the default (the original sandbox commit message). If `git` opens an editor and you need to accept without editing, set `GIT_EDITOR=true` first or use `--no-edit` (but `--no-edit` is not a flag of `cherry-pick --continue` — it must be set on the original `cherry-pick` call, which is too late now). Easiest fallback: press Enter in the editor to accept the default message.
 
 - [ ] **Repeat for each of the 9 commits**
 
-The rebase will replay 9 commits in order. Each may produce zero, one, or many conflicts. Apply the policy above for each.
+The loop in Task 4 Step 2 broke at the first conflict. After resolving in Task 5, re-run the loop to continue from the next commit. Specifically, set `$commits` again (or in bash, re-source the `mapfile` line) and resume the loop, skipping the commits that have already been cherry-picked (check `git log --oneline | head -10` to see which commits are now on the branch).
 
-- [ ] **When the rebase finishes**
+- [ ] **When all 9 cherry-picks finish**
 
 Run:
 
 ```bash
 git status
+git log --oneline -15
 ```
 
-Expected: "On branch sync/upstream-2026-06", nothing to commit, working tree clean.
+Expected: "On branch sync/upstream-2026-06", nothing to commit, working tree clean. The 9 sandbox commits should appear at the top of the log, in original order, on top of the upstream tip.
 
 ---
 
@@ -450,9 +455,9 @@ Expected: "On branch sync/upstream-2026-06", nothing to commit, working tree cle
 
 **Files:** None modified. This task runs only if Task 5 surfaced an unresolvable conflict.
 
-If during Task 5 you encountered a conflict that the policy did not cover, the rebase was aborted in Task 5's "Any other path" branch. This task is the recovery.
+If during Task 5 you encountered a conflict that the policy did not cover, the cherry-pick was aborted in Task 5's "Any other path" branch. This task is the recovery.
 
-- [ ] **Step 1: Confirm the rebase was aborted**
+- [ ] **Step 1: Confirm the cherry-pick was aborted**
 
 Run:
 
@@ -467,9 +472,9 @@ Expected: "On branch sync/upstream-2026-06" with a clean working tree (or with u
 Write a short note (in conversation or in a temp file) including:
 
 - The path that conflicted.
-- The two SHAs involved (the upstream commit and the local sandbox commit).
+- The two SHAs involved (the upstream tip and the local sandbox commit being cherry-picked).
 - The nature of the conflict (one-sentence summary).
-- The pre-rebase contents of the conflicting file (from `git show <local-sha>:<path>` and `git show <upstream-sha>:<path>`).
+- The pre-cherry-pick contents of the conflicting file (from `git show <upstream-sha>:<path>` and `git show <local-sha>:<path>`).
 
 - [ ] **Step 3: Stop and surface to the user**
 
@@ -482,7 +487,7 @@ Do not attempt to resolve the conflict. The user decides:
 
 The user can resume by either:
 
-- Manually resolving the file and running `git rebase --continue`, or
+- Manually resolving the file and running `git cherry-pick --continue`, or
 - Aborting the sync and starting over with a different policy.
 
 ---
@@ -507,10 +512,10 @@ If `git status` shows `pnpm-lock.yaml` as modified after install:
 
 ```bash
 git add pnpm-lock.yaml
-git commit --amend --no-edit
+git commit -m "chore: regenerate pnpm-lock.yaml after upstream sync"
 ```
 
-This folds the lockfile update into the most recent rebase commit, preserving the linear history. (If the most recent rebase commit is not a good place for the lockfile, you can instead create a new commit `chore: regenerate pnpm-lock.yaml after upstream sync` — but amending is preferred for a one-line lockfile update.)
+This is a separate small commit on top of the 9 cherry-picked sandbox commits, leaving the cherry-pick history clean. (Amending into a cherry-picked commit is risky because cherry-picked commits have a different parent than the original; the safest move is a separate commit.)
 
 - [ ] **Step 3: Run the production build**
 
@@ -530,7 +535,7 @@ Run:
 pnpm run lint
 ```
 
-Expected: command exits 0. If it does not, this is a regression — investigate. Common causes: upstream's code differs from the local copy in a way that surfaces a new lint rule, or the rebase dropped a `tsconfig` change that suppresses a rule.
+Expected: command exits 0. If it does not, this is a regression — investigate. Common causes: upstream's code differs from the local copy in a way that surfaces a new lint rule, or the cherry-pick dropped a `tsconfig` change that suppresses a rule.
 
 - [ ] **Step 5: Run the tests**
 
@@ -594,7 +599,7 @@ Create `SYNC-NOTES.md` with the following content (substitute real values from p
 **Feature branch:** `sync/upstream-2026-06`
 **Source:** https://github.com/realworld-angular/realworld-angular
 
-## Rebase outcome
+## Cherry-pick outcome
 
 | Commit replayed                                                                                 | Conflicts encountered | Resolution                |
 | ----------------------------------------------------------------------------------------------- | --------------------- | ------------------------- |
@@ -636,7 +641,7 @@ This sync preserved those failures. A separate spec covers the fix.
 
 ```bash
 git add SYNC-NOTES.md
-git commit -m "docs: add sync notes for upstream rebase"
+git commit -m "docs: add sync notes for upstream cherry-pick"
 ```
 
 Expected: commit succeeds.
@@ -665,14 +670,14 @@ gh pr create \
   --body "$(cat <<'EOF'
 ## Summary
 
-Syncs the local fork with upstream `realworld-angular/realworld-angular@main` (tip: `<UPSTREAM_TIP>`) and replays the 9 sandbox-only commits on top.
+Syncs the local fork with upstream `realworld-angular/realworld-angular@main` (tip: `<UPSTREAM_TIP>`) and replays the 9 sandbox-only commits on top via cherry-pick.
 
 ## What changed
 
 - Adds `upstream` remote.
 - Brings the local fork's source, deps, and structure in line with upstream.
 - Preserves all 9 sandbox-only commits: CLAUDE.md, memory-compiler, MCP server, agent skills, test READMEs.
-- Adds `SYNC-NOTES.md` documenting the rebase decisions.
+- Adds `SYNC-NOTES.md` documenting the cherry-pick decisions.
 
 ## Conflicts encountered
 
@@ -724,7 +729,7 @@ In the conversation, report:
 
 - The PR URL.
 - The upstream tip SHA.
-- The number of conflicts encountered during the rebase and how they were resolved.
+- The number of conflicts encountered during the cherry-pick and how they were resolved.
 - The verification command results (install, build, lint, test).
 - Any unresolvable conflicts that were surfaced (should be none if the plan ran to completion).
 - The current state of the working tree (clean, on `sync/upstream-2026-06`).
@@ -738,15 +743,17 @@ In the conversation, report:
 
 - "Add `upstream` remote" → Task 1.
 - "Create a feature branch `sync/upstream-2026-06` from the upstream tip" → Task 3.
-- "Rebase the 9 sandbox-only commits onto the upstream tip in original order" → Task 4.
+- "Cherry-pick the 9 sandbox-only commits onto the upstream tip in original order" → Task 4.
 - "Resolve conflicts using the policy" → Task 5.
 - "Run `pnpm install`, `pnpm run build`, `pnpm run lint`, and `pnpm run test`" → Task 7.
 - "Open a PR from `sync/upstream-2026-06` to `main`" → Task 9.
 - "A short `SYNC-NOTES.md`" → Task 8.
 - "Stop on unresolvable conflict, surface to user" → Task 6.
 - "No force-push against `main`" → never used `git push --force` or `git push --force-with-lease`; Task 9 uses `git push -u origin sync/upstream-2026-06` (no force).
-- "Working tree clean at the end" → Task 8 commit cleans `SYNC-NOTES.md`; verification step 2 amends or commits the lockfile; final `git status` should be clean.
+- "Working tree clean at the end" → Task 8 commit cleans `SYNC-NOTES.md`; verification step 2 commits the lockfile; final `git status` should be clean.
 - "Pre-existing test red preserved" → Task 7, Step 5 pass criteria explicitly allow the known-5-failure state and flag any growth as a regression.
+
+**Strategy shift acknowledged:** the spec's rebase strategy was invalid because the local and upstream histories share no common ancestor. The plan was amended to use cherry-pick instead. Cherry-pick's `--ours` / `--theirs` direction is the opposite of rebase's; the conflict policy in Task 5 was rewritten to use the correct direction. This is the kind of correction the design's pre-flight inspection exists to catch.
 
 **Placeholder scan:** No "TBD", "TODO", "fill in", or "implement later" in any step. The PR body template has `<...>` placeholders that are substituted with real values before the body is passed to `gh`.
 
@@ -754,7 +761,7 @@ In the conversation, report:
 
 **No implicit knowledge:** Every command is given in full. Every path is exact. The conflict policy in Task 5 is the only place where a decision rule is summarized, and each rule is followed by an explicit command to run.
 
-**Gap:** The spec says the PR body should include "list of rebase conflicts and how each was resolved" — Task 9's body template has a placeholder for this, and the user fills it in from `SYNC-NOTES.md` (Task 8). This is intentional: the placeholders are not unresolvable — they are populated from the artifact of Task 8.
+**Gap:** The spec says the PR body should include "list of cherry-pick conflicts and how each was resolved" — Task 9's body template has a placeholder for this, and the user fills it in from `SYNC-NOTES.md` (Task 8). This is intentional: the placeholders are not unresolvable — they are populated from the artifact of Task 8.
 
 **Gap:** The spec says "the user retains full local-only history on `main` unchanged" in rollback — `main` is not touched by any task in this plan. Verified.
 

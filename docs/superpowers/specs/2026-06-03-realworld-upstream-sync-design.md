@@ -6,12 +6,13 @@
 
 ## Goal
 
-Make the local fork (`khnguyen88/realworld-angular-sandbox`) contain the current `realworld-angular/realworld-angular` upstream code, dependencies, and structure, _with_ the 9 sandbox-only commits (CLAUDE.md, memory-compiler, MCP server, agent skills, test READMEs) reapplied on top. End state: a PR-ready feature branch that, when merged into `main`, leaves `main` ahead of upstream by exactly those 9 commits.
+Make the local fork (`khnguyen88/realworld-angular-sandbox`) contain the current `realworld-angular/realworld-angular` upstream code, dependencies, and structure, _with_ the 9 sandbox-only commits (CLAUDE.md, memory-compiler, MCP server, agent skills, test READMEs) reapplied on top via cherry-pick. End state: a PR-ready feature branch that, when merged into `main`, leaves `main` ahead of upstream by exactly those 9 commits.
 
 ## Context
 
-- The local fork was cloned from `realworld-angular/realworld-angular` on 2026-05-26 in commit `2464e99`. Since then, 9 sandbox-only commits were added (`01a3113` through `b5925c6`).
-- Upstream has 85 total commits on `main`, with 75+ commits ahead of the local fork. Most recent upstream activity: 2026-06-03 (Angular dep bumps, coupon-code feature, email availability validation, checkout stepper refactor, profile link a11y fix).
+- The local fork's `2464e99` is **not** a true clone of `realworld-angular/realworld-angular` — it is a fresh root commit that _snapshotted_ the upstream tree at clone time. The two repos share **zero commits**. (Verified: `git merge-base 2464e99 upstream/main` exits 1 with no common ancestor.) The local `2464e99` tree contains 337 files; the current upstream tip contains 336. Of those, 336 are common — the local snapshot is essentially a copy of the current upstream state with one extra file (`.claude/settings.local.json` from the sandbox).
+- The 9 sandbox-only commits on `main` (oldest to newest: `01a3113`, `c69605d`, `0b8e7db`, `99878b2`, `29655c0`, `fe6637f`, `ff20f46`, `87541d1`, `82dcc52`, `b5925c6`) are valid commits, but they cannot be **rebased** onto upstream because there is no common ancestor. Instead, they must be **cherry-picked** onto the upstream tip.
+- Upstream has 85 total commits on `main`. Most recent upstream activity: 2026-06-03 (Angular dep bumps, coupon-code feature, email availability validation, checkout stepper refactor, profile link a11y fix).
 - The local fork's `upstream` remote is currently absent (`git status` reports "upstream is gone"). It will be re-added.
 - The local fork is missing top-level folders described in upstream's README: `src/app/features/admin/`, `src/app/features/home/`, and a project-root `design-system/`. The literal upstream tree will be confirmed via the GitHub tree API or a temporary fetch before the rebase.
 - The local fork's test suite is currently red with 5 known TypeScript errors documented in `README-TEST-INSIGHTS.md` (stale `mockOrder` / `mockAdminOrderListItem` fixtures missing `tipAmount` / `scheduledAt`; one call to a non-existent `canDeactivate`). This sync does **not** fix those — it preserves the existing state and may change the failure count.
@@ -22,7 +23,7 @@ In scope:
 
 - Add `upstream` remote pointing at `https://github.com/realworld-angular/realworld-angular.git`.
 - Create a feature branch `sync/upstream-2026-06` from the upstream tip.
-- Rebase the 9 sandbox-only commits onto the upstream tip in original order.
+- **Cherry-pick** the 9 sandbox-only commits onto the upstream tip in original order. (Rebase is impossible: the two histories share no common ancestor. Cherry-pick applies each commit's diff to the current tree and uses 3-way merge for conflicts, which the per-file policy below still covers.)
 - Resolve conflicts using the policy in section "Conflict resolution policy" below.
 - Run `pnpm install`, `pnpm run build`, `pnpm run lint`, and `pnpm run test` on the resulting branch. Report the results.
 - Open a PR from `sync/upstream-2026-06` to `main` with a structured body.
@@ -38,7 +39,7 @@ Out of scope:
 ## Branch and history strategy
 
 - `main` — local fork's main; unchanged during the sync work.
-- `sync/upstream-2026-06` — feature branch created from the upstream tip. Target of the rebase and the source branch of the PR.
+- `sync/upstream-2026-06` — feature branch created from the upstream tip. Target of the cherry-pick and the source branch of the PR.
 - `upstream/main` (remote tracking) — read-only reference to `realworld-angular/realworld-angular@main`.
 
 Commit ordering on `sync/upstream-2026-06` (bottom to top):
