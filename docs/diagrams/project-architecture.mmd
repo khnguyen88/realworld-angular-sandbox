@@ -1,0 +1,48 @@
+graph TB
+    subgraph Bootstrap
+        Main[src/main.ts]
+        AppConfig[app.config.ts]
+        AppRoot[app.ts<br/>root component]
+        Routes[app.routes.ts]
+    end
+
+    subgraph Core[core/ — singletons]
+        Auth[auth service]
+        Photon[photon-api service]
+        Interceptors[interceptors<br/>base-url, credentials]
+        Guards[guards<br/>auth, role]
+    end
+
+    subgraph Shared[shared/ — presentational]
+        ShComps[15+ components<br/>avatar, button, modal, ...]
+        ShPipe[pipes<br/>catalog-image-url]
+        ShDir[directives<br/>role]
+        ShMods[models<br/>address]
+    end
+
+    subgraph Features[features/ — lazy bundles]
+        AuthF[auth]
+        CartF[cart]
+        CheckoutF[checkout]
+        OrdersF[orders]
+        PizzeriasF[pizzerias]
+        ProfileF[profile]
+        LegalF[legal]
+        NF[not-found]
+        UnauthF[unauthorized]
+    end
+
+    Main --> AppConfig
+    AppConfig --> Interceptors
+    AppConfig --> Auth
+    AppConfig --> Routes
+    Routes --> AppRoot
+    Routes -.lazy.-> Features
+    Features --> Shared
+    Features --> Core
+    AuthF --> Auth
+    CheckoutF --> Auth
+    OrdersF --> Auth
+    ProfileF --> Auth
+    CartF --> Shared
+    Auth -.uses.-> Photon
