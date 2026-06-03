@@ -106,7 +106,7 @@ No commit. The remote addition is local config; nothing is committed to source c
 
 ---
 
-## Task 2: Inspect upstream tree before rebasing
+## Task 2: Inspect upstream tree before cherry-picking
 
 **Files:** None modified. Output informs later tasks.
 

@@ -14,7 +14,7 @@ Make the local fork (`khnguyen88/realworld-angular-sandbox`) contain the current
 - The 9 sandbox-only commits on `main` (oldest to newest: `01a3113`, `c69605d`, `0b8e7db`, `99878b2`, `29655c0`, `fe6637f`, `ff20f46`, `87541d1`, `82dcc52`, `b5925c6`) are valid commits, but they cannot be **rebased** onto upstream because there is no common ancestor. Instead, they must be **cherry-picked** onto the upstream tip.
 - Upstream has 85 total commits on `main`. Most recent upstream activity: 2026-06-03 (Angular dep bumps, coupon-code feature, email availability validation, checkout stepper refactor, profile link a11y fix).
 - The local fork's `upstream` remote is currently absent (`git status` reports "upstream is gone"). It will be re-added.
-- The local fork is missing top-level folders described in upstream's README: `src/app/features/admin/`, `src/app/features/home/`, and a project-root `design-system/`. The literal upstream tree will be confirmed via the GitHub tree API or a temporary fetch before the rebase.
+- The local fork is missing top-level folders described in upstream's README: `src/app/features/admin/`, `src/app/features/home/`, and a project-root `design-system/`. The literal upstream tree will be confirmed via the GitHub tree API or a temporary fetch before the cherry-pick.
 - The local fork's test suite is currently red with 5 known TypeScript errors documented in `README-TEST-INSIGHTS.md` (stale `mockOrder` / `mockAdminOrderListItem` fixtures missing `tipAmount` / `scheduledAt`; one call to a non-existent `canDeactivate`). This sync does **not** fix those — it preserves the existing state and may change the failure count.
 
 ## Scope
@@ -33,7 +33,7 @@ Out of scope:
 - Fixing the 5 pre-existing test errors. Tracked separately.
 - Upgrading or downgrading any dependency past what upstream ships in its tip.
 - Removing or relocating sandbox tooling (memory-compiler, agent skills, test READMEs) on the basis that they "shouldn't" be in the repo. They are an intentional overlay.
-- Adding automation for future syncs (Dependabot config, scheduled rebase job, etc.). This is a one-time sync.
+- Adding automation for future syncs (Dependabot config, scheduled cherry-pick job, etc.). This is a one-time sync.
 - Force-pushing against `main` or any existing branch.
 
 ## Branch and history strategy
@@ -59,7 +59,7 @@ Commit ordering on `sync/upstream-2026-06` (bottom to top):
 
    Note: `2464e99` (initial clone) is replaced by the upstream tip. The newest local commit (`b5925c6`) ends up on top.
 
-- The PR targets `main`. The PR body includes: upstream tip SHA, list of rebase conflicts and how each was resolved, verification command output, and a note on the pre-existing test red.
+- The PR targets `main`. The PR body includes: upstream tip SHA, list of cherry-pick conflicts and how each was resolved, verification command output, and a note on the pre-existing test red.
 - No force-push. The feature branch is new, not a rewrite of a published branch.
 
 ## Conflict resolution policy
@@ -85,15 +85,15 @@ Per-conflict decision rule (when policy does not say):
 2. If the file is a sandbox-only artifact (new file, sandbox tooling) → take local.
 3. If both modified the same file in incompatible ways → take upstream for the structural parts and re-apply the sandbox's _additive_ changes manually. Document the decision in the PR body.
 
-Unresolvable conflicts: stop the rebase at that commit, leave the working tree dirty, and surface the file to the user. Do not `--continue` past a suspicious conflict.
+Unresolvable conflicts: stop the cherry-pick at that commit, leave the working tree dirty, and surface the file to the user. Do not `--continue` past a suspicious conflict.
 
 ## Verification
 
-Run on `sync/upstream-2026-06` after rebase, before opening the PR.
+Run on `sync/upstream-2026-06` after the cherry-pick, before opening the PR.
 
 1. `pnpm install` — must exit 0; the dep tree resolves against the new `package.json`. Capture exit code and any peer-dep warnings.
 2. `pnpm run build` — production build must complete and emit `dist/`. Capture exit code and bundle size.
-3. `pnpm run lint` — must exit 0. The earlier session noted the test suite is red, not the lint suite; if lint fails after rebase, that is a real regression and needs investigation.
+3. `pnpm run lint` — must exit 0. The earlier session noted the test suite is red, not the lint suite; if lint fails after the cherry-pick, that is a real regression and needs investigation.
 4. `pnpm run test` — must run. Per prior analysis, expected to be red (5 TypeScript errors from stale fixtures). Report the count, the new count if it changed, and the failing specs. Do not fix pre-existing failures as part of this sync. If the failure count is **higher** than 5, or the failing files are **different** from the 4 fixture-drift specs and 1 `canDeactivate` spec, treat as a regression and investigate.
 5. Manual smoke (optional, fast). Start `pnpm start` and load `/` and `/auth/login` to confirm the dev server boots. Skipped if any of 1–4 fails.
 
@@ -106,20 +106,20 @@ Pass criteria for opening the PR:
 
 Failure handling:
 
-- `pnpm install` failure on the new `package.json` → rebase picked a wrong version of a sandbox-modified file. Inspect, fix, re-run.
-- Build failure on a missing import or type → rebase dropped a file or kept a stale `tsconfig`. Inspect and resolve using the conflict policy.
+- `pnpm install` failure on the new `package.json` → cherry-pick picked a wrong version of a sandbox-modified file. Inspect, fix, re-run.
+- Build failure on a missing import or type → cherry-pick dropped a file or kept a stale `tsconfig`. Inspect and resolve using the conflict policy.
 - Lint failure on a file the sandbox did not touch → upstream regression. Report and surface; do not "fix" upstream code.
 - New test failures → regression. Investigate by inspecting the affected spec and the upstream changes to the file it covers. If the local commit is the cause, take local; if upstream is the cause, surface to user.
 
 ## Rollback
 
 - `sync/upstream-2026-06` is a new local branch — deletion is the rollback: `git branch -D sync/upstream-2026-06` discards the sync work entirely with no impact on `main` or any pushed branch.
-- If the rebase is in progress and produces a conflict the user wants to abort: `git rebase --abort` returns the branch to its pre-rebase state. The user retains full local-only history on `main` unchanged.
+- If the cherry-pick is in progress and produces a conflict the user wants to abort: `git cherry-pick --abort` returns the branch to its pre-cherry-pick state. The user retains full local-only history on `main` unchanged.
 - The upstream remote is additive; removing it has no blast radius beyond losing the fetch reference.
 
 ## Open questions
 
-- The exact list of upstream commits the rebase will replay over (~75) — discovered via `git log upstream/main` once the remote is added.
+- The exact list of upstream commits the cherry-pick will replay over (~75) — discovered via `git log upstream/main` once the remote is added.
 - Whether upstream's `src/app/features/admin/` exists in the tip, or only in the README's documentation — resolved by fetching the literal tree via the GitHub tree API or `git ls-tree`.
 - Whether upstream's `.claude/` directory exists or whether their skill lives in `.agents/` — resolved at first conflict.
 - Whether the sandbox's `angular-new-app` skill collides with anything upstream added under a similar name.
@@ -127,7 +127,7 @@ Failure handling:
 ## Deliverables
 
 - This design spec at `docs/superpowers/specs/2026-06-03-realworld-upstream-sync-design.md`, committed before the plan.
-- A PR from `sync/upstream-2026-06` → `main` titled `chore: sync fork with realworld-angular upstream (Jun 2026)` with body listing: upstream SHA at sync time, rebase conflicts encountered and resolution, verification command output, and a note on the pre-existing test red.
+- A PR from `sync/upstream-2026-06` → `main` titled `chore: sync fork with realworld-angular upstream (Jun 2026)` with body listing: upstream SHA at sync time, cherry-pick conflicts encountered and resolution, verification command output, and a note on the pre-existing test red.
 - A short `SYNC-NOTES.md` (or appended section in the PR description) listing any per-file override decisions, so future syncs have a reference.
 
 ## Out of scope (called out in the PR)
@@ -138,15 +138,15 @@ Failure handling:
 
 ## Estimated effort
 
-Mostly mechanical: 1 remote add, 1 fetch, 1 branch, 1 rebase, conflict resolution in ~5–10 files, 4 verification commands, 1 PR. The conflict resolution is the only part where the time is unpredictable. Best case: under 15 minutes. Worst case: surface an unresolvable conflict to the user and stop.
+Mostly mechanical: 1 remote add, 1 fetch, 1 branch, 9 cherry-picks, conflict resolution in ~5–10 files, 4 verification commands, 1 PR. The conflict resolution is the only part where the time is unpredictable. Best case: under 15 minutes. Worst case: surface an unresolvable conflict to the user and stop.
 
 ## Risks and mitigations
 
-- **Risk:** `package.json` rebase picks a version that loses a sandbox dev-dep.
-  - **Mitigation:** Verify `package.json` after rebase; diff against pre-rebase to confirm only the upstream-bumped entries changed.
+- **Risk:** `package.json` cherry-pick picks a version that loses a sandbox dev-dep.
+  - **Mitigation:** Verify `package.json` after the cherry-pick; diff against pre-cherry-pick to confirm only the upstream-bumped entries changed.
 - **Risk:** `.claude/` conflict is tangled between upstream and local tooling.
   - **Mitigation:** Per-path policy: take upstream first, re-overlay local-only entries by hand. Document every overlay in the PR body.
-- **Risk:** Test failures double in count after the rebase.
+- **Risk:** Test failures double in count after the cherry-pick.
   - **Mitigation:** The verification step explicitly checks for new failures vs. the previously-known set. New failures block the PR; old failures are called out and skipped.
 - **Risk:** Upstream's source structure has changed in ways the README does not document (e.g., feature renamed).
-  - **Mitigation:** `git fetch` + `git ls-tree -r upstream/main src/` before the rebase to confirm the literal tree.
+  - **Mitigation:** `git fetch` + `git ls-tree -r upstream/main src/` before the cherry-pick to confirm the literal tree.
