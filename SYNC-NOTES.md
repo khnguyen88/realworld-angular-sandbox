@@ -55,3 +55,43 @@ The original spec called for a rebase onto upstream, but the local `2464e99` is 
 - Windows 11, PowerShell 5.1 shell, Git Bash used for POSIX commands.
 - Node: required 22.22.3+ for Angular CLI 22; installed via `nvm install 22.22.3` and selected at command time via `PATH=/c/Users/khngu/AppData/Roaming/nvm/v22.22.3:$PATH` prefix.
 - pnpm 11.3.0 enforces a default `minimumReleaseAge` supply-chain policy that rejects packages published within the cutoff. The lockfile from upstream contains Angular 22.0.0 entries published today, so the install needs `--trust-lockfile`. The lockfile itself was not regenerated (it was already at the post-`f3f1700` shape on `main` after the cherry-picks).
+
+## Upstream Sync Notes — 2026-06-04
+
+**Previous sync tip:** f3f1700b3be39ed2152d72a2027a0febbb8b7bc8
+**New upstream tip:** 3322c2d498f82bb00fd0e56fd048a23288c95ce1
+**Feature branch:** `sync/upstream-2026-06`
+**Strategy:** Cherry-pick, in-place, pause on conflict (same as 2026-06-03 sync)
+**Pre-sync WIP:** `.claude/settings.local.json` (modified) + 3 untracked files, stashed and restored.
+
+### Cherry-pick outcome
+
+| Commit    | Subject                                                             | Conflicts | Resolution |
+| --------- | ------------------------------------------------------------------- | --------- | ---------- |
+| `8fa08a5` | feat: add footer placeholder and defer loading for footer component | None      | Clean.     |
+| `ecd87f8` | feat: add debounce to coupon code validation in checkout wizard     | None      | Clean.     |
+| `d5a7229` | fix: handle discount reset on coupon validation error               | None      | Clean.     |
+| `059e7fc` | fix: improve error handling in login and registration forms         | None      | Clean.     |
+| `bba14ca` | feat: add sync icon SVG to public icons directory                   | None      | Clean.     |
+| `3322c2d` | feat: enhance coupon code functionality in checkout review step     | None      | Clean.     |
+
+### Per-file overrides
+
+None. The 6 upstream commits did not touch any `.claude/*` file, so the cumulative-settings conflict pattern from the 2026-06-03 sync did not reappear. (The harness added `Bash(git cherry-pick *)` to `.claude/settings.local.json` during the cherry-pick loop; that addition was preserved on top of the popped stash, per user instruction.)
+
+### Verification
+
+| Command          | Exit | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`   | 0    | Already up to date. Lockfile unchanged.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `pnpm run build` | 0    | Built in 8.257s. Bundle 355.48 kB raw / 95.68 kB transfer. Same 4 pre-existing CSS-budget warnings (pizzeria-details, checkout-review, header, order-details). No new warnings.                                                                                                                                                                                                                                                               |
+| `pnpm run lint`  | 1    | 19 errors (19 errors, 0 warnings). **Identical to pre-sync baseline** — all 8 failing files match the 2026-06-03 SYNC-NOTES list (checkout-delivery-step x2, checkout-review-step, checkout-schedule-step, checkout-step.guard, checkout-wizard, pizzeria-details-page, load-more).                                                                                                                                                           |
+| `pnpm run test`  | 1    | 18 `TS2554` errors (one fewer than the 19-error pre-sync baseline). All 5 failing files are guard spec files (checkout-step.guard:5, role.guard:4, auth.guard:4, no-pizzeria.guard:3, cart-not-empty.guard:2). **Net change:** the cherry-picks resolved one pre-existing `TS2554` somewhere in the guard specs (likely an indirect effect of a coupon-related code path being touched). No new error pattern. No coupon-discount regression. |
+
+### Post-sync test red (not fixed by this sync)
+
+The 19-error pre-sync baseline shifted to 18 (1 net improvement, no regressions). All remaining errors are the Angular 22.0 `CanMatchFn` / `CanActivateFn` signature change requiring a 3rd `currentSnapshot: PartialMatchRouteSnapshot` argument. Plus the 19 lint errors. Test-fix spec owns the resolution; this sync preserves the upstream state.
+
+### Strategy notes
+
+Same as 2026-06-03. No worktree used. No squash. The 6 cherry-picks remain individual atomic commits (`a393750` → `1b1738e` → `718f26a` → `556be70` → `b79cafb` → `1ff160a`) for revertability.
