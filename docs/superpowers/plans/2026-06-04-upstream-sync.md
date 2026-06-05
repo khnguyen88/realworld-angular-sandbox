@@ -28,9 +28,9 @@ git log --oneline upstream/main..HEAD
 
 Expected:
 
-- HEAD = `a6244bb45b6a06e22ebf04d448b90c51c0f0d397`
+- HEAD = `f8603ea` (current tip: the plan commit just landed)
 - upstream/main = `3322c2d498f82bb00fd0e56fd048a23288c95ce1`
-- `git log --oneline upstream/main..HEAD` shows the 6 sandbox-only commits from 2026-06-03 sync (a6244bb at top, 36f5b5b at bottom of that range), no upstream commits ahead.
+- `git log --oneline upstream/main..HEAD` shows 7 sandbox-only commits (the 2026-06-03 sync notes, design spec for this sync, plan for this sync, and 4 prior sandbox-only commits), no upstream commits ahead.
 
 - [ ] **Step 2: Confirm working tree contains only known WIP**
 
@@ -140,7 +140,7 @@ Expected: clean pick. Same pause-on-conflict behavior.
 git log --oneline -4
 ```
 
-Expected: top 4 commits are (newest first) the docs commit `4452f93` from the design spec, then `8fa08a5`, `ecd87f8`, `d5a7229`. The order of the 3 cherry-picks (oldest first in chronological terms) is `d5a7229`, `ecd87f8`, `8fa08a5` from bottom to top.
+Expected: top 4 commits are (newest first) the plan commit `f8603ea`, then `8fa08a5`, `ecd87f8`, `d5a7229`. The order of the 3 cherry-picks (oldest first in chronological terms) is `d5a7229`, `ecd87f8`, `8fa08a5` from bottom to top.
 
 - [ ] **Step 5: No commit — proceed to Task 4**
 
@@ -179,7 +179,7 @@ Expected: clean pick.
 - [ ] **Step 4: Verify all 6 cherry-picks are present**
 
 ```bash
-git log --oneline a6244bb..HEAD
+git log --oneline f8603ea..HEAD
 ```
 
 Expected output (6 lines, newest first):
@@ -196,20 +196,18 @@ ecd87f8 feat: add debounce to coupon code validation in checkout wizard
 - [ ] **Step 5: Verify sandbox content is unchanged**
 
 ```bash
-git diff a6244bb..HEAD -- .claude/ docs/superpowers/specs/
+git diff f8603ea..HEAD -- .claude/ docs/superpowers/specs/ docs/superpowers/plans/
 ```
 
-Expected: empty output. The 6 cherry-picks should not touch `.claude/` or the spec files (the only spec file change was the design commit at `4452f93`, which is _not_ in the range `a6244bb..HEAD` — wait, it is. Re-check: range is from `a6244bb` (parent of `4452f93`) to HEAD. So this command will show the design spec file as added. Adjust expectation:
-
-The design spec file `docs/superpowers/specs/2026-06-04-upstream-sync-design.md` will appear as added in this range — that is expected. Everything else under `.claude/` and `docs/superpowers/specs/` should be unchanged.
+Expected: empty output. The 6 cherry-picks should not touch `.claude/` or the `docs/superpowers/` files. (The design spec and plan for this sync are already committed at `4452f93` and `f8603ea` respectively, so they are not in the `f8603ea..HEAD` range.)
 
 To verify only the cherry-picks didn't touch sandbox content, run:
 
 ```bash
-git diff a6244bb~1..HEAD -- .claude/ docs/superpowers/specs/
+git diff f8603ea..HEAD -- .claude/ docs/superpowers/specs/
 ```
 
-Expected: empty output. The 6 cherry-picks + 1 docs commit should not modify any existing tracked file under `.claude/` or `docs/superpowers/specs/`.
+Expected: empty output. The 6 cherry-picks should not modify any existing tracked file under `.claude/` or `docs/superpowers/specs/`.
 
 - [ ] **Step 6: Pause for user review before continuing**
 
@@ -227,7 +225,7 @@ STOP here. Report the 6 successful cherry-picks and the clean sandbox-content ch
 git stash pop
 ```
 
-Expected: output reports that the 4 files are restored. No conflicts expected (the WIP was on top of `a6244bb`; the cherry-picks don't touch any of those files).
+Expected: output reports that the 4 files are restored. No conflicts expected (the WIP was on top of `f8603ea`; the cherry-picks don't touch any of those files).
 
 If a conflict appears, STOP — the cherry-picks unexpectedly touched a WIP-tracked file. Report to user.
 
@@ -251,7 +249,7 @@ Plus one of:
 - No other changes (cherry-picks touched only their own files)
 - Or: the cherry-picks also show as unstaged/untracked (would only happen if they didn't `git add` properly — but cherry-pick does)
 
-If 6 cherry-pick commits appear as "unstaged" or anything is unexpected, STOP and inspect with `git status` and `git log --oneline a6244bb..HEAD`.
+If 6 cherry-pick commits appear as "unstaged" or anything is unexpected, STOP and inspect with `git status` and `git log --oneline f8603ea..HEAD`.
 
 - [ ] **Step 3: Verify stash is empty**
 
@@ -436,13 +434,13 @@ If something goes wrong mid-plan:
 - **Single pick conflict:** resolve per spec section "Conflict handling" — abort / --ours / --theirs / manual.
 - **Whole loop disaster, before SYNC-NOTES commit:**
   ```bash
-  git reset --hard a6244bb
+  git reset --hard f8603ea
   git stash pop
   ```
   Returns the branch to the pre-sync state and restores the WIP.
 - **After SYNC-NOTES commit but before push:**
   ```bash
-  git reset --hard a6244bb  # drops the 6 cherry-picks + 1 doc commit
+  git reset --hard f8603ea  # drops the 6 cherry-picks + 1 doc commit
   git stash pop
   ```
 - **Stash lost somehow:** the WIP was stashed in Task 2 and the stash should still be in the reflog for 30 days. Recovery: `git fsck --unreachable | grep commit` or `git log --walk-reflogs --oneline stash@{0}`.
