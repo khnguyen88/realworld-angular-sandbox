@@ -31,7 +31,7 @@ Angular SPA. The sandbox separates two concerns:
 
 ## Where is the app
 
-In `realworld-angular/`. To work with it: `cd realworld-angular && pnpm install`.
+In `realworld-angular/`. To work with it: `cd realworld-angular && pnpm install --trust-lockfile`.
 
 ## Where is the upstream
 
