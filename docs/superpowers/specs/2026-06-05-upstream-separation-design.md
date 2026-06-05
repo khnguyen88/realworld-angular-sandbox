@@ -164,8 +164,15 @@ re-cloned from scratch on each sync via `scripts/sync-upstream.sh`. The
 directory is gitignored — it is the only copy of the app and is rebuilt
 mechanically; its state is not versioned in this repo.
 
-**For canonical/live state** of the app source, consult the GitHub
-repo, pinned per-sync in `SYNC-NOTES.md`.
+**For all commit history of the app source**, refer to
+[https://github.com/realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular).
+The local `git log` of this repo only records the _sandbox_ history
+(sync commits, sandbox tooling, sandbox docs), not the app's history.
+
+For the currently-pinned upstream tip, see `SYNC-NOTES.md`. For deep
+analysis of any historical sync, the GitHub commit URL pinned in
+`SYNC-NOTES.md` is the source of truth — fetch the upstream tree at
+that SHA and read the files. LLM agents can do this on demand.
 
 When making changes to the app, prefer the upstream: consult the GitHub
 repo for the canonical version, and only edit the local clone when
