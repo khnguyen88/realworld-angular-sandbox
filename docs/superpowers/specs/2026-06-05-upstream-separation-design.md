@@ -20,7 +20,7 @@ Syncing the upstream today requires `git cherry-pick` into the same tree, which 
 
 ## Goal
 
-**Separate concerns.** The top level of the sandbox is the user's narrative + tooling layer (visible to the user and to LLM agents). The Angular app lives in a dedicated subdirectory. Future upstream syncs are mechanical: re-clone, snapshot, commit.
+**Separate concerns.** The top level of the sandbox is the user's narrative + tooling layer (visible to the user and to LLM agents). The Angular app lives in a dedicated subdirectory. Future upstream syncs are mechanical: re-clone and record the new SHA.
 
 **Non-goals.** Fix upstream's red build. Restructure the upstream app. Convert the sandbox to a real monorepo. Replace the cherry-pick workflow with a more sophisticated one (e.g., subtree merge, git-submodule with pinning). Replace the existing memory-compiler / hooks / skills infrastructure.
 
@@ -41,41 +41,21 @@ sandbox-root/                                 (this repo)
 │   └── PROJECT-SUMMARY.md                    NEW — top-level "what is this sandbox" doc for LLM/user
 ├── memory-compiler/                          KEPT (already gitignored)
 │
-├── realworld-angular/                        NEW, GITIGNORED
+├── realworld-angular/                        NEW, GITIGNORED — the only copy of the app
 │   ├── node_modules/                         (excluded by sync script; created by pnpm install)
 │   ├── dist/                                 (gitignored)
 │   ├── .angular/                             (gitignored)
 │   └── ...full upstream tree from clone...
 │
-├── realworld-angular-snapshot/               NEW, TRACKED
-│   ├── README.md                             NEW — one-line "what is this" note
-│   ├── src/
-│   ├── public/
-│   ├── angular.json
-│   ├── package.json
-│   ├── pnpm-lock.yaml
-│   ├── tsconfig.app.json
-│   ├── tsconfig.json
-│   ├── tsconfig.spec.json
-│   ├── eslint.config.js
-│   ├── .prettierrc
-│   ├── .prettierrc.json
-│   ├── .prettierignore
-│   ├── .editorconfig
-│   ├── .github/
-│   ├── .vscode/
-│   ├── .husky/
-│   ├── .agents/                              (upstream ships this; tracked for parity)
-│   ├── skills-lock.json
-│   └── LICENSE
-│
 └── scripts/
     └── sync-upstream.sh                      NEW, TRACKED, executable bit not required on Windows
 ```
 
-### Files removed at root (after snapshot is built)
+**One copy, not two.** The earlier design proposed a `realworld-angular-snapshot/` directory as a tracked mirror alongside the throwaway clone. On reflection that's two copies of the same source tree, which adds maintenance without adding capability. Collapsed: the gitignored `realworld-angular/` clone is the only copy. Diff inspection of upstream history happens by reading SYNC-NOTES.md (which pins the SHA per sync) and, when needed, by reading the upstream repo on GitHub at that SHA.
 
-These originated from the upstream tree and are now captured in `realworld-angular-snapshot/`:
+### Files removed at root
+
+These originated from the upstream tree. The migration moves them out of root; they are recoverable from `git log` of the parent commit if needed (the historical state is preserved):
 
 - `angular.json`
 - `tsconfig.app.json`, `tsconfig.json`, `tsconfig.spec.json`
@@ -89,13 +69,13 @@ These originated from the upstream tree and are now captured in `realworld-angul
 - `.agents/`
 - `skills-lock.json`
 
-These are recoverable from `git log` of the parent commit; the removal is reversible if needed.
+The files themselves are not captured in any other tracked location. To see what was in them, look at the parent commit (`git show <parent-sha>:<path>`) or visit the upstream repo.
 
 ### Files KEPT at root (sandbox-owned, untouched by the migration)
 
 - `.claude/` (sandbox-owned — hooks, skills, settings)
 - `CLAUDE.md` (sandbox-owned — modified to add new section)
-- `LICENSE` (kept at root; the snapshot gets its own verbatim copy of the same MIT text)
+- `LICENSE` (kept at root — it is the upstream's MIT text and accurately describes the project)
 - `README.md` (sandbox-owned)
 - `README-TESTING.md` (sandbox-owned, currently untracked; stays untracked → not affected by migration)
 - `README-TEST-INSIGHTS.md` (sandbox-owned, currently untracked; stays untracked → not affected by migration)
@@ -109,7 +89,7 @@ The 3 currently-untracked files (`.claude/settings.json`, `README-TESTING.md`, `
 
 ## Sync model
 
-### `realworld-angular/` (throwaway clone, gitignored)
+### `realworld-angular/` (the only copy of the app, gitignored)
 
 A full clone of upstream `main` at `--depth=1`. Re-cloned from scratch on every sync. Used to:
 
@@ -117,17 +97,15 @@ A full clone of upstream `main` at `--depth=1`. Re-cloned from scratch on every 
 - Run the app locally (`pnpm start`).
 - Run the upstream's own tests/lint (knowing they may be red — that's upstream's state, not ours).
 
-Not used as a diff surface. Not read by LLM agents for analysis. The throwaway nature is the point: any state in this directory is ephemeral.
+The directory is gitignored: tracking it would mean every sync commit touches a large number of paths, defeating the simplicity of "wipe and re-clone." State in this directory is ephemeral by design.
 
-### `realworld-angular-snapshot/` (tracked mirror)
+**Where upstream state is recorded locally:**
 
-A byte-for-byte mirror of the upstream source tree, minus `node_modules/`, `dist/`, and `.angular/`. This is the **offline source of truth for LLM analysis**:
+- `SYNC-NOTES.md` — pinned SHA per sync, one row per sync, plus a "what changed" prose summary.
+- `git log` of sync commits — commit messages describe the diff at a high level.
+- For deep analysis of any historical sync, the GitHub URL pinned in SYNC-NOTES.md is the source of truth: fetch the upstream tree at that SHA and read the files. LLM agents can do this on demand.
 
-- An LLM agent opening this repo cold can read `realworld-angular-snapshot/src/` to understand the app.
-- `git log -p realworld-angular-snapshot/` shows the history of upstream changes (one snapshot commit per sync).
-- `git diff` between sync commits shows exactly what changed in upstream between two syncs.
-
-The snapshot does not run. It is not the app. It is the diff surface and the LLM context.
+There is intentionally **no second tracked copy** of the upstream source. The clone is the only copy; the SYNC-NOTES + commit history is the local record.
 
 ### `scripts/sync-upstream.sh` (entry point)
 
@@ -135,9 +113,8 @@ Bash script. Idempotent. The single command to invoke when upstream has new comm
 
 ```bash
 #!/usr/bin/env bash
-# sync-upstream.sh — pulls upstream realworld-angular into
-#   realworld-angular/         (gitignored, throwaway clone, runnable)
-#   realworld-angular-snapshot/ (tracked mirror, for diff/LLM analysis)
+# sync-upstream.sh — pulls upstream realworld-angular into realworld-angular/
+# (the only copy of the app, gitignored, re-cloned on every run).
 #
 # Idempotent. Safe to re-run.
 
@@ -145,27 +122,12 @@ set -euo pipefail
 
 REPO_URL="https://github.com/realworld-angular/realworld-angular"
 CLONE_DIR="realworld-angular"
-SNAPSHOT_DIR="realworld-angular-snapshot"
 
-echo "[sync-upstream] wiping previous clone and snapshot..."
-rm -rf "$CLONE_DIR" "$SNAPSHOT_DIR"
+echo "[sync-upstream] wiping previous clone..."
+rm -rf "$CLONE_DIR"
 
 echo "[sync-upstream] cloning upstream (depth=1)..."
 git clone --depth=1 "$REPO_URL" "$CLONE_DIR"
-
-echo "[sync-upstream] syncing snapshot (excluding node_modules, dist, .angular)..."
-mkdir -p "$SNAPSHOT_DIR"
-if command -v rsync >/dev/null 2>&1; then
-  rsync -a \
-    --exclude='node_modules' \
-    --exclude='dist' \
-    --exclude='.angular' \
-    "$CLONE_DIR"/ "$SNAPSHOT_DIR"/
-else
-  echo "[sync-upstream] rsync not found, falling back to cp -R + manual prune"
-  cp -R "$CLONE_DIR"/. "$SNAPSHOT_DIR"/
-  rm -rf "$SNAPSHOT_DIR/node_modules" "$SNAPSHOT_DIR/dist" "$SNAPSHOT_DIR/.angular"
-fi
 
 NEW_SHA=$(git -C "$CLONE_DIR" rev-parse HEAD)
 echo
@@ -175,20 +137,16 @@ echo
 echo "Next steps:"
 echo "  1. Update SYNC-NOTES.md 'Current pinned upstream SHA' to: $NEW_SHA"
 echo "  2. Add a row to SYNC-NOTES.md 'Sync log' table."
-echo "  3. Stage and commit the snapshot changes:"
-echo "       git add realworld-angular-snapshot SYNC-NOTES.md"
-echo "       git commit -m \"chore: sync upstream to \$NEW_SHA\""
-echo "  4. Optional verification:"
+echo "  3. Optional verification:"
 echo "       cd $CLONE_DIR && pnpm install && pnpm run build"
 ```
 
 **Script properties:**
 
 - **Idempotent** — `rm -rf` at the top means re-running on top of a stale tree is safe.
-- **Depth=1, no history** — full upstream history lives on GitHub. The snapshot commits themselves accumulate history in _this_ repo.
-- **No commits inside the script** — the script stages nothing. The user (or an LLM agent) reviews the diff and writes a sync-commit message.
+- **Depth=1, no history** — full upstream history lives on GitHub. The local record of what changed is `SYNC-NOTES.md` (pinned SHAs + sync log) and the sync commit messages.
+- **No commits inside the script** — the script stages nothing. The user (or an LLM agent) reviews what changed and writes a sync-commit message. Many syncs may not warrant a commit at all (e.g., upstream had no changes).
 - **No automation of SYNC-NOTES.md updates** — those need a human/LLM-readable summary line.
-- **rsync fallback** — rsync ships with Git for Windows so the fallback is mostly belt-and-suspenders, but it makes the script work on a fresh WSL or Linux checkout too.
 - **Cross-platform-aware** — bash because git Bash is the convention in this sandbox (per SYNC-NOTES). No PowerShell version. If a future user needs Windows-native invocation, they can run it from a bash shell or via `bash scripts/sync-upstream.sh` from PowerShell.
 
 ## Top-level documentation
@@ -200,13 +158,14 @@ Inserted at the top, before "Commit Policy":
 ```markdown
 ## Upstream source of truth
 
-The Angular SPA in `realworld-angular/` is a throwaway clone of
-[realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular).
-The tracked mirror in `realworld-angular-snapshot/` is updated from
-upstream on each sync via `scripts/sync-upstream.sh`.
+The Angular SPA in `realworld-angular/` is a clone of
+[realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular),
+re-cloned from scratch on each sync via `scripts/sync-upstream.sh`. The
+directory is gitignored — it is the only copy of the app and is rebuilt
+mechanically; its state is not versioned in this repo.
 
-**For offline analysis** (no network), read `realworld-angular-snapshot/`.
-**For canonical/live state**, consult the GitHub repo.
+**For canonical/live state** of the app source, consult the GitHub
+repo, pinned per-sync in `SYNC-NOTES.md`.
 
 When making changes to the app, prefer the upstream: consult the GitHub
 repo for the canonical version, and only edit the local clone when
@@ -221,7 +180,7 @@ The existing "Commit Policy" and "Hooks" sections are preserved verbatim.
 Replaces the current document. New structure:
 
 1. **Header** — what this document is, link to the upstream repo.
-2. **Current sync model (as of 2026-06-05)** — describes the clone + snapshot model.
+2. **Current sync model (as of 2026-06-05)** — describes the throwaway-clone model, where the only copy of the app lives, and how local state is recorded.
 3. **How to sync** — invocation, what the script does, post-script steps.
 4. **Post-sync verification** — table of commands and expected outcomes.
 5. **Current pinned upstream SHA** — single line, updated on each sync.
@@ -236,22 +195,11 @@ A short top-level document so an LLM opening this repo cold understands the layo
 
 - One paragraph: what this sandbox is.
 - Bulleted list of root-level items with one-line descriptions.
-- A "where is the app" pointer.
-- A "where is upstream" pointer.
-- A "how to sync" pointer.
+- A "where is the app" pointer (the gitignored `realworld-angular/` directory).
+- A "where is upstream" pointer (the GitHub URL).
+- A "how to sync" pointer (the script).
 
-### `realworld-angular-snapshot/README.md` (NEW)
-
-A one-line note inside the snapshot directory, to prevent confusion with the runnable clone:
-
-```markdown
-# realworld-angular-snapshot
-
-Tracked mirror of [realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular)
-main branch. Updated by `scripts/sync-upstream.sh` at the repo root.
-
-**Not the running app.** For the runnable clone, see `../realworld-angular/`.
-```
+The document explicitly notes that `realworld-angular/` is **not** a normal subdirectory — it is gitignored, ephemeral, and re-cloned on each sync.
 
 ## `.gitignore` additions
 
@@ -266,7 +214,7 @@ realworld-angular/.angular/
 # End of upstream clone ignore block
 ```
 
-**Why `realworld-angular/` is in the gitignore:** the script always `rm -rf`s and re-clones it. Tracking its contents would mean every sync commit touches a large number of paths, defeating the point of having the snapshot directory for tracked diffs. The clone is for running, the snapshot is for diffing.
+**Why `realworld-angular/` is in the gitignore:** the script always `rm -rf`s and re-clones it. Tracking its contents would mean every sync commit touches a large number of paths, defeating the simplicity of "wipe and re-clone." The directory is a working copy, not a source of record — `SYNC-NOTES.md` and the upstream GitHub URL pinned there are the local record of upstream state.
 
 **Why the inner excludes are also listed:** belt-and-suspenders. The clone ships with its own upstream `.gitignore` covering `node_modules/`, `dist/`, `.angular/`, but the additional explicit rules here mean that even if a future upstream change accidentally drops one of those from their `.gitignore`, our top-level ignore still catches it.
 
@@ -286,24 +234,22 @@ The migration lands as **a single commit on the current working branch** (likely
 
 The steps below are ordered to avoid the chicken-and-egg of "run the script before it exists." The script is written first, then invoked.
 
-1. **Write `scripts/sync-upstream.sh`** with the contents from the "Sync model → scripts/sync-upstream.sh" section above. Stage and (optionally) commit it alone first, so the script is available in the working tree as a tracked file before being invoked. **Decision point for the implementation plan: split here or not.** The simplest path is to write the script, invoke it, and let it be part of the single migration commit — git tracks the script's content from before the invocation, so `git add scripts/` after invocation captures the script exactly as it was run.
-2. **Invoke `bash scripts/sync-upstream.sh`** to populate `realworld-angular/` (gitignored) and `realworld-angular-snapshot/` (tracked) with the current upstream tip (`3322c2d`). This produces many files in `realworld-angular-snapshot/`.
+1. **Write `scripts/sync-upstream.sh`** with the contents from the "Sync model → scripts/sync-upstream.sh" section above.
+2. **Invoke `bash scripts/sync-upstream.sh`** to populate `realworld-angular/` (gitignored) with the current upstream tip (`3322c2d`).
 3. **Update `.gitignore`** with the new block from the `.gitignore additions` section above.
-4. **Add `realworld-angular-snapshot/README.md`** (one-line note from the "Top-level documentation" section).
-5. **Add `docs/PROJECT-SUMMARY.md`** at the top level with the contents specified in the "Top-level documentation" section.
-6. **Update `CLAUDE.md`** with the new "Upstream source of truth" section.
-7. **Rewrite `SYNC-NOTES.md`** with the new structure from the "Top-level documentation" section. The historical 2026-06-03 and 2026-06-04 sections are preserved verbatim in the appendix.
-8. **Remove the root Angular files** listed in the "Files removed at root" section above.
-9. **Stage everything and commit:**
+4. **Add `docs/PROJECT-SUMMARY.md`** at the top level with the contents specified in the "Top-level documentation" section.
+5. **Update `CLAUDE.md`** with the new "Upstream source of truth" section.
+6. **Rewrite `SYNC-NOTES.md`** with the new structure from the "Top-level documentation" section. The historical 2026-06-03 and 2026-06-04 sections are preserved verbatim in the appendix.
+7. **Remove the root Angular files** listed in the "Files removed at root" section above.
+8. **Stage everything and commit:**
 
    ```
-   git add .gitignore CLAUDE.md SYNC-NOTES.md docs/ scripts/ realworld-angular-snapshot/
+   git add .gitignore CLAUDE.md SYNC-NOTES.md docs/ scripts/
    git rm <the list of root files being removed>
    git commit -m "refactor: separate upstream realworld-angular into its own subdir
 
-   - Clone upstream into gitignored realworld-angular/ (throwaway, re-cloned on sync)
-   - Mirror upstream's app code into tracked realworld-angular-snapshot/
-   - Remove root-level Angular files (now captured in snapshot)
+   - Clone upstream into gitignored realworld-angular/ (re-cloned on sync)
+   - Remove root-level Angular files (recoverable from git history)
    - Add scripts/sync-upstream.sh to make future syncs mechanical
    - Add upstream URL to CLAUDE.md as source of truth
    - Add docs/PROJECT-SUMMARY.md for top-level context
@@ -312,13 +258,13 @@ The steps below are ordered to avoid the chicken-and-egg of "run the script befo
 
 ### Post-commit verification
 
-1. `git status` — clean. `realworld-angular/` is untracked (gitignored). `realworld-angular-snapshot/` is tracked. Root has no `package.json` / `src/` / `angular.json` / etc.
+1. `git status` — clean. `realworld-angular/` is untracked (gitignored). Root has no `package.json` / `src/` / `angular.json` / etc.
 2. `cd realworld-angular && pnpm install && pnpm run build` — exit 0.
 3. `cd realworld-angular && pnpm run lint` — exit code matches upstream's current state (may be red; that is upstream's problem, not the migration's).
 4. `cd realworld-angular && pnpm run test` — same.
-5. `git log -p realworld-angular-snapshot/README.md` — shows the new file in the migration commit.
-6. `cat SYNC-NOTES.md` — new structure, with the historical appendix at the bottom.
-7. `cat CLAUDE.md` — has the new "Upstream source of truth" section at the top.
+5. `cat SYNC-NOTES.md` — new structure, with the historical appendix at the bottom.
+6. `cat CLAUDE.md` — has the new "Upstream source of truth" section at the top.
+7. `cat docs/PROJECT-SUMMARY.md` — exists, says what the sandbox is.
 
 If any verification step fails, the implementation plan includes a "pause and diagnose" step rather than papering over with `--no-verify` or similar.
 
