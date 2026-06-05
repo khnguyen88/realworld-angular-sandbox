@@ -167,8 +167,8 @@ wc -l scripts/sync-upstream.sh
 Expected:
 
 - File exists.
-- First 3 lines are the shebang + comment + blank.
-- Line count is 36.
+- First 3 lines are the shebang, then two comment lines.
+- Line count is 27.
 
 - [ ] **Step 4: No commit — proceed to Task 3**
 
@@ -222,7 +222,7 @@ git status --porcelain | head -20
 git status --porcelain | wc -l
 ```
 
-Expected: a long list of untracked files under `realworld-angular/` (one per file in the clone, ~100+ lines). This is fine and expected — Task 4 will add the gitignore.
+Expected: a `?? realworld-angular/` entry in the untracked list (git reports untracked directories as a single line, not recursively — `--untracked-files=all` would still report 1 entry for the directory). The clone contains ~364 files. This is fine and expected — Task 4 will add the gitignore.
 
 - [ ] **Step 4: No commit — proceed to Task 4**
 

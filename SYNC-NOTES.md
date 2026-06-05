@@ -1,3 +1,57 @@
+# Upstream Sync Notes
+
+This document is the workflow reference for syncing the sandbox with
+[realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular).
+
+## Current sync model (as of 2026-06-05)
+
+- `realworld-angular/` is a **throwaway clone** of upstream, gitignored.
+  Re-cloned from scratch on every sync via `scripts/sync-upstream.sh`.
+  It is the only copy of the app and is rebuilt mechanically; its
+  state is not versioned in this repo.
+- The local record of upstream state is this document (`SYNC-NOTES.md`,
+  pinned SHA per sync) and the `git log` of sync commits in this repo.
+  For deep analysis, the GitHub URL pinned here is the source of truth.
+
+## How to sync
+
+```
+bash scripts/sync-upstream.sh
+```
+
+The script:
+
+1. Wipes the previous `realworld-angular/` directory.
+2. `git clone --depth=1 https://github.com/realworld-angular/realworld-angular realworld-angular`.
+3. Prints the new upstream HEAD SHA.
+
+Idempotent. Safe to re-run. The script does not commit anything — the
+sync commit is the user's (or LLM agent's) responsibility.
+
+## Post-sync steps
+
+1. Update the "Current pinned upstream SHA" line below to the new SHA.
+2. Add a row to the "Sync log" table.
+3. (Optional) Verify the upstream still builds:
+   `cd realworld-angular && pnpm install --trust-lockfile && pnpm run build`.
+4. Commit the `SYNC-NOTES.md` change.
+
+## Current pinned upstream SHA
+
+`3322c2d498f82bb00fd0e56fd048a23288c95ce1`
+
+## Sync log
+
+| Date       | Upstream SHA                                  | Notes                                                                                          |
+| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 2026-06-05 | (this migration)                              | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history.       |
+
+## Historical cherry-pick workflow (preserved for context)
+
+Before 2026-06-05, the sandbox synced via `git cherry-pick` directly into
+the sandbox's main tree. The cherry-pick sessions of 2026-06-03 and
+2026-06-04 are recorded verbatim below.
+
 # Upstream Sync Notes — 2026-06-03
 
 **Upstream tip:** `f3f1700b3be39ed2152d72a2027a0febbb8b7bc8`
