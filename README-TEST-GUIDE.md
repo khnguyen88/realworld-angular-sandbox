@@ -125,7 +125,17 @@ describe('CatalogImageUrlPipe', () => {
 - Computed signal derivations
 - Error handling (what happens on 401, 500, etc.)
 
-### Pattern
+### Angular Recommended
+
+Use `HttpTestingController` from `@angular/common/http/testing`. Configure TestBed with
+`provideHttpClientTesting()`, inject both the service and `HttpTestingController`, and
+call `httpTesting.verify()` in `afterEach` to catch un-flushed requests.
+
+Reference: `angular-developer` skill `testing-fundamentals.md`
+
+### Project Pattern
+
+The realworld-angular project follows this pattern exactly. No gap.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -182,6 +192,8 @@ describe('Auth', () => {
 - Always call `httpTesting.verify()` in `afterEach` to catch un-flushed requests.
 - Test **all four assertions** per endpoint: URL, method, body, and post-response state.
 - Test **both** the success and error branches of every HTTP call.
+- For services using `httpResource`, see the Angular skill's `resource.md` reference for async reactivity patterns.
+- **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ### Angular docs reference: [angular.dev/guide/testing/services](https://angular.dev/guide/testing/services)
 
@@ -541,7 +553,15 @@ approach when you only need to test a guard's allow/deny logic in isolation.
 - Does NOT modify requests it should skip
 - Handles response transformations (if applicable)
 
-### Pattern — Functional Interceptor
+### Angular Recommended
+
+Register the interceptor with `provideHttpClient(withInterceptors([...]))` and use a real
+`HttpClient` to make requests that pass through the interceptor. Assert on the resulting
+request properties.
+
+### Project Pattern
+
+The project follows this pattern exactly. No gap.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -592,6 +612,7 @@ describe('credentialsInterceptor', () => {
 - Use a real `HttpClient` to make requests that pass through the interceptor.
 - Test the request's **side effects** — modified headers, URL, `withCredentials`, etc.
 - Test both "should modify" and "should not modify" branches.
+- **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ---
 
