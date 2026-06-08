@@ -2,6 +2,12 @@
 
 This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/jsdom/jsdom) as the test runner, replacing the traditional Karma/Jasmine setup. Tests are co-located with their source files as `*.spec.ts` files.
 
+> **Testing Docs Index:**
+> - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
+> - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
+> - **README-TESTING.md** — This file: factual inventory of what exists (60 specs, categories, patterns)
+> - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
+
 ## Table of Contents
 
 - [Infrastructure](#infrastructure)
@@ -100,6 +106,8 @@ There is no watch mode script defined in `package.json`, but `ng test --watch` w
 
 ### Services & APIs
 
+> **Angular Alignment:** ✓ Fully aligned with official recommendations
+
 Services that make HTTP requests are tested with Angular's `HttpTestingController`. The pattern is consistent across all 6 service specs:
 
 - Configure `TestBed` with `provideHttpClientTesting()`
@@ -139,6 +147,8 @@ Key conventions:
 
 ### Stores
 
+> **Angular Alignment:** ✓ Fully aligned. The `httpTesting.match()` pattern is a project innovation not directly covered by Angular docs but functionally correct.
+
 The `CartStore` (`src/app/features/cart/cart.store.spec.ts`) tests a signal-based store that syncs cart state to the server via POST requests. Key patterns:
 
 - `TestBed.flushEffects()` triggers reactive effects that would normally fire during change detection
@@ -174,6 +184,8 @@ beforeEach(() => {
 
 ### Interceptors
 
+> **Angular Alignment:** ✓ Fully aligned with official recommendations
+
 Functional interceptors are tested by wiring them into a real `HttpClient` via `provideHttpClient(withInterceptors([...]))` and asserting the resulting request properties:
 
 ```ts
@@ -208,6 +220,8 @@ it('should not add withCredentials to Photon API requests', () => {
 This pattern tests the interceptor as a black box — the test only asserts the resulting request properties, not internal implementation.
 
 ### Functional Guards
+
+> **Angular Alignment:** ⚠ Works but has a better alternative. The `runInInjectionContext()` approach tests guard logic in isolation but Angular recommends `RouterTestingHarness` for integration testing guards with their routes. Also, the current specs use the Angular 21 2-argument signature — Angular 22 requires a 3rd `currentSnapshot` argument. See `README-TEST-GUIDE.md` for both patterns.
 
 The project uses functional guards (`authGuard`, `guestGuard`, `roleGuard`, `cartNotEmptyGuard`, `checkoutStepGuard`, `noPizzeriaGuard`). These are plain functions (not injectable classes), so they are tested via `TestBed.runInInjectionContext()`.
 
@@ -263,6 +277,8 @@ it('should return true when user has required role', () => {
 ```
 
 ### Components
+
+> **Angular Alignment:** ⚠ Works but has a better alternative. Angular recommends Component Harnesses (`TestbedHarnessEnvironment`) as the standard way to interact with components in tests. The project uses `querySelector` which is simpler but more brittle against template refactors. See `README-TEST-GUIDE.md` for both patterns.
 
 All component tests follow the standalone Angular testing pattern:
 
@@ -345,6 +361,8 @@ Key conventions:
 
 ### Dialogs & Overlays
 
+> **Angular Alignment:** ✓ Fully aligned. The `DIALOG_DATA` + `DialogRef` pattern is the standard approach.
+
 Dialog components receive data via Angular CDK's `DIALOG_DATA` injection token and close via `DialogRef`. Tests provide mock values for both:
 
 ```ts
@@ -394,6 +412,8 @@ TestBed.flushEffects();
 
 ### Directives
 
+> **Angular Alignment:** ✓ Fully aligned. The host component pattern is the canonical approach for testing structural directives.
+
 Structural directives (like `*rwRole`) are tested using a **host component** pattern. A minimal test component is declared inline with the directive applied in its template, and the directive's dependency (`Auth`) is stubbed with a `signal`:
 
 ```ts
@@ -432,6 +452,8 @@ This tests both the initial render and reactivity to dynamic signal changes.
 
 ### Pipes
 
+> **Angular Alignment:** ✓ Fully aligned. Instantiate directly with `new Pipe()` — no TestBed needed.
+
 Pure pipes are the simplest tests — instantiate directly, no `TestBed` needed:
 
 ```ts
@@ -466,7 +488,8 @@ The following test types are **not present** in this codebase:
 | **Visual regression**    | Missing             | No screenshot comparison tools (Percy, Chromatic, etc.). |
 | **Performance tests**    | Missing             | No Lighthouse CI, bundle size budgets for tests, or benchmark tests. |
 | **Accessibility tests**  | Missing             | No `axe-core`, `pa11y`, or Angular CDK a11y test helpers. |
-| **Route integration**    | Partial             | Guard tests use `provideRouter([])`, but no tests verify that navigating to a route renders the expected component tree. |
+| **Route integration**    | Partial             | Guide now documents `RouterTestingHarness` pattern in `README-TEST-GUIDE.md`. Guards tested with `runInInjectionContext()` cover logic but not full integration. |
+| **Component harnesses**  | Missing             | No harness usage in 34+ component specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization. |
 | **Test coverage reports**| Not configured      | No coverage thresholds or reporting scripts defined. |
 
 ### Recommendations
@@ -480,3 +503,5 @@ If expanding test coverage:
 3. **Accessibility** — Integrate `axe-core` into component tests or add a dedicated a11y check in CI. The `web-accessibility-auditor` superpowers skill can also audit pages on demand.
 
 4. **Coverage** — Add Vitest coverage configuration (`coverage.provider: 'v8'` or `istanbul`) with minimum thresholds in CI.
+
+For a prioritized improvement roadmap with timelines, see `README-TEST-INSIGHTS.md`.
