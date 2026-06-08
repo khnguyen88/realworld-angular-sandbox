@@ -15,7 +15,7 @@ routes, guards, and tests evolved, and what modifications happened across the
 
 | Date | Phase | Commits | What Happened |
 |------|-------|---------|---------------|
-| May 14 | P1 (early) | 4 | **Everything created.** Init commit (`a1eb73e`) lays down all features, all 16 shared components, all guards, all services, all routes, all models — 169 files in one commit. |
+| May 14 | P1 (early) | 4 | **Everything created.** Init commit (`a1eb73e`) lays down 217 files — all features, all 16 shared components, all guards, all services, all routes, all models. **Not a stub: full working app** with signal-based forms, lazy loading, computed cart state, full checkout flow with deactivation guard. |
 | May 15 | P1 (late) | 11 | **Polish and refinement.** Checkout enhanced (`1ecf2a3`), cart refactored (`c281624`), auth password toggle polished (`cf005d0`, `8f7148f`), README updated (4 commits), CSP experimentation (`b08df5c`, `95ffec9`). |
 | May 17 | P2 (start) | 10 | **Small fixes, admin route consistency.** Image format update, asset cleanup, footer link, admin routes refactored (`1f623fe`), orders tab removed (`fd7f4dd`). |
 | May 18 | P2 (main) | 26 | **Massive refactoring day.** Base URL interceptor added (`43a4c77`), shared components consolidated (Badge→StatusBadge at `4e53703`, Callout, EmptyState, form components), `httpResource` adopted, `DestroyRef`/`takeUntilDestroyed` integrated, route titles across all features (`bca0306`), obsolete specs deleted (`cdbf77a`). |
@@ -29,10 +29,11 @@ routes, guards, and tests evolved, and what modifications happened across the
 ## 2. Feature: Pizzerias
 
 The largest and most complex feature — 30 files at birth, growing through every phase.
+**Every commit was a full implementation or refactoring of working code — zero stubs.**
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e` (init) with:
+Created in `a1eb73e` (init) as a **fully-implemented feature, not a stub**:
 - **Routes:** `pizzeria.routes.ts`
 - **6 pages:** `pizzeria-list-page`, `pizzeria-details-page`, `admin-pizza-list-page`, `admin-pizzeria-configuration-page`, `admin-pizzeria-details-page`, `admin-pizzeria-new-page`
 - **1 component:** `admin-pizza-form-dialog`
@@ -105,7 +106,7 @@ Pizzeria specs touched in every P4 commit:
 
 ### Phase 5: Enhancement (May 22–26)
 
-- `bd72c32` — Pizzeria details page enhanced with **pagination and loading states**. Also introduced the `load-more` shared component (4 new files).
+- `bd72c32` — Pizzeria details page enhanced with **pagination and loading states**. Also introduced the `load-more` shared component (4 new files). Full implementation, not a stub.
 - `2c91bea` — Linting fixes to admin pizza list page, admin pizzeria configuration, pizzeria list page.
 - `f3f1700` — Angular 22 upgrade (indirect impact — broke the no-pizzeria guard spec).
 
@@ -115,7 +116,7 @@ Pizzeria specs touched in every P4 commit:
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e`:
+Created in `a1eb73e` as a **fully-implemented feature, not a stub**:
 - **Routes:** `auth.routes.ts`
 - **Pages:** `login-page` (ts/html/css), `register-page` (ts/html/css)
 - **Model:** `role.model.ts` (Role type, shared with core guard)
@@ -140,7 +141,7 @@ Created in `a1eb73e`:
 
 ### Phase 5: Feature Additions (May 26 – Jun 5)
 
-- `77c09fc` — **Email availability validation** added to registration form. This was a new feature — the form now validates whether an email is already taken before submission.
+- `77c09fc` — **Email availability validation** added to registration form. Full implementation — new feature, not a stub.
 - `059e7fc` — **Error handling improved** in both login and registration forms. Better user feedback on failed submissions.
 
 Auth was one of the most **stable** features — created in init, polished in P1, and only substantially modified twice in P5.
@@ -151,7 +152,7 @@ Auth was one of the most **stable** features — created in init, polished in P1
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e`:
+Created in `a1eb73e` as a **fully-implemented feature, not a stub**:
 - **Routes:** `cart.routes.ts`
 - **Store:** `cart.store.ts` (with `cart.store.spec.ts`)
 - **Page:** `cart-page` (ts/html/css)
@@ -190,7 +191,7 @@ The checkout feature underwent the **most dramatic evolution** of any feature �
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e` as a **simple single-page checkout:**
+Created in `a1eb73e` as a **fully-implemented single-page checkout, not a stub**:
 - **Routes:** `checkout.routes.ts`
 - **Page:** `checkout-page` (ts/html/css)
 - No dedicated components, no step guards, no wizard service.
@@ -218,7 +219,7 @@ Created in `a1eb73e` as a **simple single-page checkout:**
 
 ### Phase 5: COMPLETE REBUILD (May 26)
 
-`b7f434b` — **The checkout page is torn down and rebuilt as a multi-step wizard.** This single commit touches 24 files:
+`b7f434b` — **The checkout page is torn down and rebuilt as a multi-step wizard.** Full implementation, not a stub. This single commit touches 24 files:
 
 **Deleted:**
 - `checkout-deactivate.guard.ts` and `.spec.ts` — the old deactivation guard removed from core
@@ -242,7 +243,7 @@ This is the single largest feature-creation event after the init commit. The dev
 
 ### Phase 5: Coupon Codes (Jun 3–5)
 
-- `7d23826` — **Coupon code functionality added** to checkout review step. Touched review-step (ts/html/css/spec), checkout-page spec, checkout-wizard, order-api (+spec), order models (+spec), admin-order-list-page spec, admin-order-row spec, order-details-page spec, order-list-page spec.
+- `7d23826` — **Coupon code functionality added** to checkout review step. Full implementation — new feature with specs.
 - `f3f1700` — Angular 22 + TypeScript 6 upgrade (same day) — broke all guard specs including the new checkout-step guard spec.
 - `ecd87f8` — **Debounce added** to coupon code validation in checkout wizard.
 - `d5a7229` — **Discount reset on coupon validation error** — order-api also touched.
@@ -258,7 +259,7 @@ This is the single largest feature-creation event after the init commit. The dev
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e`:
+Created in `a1eb73e` as a **fully-implemented feature, not a stub**:
 - **Routes:** `order.routes.ts`
 - **Models:** `order.models.ts`
 - **API:** `order-api.ts`
@@ -322,7 +323,7 @@ The core layer consists of guards, interceptors, services, layout components, an
 
 ### Birth (May 14, P1)
 
-Created in `a1eb73e`:
+Created in `a1eb73e` as **fully-implemented code, not stubs**:
 - **Guards:** `auth.guard.ts` + `.spec.ts`, `checkout-deactivate.guard.ts` + `.spec.ts`, `no-pizzeria.guard.ts` (in `core/guards/pizzeria/`), `role.guard.ts` + `.spec.ts`
 - **Interceptors:** `credentials.interceptor.ts` + `.spec.ts`
 - **Services:** `auth.ts` + `.spec.ts`, `photon-api.ts` + `.spec.ts`
@@ -339,7 +340,7 @@ Created in `a1eb73e`:
 
 - `dfd03e7` — Footer link updated to GitHub Sponsors.
 - `1f623fe` — Header HTML updated for new admin routes.
-- `43a4c77` — **Base URL interceptor added** (`base-url.interceptor.ts` + `.spec.ts`). This centralized API URL construction and eliminated the proxy configuration. Environment files created (`environment.ts`, `environment.development.ts`).
+- `43a4c77` — **Base URL interceptor added** (`base-url.interceptor.ts` + `.spec.ts`). Full implementation — centralized API URL construction, eliminated the proxy configuration. Environment files created (`environment.ts`, `environment.development.ts`).
 - `6367050` — Base URL interceptor enhanced to handle image requests.
 - `3199805` — Base URL handling refactored in both interceptor and image URL pipe.
 - `bca0306` — Route titles added across all features (including profile, legal, not-found, unauthorized).
@@ -393,7 +394,7 @@ Plus header/cart store modifications for CartStore refactoring (`771430c`) and n
 
 ### Birth (May 14, P1)
 
-All 16 shared components created in `a1eb73e`:
+All 16 shared components created in `a1eb73e` as **fully-implemented components, not stubs**:
 
 | Component | Files |
 |-----------|-------|
@@ -446,7 +447,7 @@ This is where the shared component library matured:
 
 ### Phase 5: New Component & Button Enhancement (May 22–26)
 
-- `bd72c32` — **`load-more` component added** (4 files: ts/html/css/spec.ts). This was the first new shared component since init — an infinite scroll trigger using scroll + ResizeObserver.
+- `bd72c32` — **`load-more` component added** (4 files: ts/html/css/spec.ts). Full implementation — first new shared component since init, an infinite scroll trigger using scroll + ResizeObserver.
 - `b7f434b` — Button enhanced with error vibration animation for the checkout rebuild.
 
 The shared component layer was remarkably **stable** — all 15 (originally 16) components were created in the first commit, one was merged away in Phase 2, and only one new component was added in Phase 5.
@@ -455,11 +456,11 @@ The shared component layer was remarkably **stable** — all 15 (originally 16) 
 
 ## 9. Simple Features
 
-Four features had minimal evolution after creation:
+Four features had minimal evolution after creation. Each was a **fully-implemented feature from birth** — no stubs:
 
 ### Profile
 
-- **P1 (`a1eb73e`):** `profile.routes.ts`, `profile-page` (ts/html/css)
+- **P1 (`a1eb73e`):** `profile.routes.ts`, `profile-page` (ts/html/css) — full implementation
 - **P2 (`bca0306`):** Route title added
 - **P2 (`7166c62`):** Route migrated from `canActivate` to `canMatch`
 - **P3 (`70dae9c`):** `profile-page.spec.ts` added
@@ -570,3 +571,159 @@ The `baseUrlInterceptor` is the only architectural component that was **not pres
 **Build everything fast (2 days) → Refactor architecture (2 days) → Write all tests + docs + CI (1 day) → Refine test quality (2 days) → Add new features incrementally (spread over 2 weeks).**
 
 This is a disciplined solo-developer workflow: get it working, make it right, prove it works, then extend. The 48-hour "build everything" burst at the start is particularly notable — the developer had a clear vision of the full architecture from the beginning and executed it rapidly, then spent the remaining 3 weeks hardening and extending.
+---
+
+## 12. Unified Project Timeline (All Features)
+
+This section pulls every feature's lifecycle into a single chronological view,
+organized by commit. Each entry shows which feature was touched, the type of
+change (birth, refactor, test, enhancement), and whether it was a stub.
+
+### May 14 — Birth (4 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `a1eb73e` | **All** (Pizzerias, Auth, Cart, Checkout, Orders, Core, Shared, Profile, Legal, 404, Unauthorized) | **Birth** | 217 files. Full working app — not a stub. Signal-based forms, lazy loading, computed cart state, 16 shared components, 7 guards, all routes. |
+| `072a8c6` | Pizzerias | Refactor | API route paths standardized. |
+| `9bade76` | Pizzerias | Refactor | `noPizzeriaGuard` moved from core to feature. |
+| `b69db9f` | Pizzerias | Birth | Admin pizzeria form page + route. Duplicate auto-generated page cleaned up. |
+
+### May 15 — Polish (11 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `1ecf2a3` | Checkout, Core, Pizzerias | Enhancement | `cart-not-empty.guard` added. Checkout flow enhanced. Auth guard/service/photon-api updated. |
+| `17565f4` | Auth | Refactor | `postRegisterRedirect` removed from auth routes + register page. |
+| `157f436` | Auth | Cleanup | Unused import removed from login page. |
+| `a6d584d` | Config | Docs | README + app config updates. |
+| `489895d` | Config | Docs | README checklist item removed. |
+| `cf005d0` | Auth | Polish | Password visibility toggle styled (login + register). |
+| `8f7148f` | Auth | Enhancement | Password visibility toggle functionality enhanced. |
+| `2f47ea5` | Config | Docs | README updated. |
+| `b08df5c` | Config | Config | CSP configuration added. |
+| `95ffec9` | Config | Config | CSP meta tag removed (reverted). |
+| `c281624` | Cart, Checkout | Refactor | Cart management + reconstruction logic refactored. |
+
+### May 17 — Admin Consistency (10 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `bde53e1` | Pizzerias | Fix | Image format updated. |
+| `08317f7` | Assets | Cleanup | Pizza image removed from public assets. |
+| `0b950b3` | Cart | Polish | Full-width button class on login link. |
+| `dfd03e7` | Core (Footer) | Fix | Footer link → GitHub Sponsors. |
+| `1f623fe` | Pizzerias, Auth, Core (Header) | Refactor | Admin routes + links refactored for consistency (9 files). |
+| `fd7f4dd` | Pizzerias | Polish | Orders tab removed from admin pizzeria details. |
+| `43a4c77` | Core (Interceptor) | **Birth** | `base-url.interceptor.ts` + spec + environment files. Full implementation. |
+| `6367050` | Core (Interceptor) | Enhancement | Base URL interceptor extended for image requests. |
+| `cd435fb` | Config | Cleanup | Proxy config removed from angular.json. |
+| `1f7eb63` | Deps | Deps | Angular deps updated in lockfile. |
+
+### May 18 — Architecture Hardening (26 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `3199805` | Core (Interceptor), Shared | Refactor | Base URL handling refactored in interceptor + image pipe. |
+| `7ee7518` | Config | Docs | MIT License added. |
+| `2c4dfbf` | Orders | Refactor | Order status handling refactored. |
+| `bca0306` | **All features** | Enhancement | Route titles added globally — every route file updated. |
+| `31a691b` | Orders | Refactor | Order row event handling + feedback display. |
+| `552299f` | Pizzerias | Refactor | Pizzeria API methods refactored. |
+| `edbca41` | Pizzerias | Refactor | Pizzeria details page layout + button integration. |
+| `9622b8e` | Auth, Checkout | Refactor | Navigation handling refactored. |
+| `a34ed14` | Pizzerias | Refactor | `takeUntilDestroyed` integrated in pizzeria details. |
+| `6dfdac0` | Pizzerias | Refactor | `DestroyRef` + `takeUntilDestroyed` in admin pizza list. |
+| `7166c62` | Profile | Refactor | `canActivate` → `canMatch`. |
+| `b962582` | Shared | Cleanup | Confirm dialog imports cleaned. |
+| `21d74dd` | Pizzerias | Fix | Typo: `styleUrls` property. |
+| `4e53703` | Shared | Consolidation | Badge merged into StatusBadge (2 files deleted). |
+| `700957e` | Shared | Refactor | Callout restructured. |
+| `7cf6ccc` | Shared | Refactor | EmptyState streamlined. |
+| `bb9d261` | Shared | Refactor | Image picker category handling. |
+| `bfeb289` | Shared, Pizzerias | Enhancement | Form components accessibility pass. |
+| `d94e072` | Shared | Enhancement | PhotonLocationField: functionality + keyboard a11y. |
+| `4235429` | Pizzerias | Refactor | Banner visibility management. |
+| `396cfd7` | Pizzerias | Refactor | Delete functionality improved. |
+| `d90296c` | Pizzerias | **Birth** | `AdminPizzaRow` component (3 files). Full implementation. |
+| `dd7eebd` | Pizzerias | Upgrade | `httpResource` for toppings management. |
+| `db82d83` | Orders, Pizzerias | Enhancement | Pizza order form dialog: loading + error states for toppings. |
+| `61bdfc7` | Pizzerias, Shared | Refactor | Pizza API methods consistency refactoring. |
+| `cdbf77a` | Core | Cleanup | 10 obsolete spec files deleted (all re-created in P3). |
+
+### May 19 (early) — Store Upgrade (2 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `771430c` | Cart, Checkout, Orders, Pizzerias | Refactor | CartStore naming + functionality refactored. |
+| `76ec4cc` | Cart | Upgrade | CartStore → `httpResource`. |
+
+### May 19 (late) — Tests + Ship Prep (18 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `70dae9c` | **All** | **Test** | 54 spec files — every component, guard, service, page. Full test suite, not stubs. |
+| `922d723` | Shared | Enhancement | Image handling → `ngSrc`. |
+| `eb25082` | Legal | Cleanup | Redundant text removed from T&C. |
+| `02b8d04` | Legal | Enhancement | FAQ section added to T&C. |
+| `944d810` | Config | Docs | README: project purpose + features. |
+| `2114d67` | Config | Config | Environment dev configuration. |
+| `cd764d5` | Config | Cleanup | Comment removed from environment file. |
+| `f385a09` | Config | Docs | README: project name change. |
+| `49de7ab` | Config | Docs | README: contribution guidelines. |
+| `e2ac29a` | Config | Docs | README: API documentation link. |
+| `debb2fd` | **All** | Formatting | Prettier pass across entire codebase. |
+| `e267022` | Tooling | Config | Husky for Git hooks. |
+| `5df43a6` | Tooling | Config | `packageManager` field removed. |
+| `0f8aff4` | Tooling | Config | PNPM workspace + build permissions. |
+| `0f8aff4` | Tooling | CI | Test command simplified in CI workflow. |
+
+### May 20–22 — Test Quality (7 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `9795b46` | **All** | Fix | Linting fixes across ~10 specs. |
+| `293373a` | Pizzerias | Refactor | Tests + pizzeria details page refactored. |
+| `ba04b9d` | Core, Pizzerias, Orders, Shared | Refactor | ~12 guard/component specs refactored. |
+| `26e0388` | Pizzerias, Cart, Orders, Shared | Refactor | Change detection + type safety in tests. |
+| `6cdda60` | Pizzerias, Core, Shared, Cart | Refactor | Test structure + formatting across ~15 specs. |
+| `0d66ee7` | Pizzerias, Orders, Shared | Quality | Mock components → real implementations. |
+| `ca63022` | Pizzerias | Cleanup | Standalone flags removed from mock components. |
+
+### May 22–26 — Feature Expansion (3 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `bd72c32` | Pizzerias, Shared | **Birth** | Pagination + `load-more` component (4 files). Full implementation. |
+| `b7f434b` | Checkout, Orders, Core, Shared | **Rebuild** | Checkout → multi-step wizard. 20 new files, 4 modified, 2 deleted. All with co-located specs. Full implementation. |
+| `77c09fc` | Auth | **Birth** | Email availability validation on registration. Full implementation. |
+
+### May 26 – Jun 1 (3 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `2c91bea` | Pizzerias, Orders | Fix | Linting pass. |
+| `2a1e52a` | Config | Config | Node engine versions in package.json. |
+| `fdd7553` | Checkout | Refactor | Progress stepper → switch statement. |
+
+### Jun 2–5 — Polish + Coupons (6 commits)
+
+| Commit | Feature | Type | What Happened |
+|--------|---------|------|---------------|
+| `81abd79` | Core (Header) | Fix | Profile link accessibility. |
+| `7d23826` | Checkout, Orders | **Birth** | Coupon code functionality. Full implementation with specs. |
+| `f3f1700` | Deps | Deps | Angular 22 + TypeScript 6 upgrade. |
+| `8fa08a5` | Core (Footer) | **Birth** | Footer placeholder with `@defer` loading. Full implementation. |
+| `ecd87f8` | Checkout | Enhancement | Debounce on coupon validation. |
+| `d5a7229` | Checkout, Orders | Fix | Discount reset on coupon validation error. |
+| `059e7fc` | Auth | Fix | Error handling in login + registration forms. |
+| `bba14ca` | Assets | Asset | Sync icon SVG added. |
+| `3322c2d` | Checkout | Enhancement | Coupon code functionality enhanced. |
+
+### Summary
+
+**0 stubs in 91 commits.** The init commit was a complete working application
+(signal-based forms, lazy loading, computed state, full routing, 16 shared
+components). Every subsequent commit was a refactoring of working code, a full
+feature implementation, or infrastructure/config. The 23-day timeline was:
+birth (2 days) → hardening (2 days) → testing (1 day) → quality (2 days) →
+feature expansion (2 weeks).

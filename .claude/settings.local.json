@@ -53,7 +53,8 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\_AAA\\\\JVR\\\\realworld-angular-sandbox\\\\realworld-angular\\\\src\\\\app\" -Recurse -File | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\_AAA\\\\JVR\\\\realworld-angular-sandbox\\\\realworld-angular\\\\src\\\\app\\\\\", \"\"\\) })",
       "PowerShell(if \\($env:GH_TOKEN\\) { \"Token set \\(length: $\\($env:GH_TOKEN.Length\\)\\)\" } else { \"No GH_TOKEN\" })",
       "Bash(gh auth *)",
-      "PowerShell(git log *)"
+      "PowerShell(git log *)",
+      "Bash(grep -E \"\\\\.ts$\")"
     ]
   },
   "hooks": {
