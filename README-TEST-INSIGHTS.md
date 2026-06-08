@@ -1,6 +1,6 @@
 # Test Coverage & Unit Test Quality — Insights
 
-> **Status snapshot (2026-06-03):** The test suite is comprehensive in scope and well-structured, but it is **not currently green**. Five TypeScript compile errors prevent `pnpm run test` from producing any results. Details below.
+> **Status snapshot (2026-06-07):** The test suite is comprehensive in scope and well-structured, but it is **not currently green**. 18 TypeScript compile errors prevent `pnpm run test` from producing any results. All stem from Angular 22.0's `CanActivateFn` / `CanMatchFn` signature change. Details below.
 
 ---
 
@@ -10,8 +10,8 @@
 | --- | --- |
 | How many test files? | **60 `*.spec.ts`** co-located with source. |
 | How much test code? | **~5,188 lines** of test code vs. **~3,743 lines** of source. |
-| Is the suite green? | **No** — `pnpm run test` fails at the TypeScript build step with **5 errors across 5 spec files**. |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, but **failing** in maintenance hygiene. |
+| Is the suite green? | **No** — `pnpm run test` fails at the TypeScript build step with **18 errors across 5 guard spec files**. |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, but **failing** in Angular version compatibility. |
 | Is coverage measured? | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`. |
 | Are there other test types? | **None** — no e2e, no integration, no a11y, no visual regression. |
 
@@ -19,7 +19,7 @@
 
 ## 1. Project Context (from `README.md`)
 
-The project is a **learning / reference implementation** of a RealWorld Angular SPA (Angular 21, standalone components, signals, lazy routes, SSE). It targets a deployed API at `api.realworldangular.org` and is **explicitly a playground, not a real marketplace**.
+The project is a **learning / reference implementation** of a RealWorld Angular SPA (Angular 22, standalone components, signals, lazy routes, SSE). It targets a deployed API at `api.realworldangular.org` and is **explicitly a playground, not a real marketplace**.
 
 That framing matters for the conclusions below: this is reference code whose purpose is partly to *demonstrate* testing patterns, so the quality of the *patterns* themselves matters as much as the percentage coverage.
 
@@ -60,20 +60,21 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 ## 3. Current Run Status — RED
 
-`pnpm run test` (i.e. `ng test --watch=false`) currently **fails to compile**. Five TypeScript errors:
+`pnpm run test` (i.e. `ng test --watch=false`) currently **fails to compile**. 18 TypeScript errors, all `TS2554` ("Expected 3 arguments, but got 2"):
 
-| # | File | Error | Root cause |
-| --- | --- | --- | --- |
-| 1 | `features/orders/order-api.spec.ts:7` | `TS2739` — `mockOrder` missing `tipAmount`, `scheduledAt` | Production `Order` model added fields; mock wasn't updated. |
-| 2 | `features/orders/pages/order-list-page/order-list-page.spec.ts:12` | `TS2739` — same as above | Same model drift. |
-| 3 | `features/orders/pages/order-details-page/order-details-page.spec.ts:9` | `TS2739` — same as above | Same model drift. |
-| 4 | `features/orders/pages/admin-order-list-page/admin-order-list-page.spec.ts:14` | `TS2739` — `AdminOrderListItem` missing `tipAmount`, `scheduledAt` | Same model drift. |
-| 5 | `features/orders/pages/admin-order-list-page/admin-order-row/admin-order-row.spec.ts:10` | `TS2739` — same as above | Same model drift. |
-| 6 | `features/checkout/pages/checkout-page/checkout-page.spec.ts:67` | `TS2339` — `canDeactivate` does not exist on `CheckoutPage` | Test references a method that was either renamed or never existed. |
+| File | Errors | Root cause |
+| --- | --- | --- |
+| `core/guards/auth/auth.guard.spec.ts` | 4 | Angular 22.0 changed `CanActivateFn` / `CanMatchFn` to require a 3rd argument (`currentSnapshot: PartialMatchRouteSnapshot`). Guard specs call guards with only 2 args (`route`, `segments`). |
+| `core/guards/role/role.guard.spec.ts` | 4 | Same — `roleGuard([...])(route, segments)` missing `currentSnapshot`. |
+| `features/checkout/guards/cart-not-empty.guard.spec.ts` | 2 | Same — `cartNotEmptyGuard(route, segments)` missing `currentSnapshot`. |
+| `features/checkout/guards/checkout-step.guard.spec.ts` | 5 | Same — `checkoutStepGuard(step)(route, segments)` missing `currentSnapshot`. |
+| `features/pizzerias/guards/no-pizzeria.guard.spec.ts` | 3 | Same — `noPizzeriaGuard(route, segments)` missing `currentSnapshot`. |
 
-**Pattern:** The "orders" feature added `tipAmount` / `scheduledAt` to its domain models and the test fixtures were never updated. The `canDeactivate` case is more concerning — it suggests a refactor (or a planned guard) was abandoned mid-flight and the test wasn't cleaned up.
+**Pattern:** Angular 22.0 introduced a breaking change to the functional guard signature. The production guards compile fine (they match the new signature), but the test invocations pass only 2 arguments — the old Angular 21 signature. All 18 errors are in 5 guard spec files; no other test files are affected.
 
-> **Bottom line:** Right now you can't run the suite. Anyone reviewing "is this project tested?" via `pnpm test` will see a red build. This is the single highest-priority fix — everything else in this document is a commentary on what would be true *if* the suite were green.
+**Lint status (unchanged):** `pnpm run lint` produces 19 errors (19 errors, 0 warnings) across 8 files — 14 `@typescript-eslint/no-explicit-any`, 1 `no-unused-vars`, 6 `no-empty-function` (IntersectionObserver stubs). These are pre-existing upstream issues, not introduced by the sync.
+
+> **Bottom line:** Right now you can't run the suite. The fix is mechanical: add a 3rd `{} as PartialMatchRouteSnapshot` argument to every guard invocation in the 5 affected spec files (~18 call sites). This is the single highest-priority fix — everything else in this document is a commentary on what would be true *if* the suite were green.
 
 ---
 
@@ -115,13 +116,17 @@ The `cart.store.spec.ts` is the standout here — it tests the `httpResource` ca
 
 ## 5. Unit-Test Quality — Weaknesses
 
-### 5.1 Maintenance drift (the red build, again)
+### 5.1 Angular version compatibility (the red build, again)
 
-The 5 compilation errors are all the same kind of failure: **fixtures weren't updated when models evolved**. Mitigations worth considering:
+The 18 compilation errors all stem from the Angular 21 → 22 upgrade. Angular 22.0 changed `CanActivateFn` and `CanMatchFn` to accept a 3rd `currentSnapshot: PartialMatchRouteSnapshot` argument. The production guards were updated to match, but the spec files still call guards with the old 2-argument signature.
 
-- A shared `mockOrderFactory()` helper so a new field is added in one place.
-- A lint rule that warns when a `mockX: X` annotation is missing a required field (Angular's `strict` TS config + `exactOptionalPropertyTypes`).
-- A CI job that runs `pnpm run test` on every PR — which apparently isn't happening (see §6).
+This is a different kind of maintenance drift than the fixture-drift errors documented in the 2026-06-03 snapshot (which were `TS2739` mock-model mismatches). Those fixture-drift errors are still in the codebase but are **eclipsed** by the guard signature errors — the TypeScript compiler stops at the guard specs first, so the fixture errors don't surface until the guard errors are fixed.
+
+Mitigations worth considering:
+
+- A CI job that runs `pnpm run test` on every PR would have caught this immediately after the Angular upgrade.
+- The guard tests could define a shared `mockRouteSnapshot` helper to reduce repetition when adding the 3rd argument.
+- An `.nvmrc` or `engines` field in `package.json` would pin the Node version and prevent accidental environment drift.
 
 ### 5.2 No code-coverage measurement
 
@@ -161,22 +166,25 @@ With 60 specs at ~86 lines each on average, this *looks* thorough. But without a
 
 **The good:** the patterns are textbook. If you sent `auth.spec.ts` or `cart.store.spec.ts` to a senior Angular dev, they would approve. The HTTP-mocking, the guard-via-`runInInjectionContext`, the signal-effect flushing, the `httpTesting.match()` predicate work — all of it is the right call. The 1:1 spec-to-source ratio is a real achievement, and a project this size is *unusual* in that respect. The test code is **larger** than the production code, which signals real commitment.
 
-**The bad:** the suite is **red right now**. That's the first thing anyone running `pnpm test` will see, and it overshadows everything else. The cause is purely fixture drift — none of the errors indicate broken behavior in production, only stale mocks. But the practical effect is the same: the test suite is not protecting anyone today.
+**The bad:** the suite is **red right now** due to an Angular version upgrade. The 18 `TS2554` errors are mechanical — every guard invocation needs a 3rd argument. None indicate broken behavior in production, only that the specs weren't updated when Angular 22 landed. But the practical effect is the same: the test suite is not protecting anyone today.
 
-**The missing:** coverage measurement. For a reference project whose stated purpose includes being a learning resource, the absence of `vitest run --coverage` (or equivalent) is a real gap. The README says "60 spec files"; a coverage report would say "78% lines / 64% branches across 84 source files." Those are very different signals to a reader.
+**The hidden:** once the 18 guard-signature errors are fixed, the original 5 fixture-drift errors from the 2026-06-03 snapshot (`TS2739` mock-model mismatches + `TS2339` `canDeactivate`) will likely re-surface. The TypeScript compiler stops at the guard specs first, so these errors are currently invisible. Fixing the guard specs will reveal the next layer of issues.
+
+**The missing:** coverage measurement. For a reference project whose stated purpose includes being a learning resource, the absence of a coverage report is a real gap. The README says "60 spec files"; a coverage report would say "78% lines / 64% branches across 84 source files." Those are very different signals to a reader.
 
 ### Specific recommendations (in priority order)
 
-1. **Fix the red build first.** Update the 5 mock fixtures to include `tipAmount` / `scheduledAt`; resolve the `canDeactivate` reference in `checkout-page.spec.ts` (either implement the method or remove the test). This is ~10 lines of changes and unblocks everything else.
-2. **Add coverage.** Install `@vitest/coverage-v8`, add a `test:coverage` script, and generate a report. Even a single run committed to the repo as an artifact answers "how well is this tested?" with data instead of vibes.
-3. **Add a CI guard.** A minimal GitHub Actions job (or equivalent) that runs `pnpm install && pnpm run test` on every PR would have caught the current red build. The fact that the suite is red on `main` implies this guard doesn't exist.
-4. **Add 1–2 smoke e2e tests** with Playwright for the *browse → add-to-cart* flow. The project is integrated against a real API, so this is high-value and low-effort.
-5. **Consider a shared `mockOrder()` / `mockPizzeria()` factory** in `src/app/core/testing/` so model additions don't require touching every spec.
-6. **Add a single accessibility assertion** (`axe.run()`) to one page spec to establish the pattern; expand from there.
+1. **Fix the 18 guard-spec errors.** Add the 3rd `currentSnapshot` argument to every guard invocation across the 5 affected spec files. This is ~18 mechanical changes and unblocks the test suite.
+2. **Fix the re-surfaced fixture-drift errors.** Once the guard errors are resolved, update the mock fixtures for `mockOrder` / `AdminOrderListItem` (add `tipAmount`, `scheduledAt`) and resolve the `canDeactivate` reference in `checkout-page.spec.ts`.
+3. **Add coverage.** Install `@vitest/coverage-v8`, add a `test:coverage` script, and generate a report. Even a single run committed to the repo as an artifact answers "how well is this tested?" with data instead of vibes.
+4. **Add a CI guard.** A minimal GitHub Actions job (or equivalent) that runs `pnpm install && pnpm run test` on every PR would have caught both the Angular 22 signature change and the original fixture drift. The fact that the suite is red on `main` implies this guard doesn't exist.
+5. **Add 1–2 smoke e2e tests** with Playwright for the *browse → add-to-cart* flow. The project is integrated against a real API, so this is high-value and low-effort.
+6. **Consider a shared `mockOrder()` / `mockPizzeria()` factory** in `src/app/core/testing/` so model additions don't require touching every spec.
+7. **Add a single accessibility assertion** (`axe.run()`) to one page spec to establish the pattern; expand from there.
 
 ### One-line verdict
 
-The unit-test *discipline* here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **red from fixture drift, has no coverage measurement, and is the only layer of testing**. Fix the build, add coverage, and the story changes from "looks committed" to "actually trustworthy."
+The unit-test *discipline* here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **red from an Angular 22 guard-signature change (18 errors), has a hidden layer of fixture-drift errors underneath, has no coverage measurement, and is the only layer of testing**. Fix the guard specs, then the fixtures, add coverage, and the story changes from "looks committed" to "actually trustworthy."
 
 ---
 
@@ -184,8 +192,9 @@ The unit-test *discipline* here is genuinely good — patterns, structure, and b
 
 - `README.md` — project description, roles, route map
 - `README-TESTING.md` — author's own testing documentation
-- `package.json` — scripts and dev dependencies
-- `pnpm exec ng test --watch=false` — current run output (failed build, 5 TS errors)
+- `package.json` — scripts and dev dependencies (Angular 22.0.0, Vitest 4.1.6, TypeScript 6.0.3)
+- `pnpm exec ng test --watch=false` — current run output (failed build, 18 TS2554 errors across 5 guard spec files)
+- `pnpm exec ng lint` — current run output (19 errors, 0 warnings, across 8 files)
 - `find src -name "*.spec.ts" | wc -l` → 60
 - `find src -name "*.ts" -not -name "*.spec.ts" | wc -l` → 84
 - `wc -l` of all spec files → 5,188 lines
