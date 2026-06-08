@@ -54,7 +54,10 @@
       "PowerShell(if \\($env:GH_TOKEN\\) { \"Token set \\(length: $\\($env:GH_TOKEN.Length\\)\\)\" } else { \"No GH_TOKEN\" })",
       "Bash(gh auth *)",
       "PowerShell(git log *)",
-      "Bash(grep -E \"\\\\.ts$\")"
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(Get-ChildItem *)",
+      "Bash(npx skills *)",
+      "PowerShell(git *)"
     ]
   },
   "hooks": {

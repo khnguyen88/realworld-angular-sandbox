@@ -52,3 +52,5 @@ realworld-angular/node_modules/
 realworld-angular/dist/
 realworld-angular/.angular/
 # End of upstream clone ignore block
+
+.agents/

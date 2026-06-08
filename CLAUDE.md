@@ -45,3 +45,34 @@ All hook scripts resolve paths relative to their own location (`__file__`),
 so they function correctly regardless of working directory. The
 `memory-compiler/` directory is gitignored and treated as read-only
 third-party code.
+
+## Angular Tooling
+
+### MCP Server
+
+The Angular CLI MCP server is configured in `.mcp.json` (`angular-cli`).
+It runs `@angular/cli` MCP in read-only mode and provides:
+
+- `list_projects` — discover workspaces, projects, and targets (mandatory first step)
+- `get_best_practices` — load version-specific Angular coding standards
+- `search_documentation` — query angular.dev for API/concept docs
+- `ai_tutor` — interactive Angular tutorial persona
+- `onpush_zoneless_migration` — step-by-step OnPush/zoneless migration analysis
+
+Always call `list_projects` first, then `get_best_practices` before writing
+Angular code.
+
+### Skills
+
+Angular ecosystem skills are installed from `angular/skills` (GitHub) and
+tracked in `skills-lock.json`:
+
+- **`angular-developer`** — full Angular development workflow: generate
+  components/services/pipes/directives, manage dependencies, build, and test.
+  Invoke for any Angular coding task.
+- **`angular-new-app`** — scaffold a new Angular project with standalone
+  components and modern best practices. Invoke for greenfield app creation.
+
+Invoke these via the `Skill` tool before performing Angular work. The skills
+are stored in `.claude/skills/angular-developer/` and
+`.claude/skills/angular-new-app/`.
