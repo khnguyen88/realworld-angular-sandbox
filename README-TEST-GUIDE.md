@@ -210,7 +210,87 @@ describe('Auth', () => {
 - Sets correct ARIA attributes (accessibility is a first-class assertion)
 - Disabled / loading / active states
 
-### Pattern — Presentational Component
+### Angular Recommended — Component Harnesses
+
+Component harnesses are the standard, preferred way to interact with components in tests.
+They provide a user-centric API that insulates tests from internal DOM changes.
+
+Reference: `angular-developer` skill `component-harnesses.md`
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { TestbedHarnessEnvironment, HarnessLoader } from '@angular/cdk/testing/testbed';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Button } from './button';
+import { ButtonHarness } from './testing/button-harness';
+
+describe('Button (with harness)', () => {
+  let fixture: ComponentFixture<Button>;
+  let loader: HarnessLoader;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(Button);
+    loader = TestbedHarnessEnvironment.loader(fixture);
+  });
+
+  it('should apply variant and palette classes', async () => {
+    fixture.componentRef.setInput('variant', 'outlined');
+    fixture.componentRef.setInput('palette', 'danger');
+    const harness = await loader.getHarness(ButtonHarness);
+    expect(await harness.getCssClass()).toContain('btn--outlined-danger');
+  });
+
+  it('should be disabled when isDisabled is true', async () => {
+    fixture.componentRef.setInput('isDisabled', true);
+    const harness = await loader.getHarness(ButtonHarness);
+    expect(await harness.isDisabled()).toBe(true);
+  });
+
+  it('should show loading state and set aria-busy', async () => {
+    fixture.componentRef.setInput('isLoading', true);
+    const harness = await loader.getHarness(ButtonHarness);
+    expect(await harness.isLoading()).toBe(true);
+    expect(await harness.getAriaAttribute('aria-busy')).toBe('true');
+  });
+});
+```
+
+A custom harness for Button might look like:
+
+```typescript
+// src/app/shared/components/button/testing/button-harness.ts
+import { ComponentHarness } from '@angular/cdk/testing';
+
+export class ButtonHarness extends ComponentHarness {
+  static hostSelector = 'button, [rw-button]';
+
+  async getCssClass(): Promise<string> {
+    const host = await this.host();
+    return (await host.getAttribute('class')) ?? '';
+  }
+
+  async isDisabled(): Promise<boolean> {
+    const host = await this.host();
+    return (await host.getProperty('disabled')) === true;
+  }
+
+  async isLoading(): Promise<boolean> {
+    const host = await this.host();
+    return (await host.hasClass('btn--loading')) || (await host.getAttribute('aria-busy')) === 'true';
+  }
+
+  async getAriaAttribute(name: string): Promise<string | null> {
+    return (await this.host()).getAttribute(name);
+  }
+}
+```
+
+### Project Pattern — querySelector + NO_ERRORS_SCHEMA
+
+The realworld-angular project uses `querySelector` for DOM access and `NO_ERRORS_SCHEMA`
+to ignore child component selectors. This is simpler but more brittle — template refactors
+can silently break tests.
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
@@ -263,13 +343,29 @@ describe('Button', () => {
 });
 ```
 
+### Decision Rule
+
+| Situation | Use |
+|-----------|-----|
+| Shared component library (Button, Input, Modal) | **Harnesses** — consumed by many tests, template changes cascade |
+| One-off page component | **querySelector** — harness overhead not justified for a single consumer |
+| Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))` |
+| New project or new feature | **Harnesses** — start with the modern approach |
+
+### NO_ERRORS_SCHEMA Guidance
+
+- **Use when:** Testing a leaf component in isolation where child components have their own tests.
+- **Avoid when:** Testing integration between a parent and its children. Use explicit `imports: [ChildA, ChildB]` instead.
+- Angular docs warn against blanket `NO_ERRORS_SCHEMA` usage — it hides real template errors.
+
 ### Key rules
 
 - Use `NO_ERRORS_SCHEMA` to ignore child component selectors. Each component has its own tests.
 - Set signal-based inputs with `fixture.componentRef.setInput('name', value)`.
 - `await fixture.whenStable()` after every async change (input set, state toggle).
 - Test accessibility attributes (`aria-*`, `role`) as assertions — not an afterthought.
-- Use `el.querySelector()` for DOM access; it's simpler and just as correct as `By.css()`.
+- **Alignment:** ⚠ Project uses `querySelector` where Angular recommends harnesses.
+  See `README-TEST-INSIGHTS.md` for the improvement roadmap.
 
 ### Angular docs reference: [angular.dev/guide/testing/components-basics](https://angular.dev/guide/testing/components-basics)
 
@@ -717,7 +813,19 @@ describe('RoleDirective', () => {
 - Side effects (HTTP requests triggered by state changes)
 - Negative: no HTTP when state is empty
 
-### Pattern — Store with httpResource
+### Angular Recommended
+
+Angular's `httpResource` is the standard way to fetch data into signal state. When testing
+stores that use `httpResource`, the key is to use `TestBed.flushEffects()` to trigger the
+reactive pipeline and `HttpTestingController` to intercept the resulting HTTP requests.
+
+Reference: `angular-developer` skill `resource.md`, `effects.md`
+
+### Project Pattern
+
+The realworld-angular `CartStore` tests use `TestBed.flushEffects()` after state mutations
+to trigger effect-driven `httpResource` calls. The `httpTesting.match()` pattern is a project
+innovation for flushing multiple intermediate requests at once.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -805,6 +913,8 @@ describe('CartStore', () => {
 - `httpTesting.match()` for multi-request scenarios — flush all pending cart requests at once.
 - `httpTesting.expectNone()` for asserting no requests should fire.
 - Test **domain constraints** (same pizzeria, quantity merges) — these are the business rules.
+- **Alignment:** ✓ Mostly aligned. The project's `httpTesting.match()` pattern is a useful
+  innovation not directly covered by Angular docs.
 
 ---
 
