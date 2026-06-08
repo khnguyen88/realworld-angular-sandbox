@@ -384,7 +384,63 @@ describe('Button', () => {
 - Reacts to child component events (pagination clicks, search input)
 - Composes child components correctly
 
-### Pattern — Page with HTTP data
+### Angular Recommended — RouterTestingHarness + real imports
+
+Use `RouterTestingHarness` with `provideRouter` to test pages in their routing context.
+Use real child component imports instead of `NO_ERRORS_SCHEMA` for integration fidelity.
+
+Reference: `angular-developer` skill `router-testing.md`
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { PizzeriaListPage } from './pizzeria-list-page';
+import { PizzeriaDetailPage } from '../pizzeria-details-page/pizzeria-details-page';
+
+const mockPizzeria: PizzeriaSummary = { /* ... */ };
+function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> { /* ... */ }
+
+describe('PizzeriaListPage (RouterTestingHarness)', () => {
+  let harness: RouterTestingHarness;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClientTesting(),
+        provideRouter([
+          { path: '', component: PizzeriaListPage },
+          { path: 'pizzerias/:id', component: PizzeriaDetailPage },
+        ]),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/', PizzeriaListPage);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should render pizzerias after a successful response', async () => {
+    httpTesting
+      .expectOne((r) => r.url.includes('/api/pizzerias'))
+      .flush(makePage([mockPizzeria]));
+    await harness.fixture.whenStable();
+    expect(harness.fixture.nativeElement.textContent).toContain('Pizza Roma');
+  });
+});
+```
+
+### Project Pattern — provideRouter + NO_ERRORS_SCHEMA
+
+The realworld-angular project uses `provideRouter([])` and `NO_ERRORS_SCHEMA` to test pages
+in isolation. This verifies the page's own template structure but not integration with child
+components.
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
@@ -392,16 +448,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PizzeriaListPage } from './pizzeria-list-page';
-
-const mockPizzeria: PizzeriaSummary = {
-  id: '1', name: 'Pizza Roma', city: 'Rome', country: 'Italy',
-  image: 'roma.jpg', owner: { id: 'o1', name: 'Owner' },
-  _count: { pizzas: 5 }, createdAt: '2024-01-01',
-};
-
-function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> {
-  return { items, total: items.length, page: 1, limit: 12, totalPages };
-}
+import { By } from '@angular/platform-browser';
 
 describe('PizzeriaListPage', () => {
   let fixture: ComponentFixture<PizzeriaListPage>;
@@ -458,7 +505,6 @@ describe('PizzeriaListPage', () => {
       .flush(makePage([mockPizzeria], 3));
     await fixture.whenStable();
 
-    // Trigger the child component's output
     const pagination = fixture.debugElement.query(By.css('rw-pagination'));
     pagination.triggerEventHandler('pageChange', 2);
     TestBed.flushEffects();
@@ -471,6 +517,14 @@ describe('PizzeriaListPage', () => {
 });
 ```
 
+### Decision Rule
+
+| Situation | Use |
+|-----------|-----|
+| Testing page in its routing context | **RouterTestingHarness** — verifies guards, resolvers, component activation |
+| Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution |
+| New code or shared page component | **RouterTestingHarness** — starts with modern approach |
+
 ### Key rules
 
 - Stub dependencies as plain objects with signals (not classes, not mock libraries).
@@ -482,6 +536,10 @@ describe('PizzeriaListPage', () => {
 - **Triggering outputs on child components:** Two approaches exist:
   - `fixture.debugElement.query(By.css('rw-pagination')).triggerEventHandler('pageChange', 2)` — fires an event by name
   - `fixture.debugElement.query(By.directive(ChildClass)).componentInstance.someOutput.emit(value)` — accesses the component instance and emits directly. Use this when you need the actual component type.
+- **Alignment:** ⚠ Project uses `NO_ERRORS_SCHEMA` where Angular recommends real imports for integration fidelity.
+  See `README-TEST-INSIGHTS.md` for the improvement roadmap.
+
+### Angular docs reference: [angular.dev/guide/testing/components-basics](https://angular.dev/guide/testing/components-basics)
 
 ---
 
@@ -493,11 +551,67 @@ describe('PizzeriaListPage', () => {
 - Returns `UrlTree` (redirect) when conditions are not met
 - Verifies the **specific redirect path** (not just "it redirects")
 
-### Pattern — Functional Guard
+### Angular Recommended — RouterTestingHarness
+
+Use `RouterTestingHarness` with `provideRouter` containing real route configurations.
+Navigate to the protected route and assert whether it loads or redirects. This tests
+the full pipeline: guard logic + redirect + component activation.
+
+Reference: `angular-developer` skill `router-testing.md`
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter, UrlTree } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { AdminPage } from './admin-page';
+import { LoginPage } from '../auth/login-page';
+import { authGuard } from './auth.guard';
+import { Auth } from '../../services/auth';
+
+describe('authGuard (RouterTestingHarness)', () => {
+  let harness: RouterTestingHarness;
+  let auth: Auth;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'admin', component: AdminPage, canActivate: [authGuard] },
+          { path: 'login', component: LoginPage },
+        ]),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    auth = TestBed.inject(Auth);
+  });
+
+  it('should allow navigation when authenticated', async () => {
+    auth.user.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    const component = await harness.navigateByUrl('/admin', AdminPage);
+    expect(component).toBeInstanceOf(AdminPage);
+    expect(harness.router.url).toBe('/admin');
+  });
+
+  it('should redirect to /login when not authenticated', async () => {
+    auth.user.set(null);
+    await harness.navigateByUrl('/admin');
+    expect(harness.router.url).toBe('/login');
+  });
+});
+```
+
+### Project Pattern — runInInjectionContext + vi.fn()
+
+The realworld-angular project tests guard functions directly via `TestBed.runInInjectionContext()`.
+This isolates the guard's allow/deny logic but doesn't test the routing integration.
+
+**IMPORTANT: Angular 22 requires a 3rd argument.** Guards now take `(route, segments, currentSnapshot)`.
+All guard invocations in tests must include `{} as PartialMatchRouteSnapshot`.
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter, UrlTree, PartialMatchRouteSnapshot } from '@angular/router';
 import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
 import { authGuard } from './auth.guard';
 import { Auth } from '../../services/auth';
@@ -520,7 +634,11 @@ describe('authGuard', () => {
   it('should return true when user is authenticated', () => {
     authStub.isAuthenticated.mockReturnValue(true);
     const result = TestBed.runInInjectionContext(() =>
-      authGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
+      authGuard(
+        { path: '' } as Route,
+        [] as unknown as UrlSegment[],
+        {} as PartialMatchRouteSnapshot,
+      ),
     );
     expect(result).toBe(true);
   });
@@ -529,7 +647,11 @@ describe('authGuard', () => {
   it('should return a UrlTree to /auth/login when not authenticated', () => {
     authStub.isAuthenticated.mockReturnValue(false);
     const result = TestBed.runInInjectionContext(() =>
-      authGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
+      authGuard(
+        { path: '' } as Route,
+        [] as unknown as UrlSegment[],
+        {} as PartialMatchRouteSnapshot,
+      ),
     );
     expect(result).toBeInstanceOf(UrlTree);
     expect(router.serializeUrl(result as UrlTree)).toBe('/auth/login');
@@ -537,15 +659,14 @@ describe('authGuard', () => {
 });
 ```
 
-### Pattern — Async Guard (makes HTTP calls)
+### Async Guard (HTTP-based)
 
-Some guards make their own HTTP requests (e.g., to check if a pizzeria exists).
-These return `Observable<boolean | UrlTree>`. The test subscribes, then flushes the
-HTTP request:
+For guards that return `Observable<boolean | UrlTree>` (e.g., checking if a pizzeria exists),
+subscribe, flush the HTTP request, then assert on the captured result:
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter, UrlTree } from '@angular/router';
+import { Router, provideRouter, UrlTree, PartialMatchRouteSnapshot } from '@angular/router';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Observable } from 'rxjs';
@@ -571,7 +692,11 @@ describe('noPizzeriaGuard', () => {
     let result: unknown;
     (
       TestBed.runInInjectionContext(() =>
-        noPizzeriaGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
+        noPizzeriaGuard(
+          { path: '' } as Route,
+          [] as unknown as UrlSegment[],
+          {} as PartialMatchRouteSnapshot,
+        ),
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush(mockPizzeria);
@@ -583,7 +708,11 @@ describe('noPizzeriaGuard', () => {
     let result: unknown;
     (
       TestBed.runInInjectionContext(() =>
-        noPizzeriaGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
+        noPizzeriaGuard(
+          { path: '' } as Route,
+          [] as unknown as UrlSegment[],
+          {} as PartialMatchRouteSnapshot,
+        ),
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush('Not found', {
@@ -594,48 +723,23 @@ describe('noPizzeriaGuard', () => {
 });
 ```
 
+### Decision Rule
+
+| Situation | Use |
+|-----------|-----|
+| Testing guard integration with routing | **RouterTestingHarness** — verifies guard + redirect + component |
+| Testing guard logic in isolation | **runInInjectionContext** — faster, simpler setup |
+| Multi-step guards (checkout) | **runInInjectionContext** with `provideRouter(testRoutes)` |
+| Guard with async logic (HTTP) | Either — both patterns support async guards |
+
 ### Key rules
 
-- Use `vi.fn()` for stub methods — gives you `.mockReturnValue()` control per test.
-- Use `TestBed.runInInjectionContext()` for calling functional guards (they need DI).
+- For `runInInjectionContext` approach: use `vi.fn()` for stub methods — gives you `.mockReturnValue()` control.
 - Always assert the **exact redirect URL**, not just `UrlTree` type.
 - Use `provideRouter([])` — the real router is needed for `serializeUrl()`.
 - For multi-step guards (like checkout), use the real route config with `provideRouter(testRoutes)` so the guard can find prerequisite step URLs.
-- For guards that return `Observable` (async guards making HTTP calls), subscribe with `let result: unknown`, flush the request, then assert on the captured result.
-
-### RouterTestingHarness (Recommended by Angular)
-
-The patterns above use `runInInjectionContext()` because that's what the realworld-angular
-project adopted. The Angular skill, however, recommends **`RouterTestingHarness`** as the
-primary tool for routing tests. It provides a higher-level API that navigates through real
-routes and returns activated component instances:
-
-```typescript
-import { RouterTestingHarness } from '@angular/router/testing';
-
-let harness: RouterTestingHarness;
-
-beforeEach(async () => {
-  TestBed.configureTestingModule({
-    providers: [provideRouter([
-      { path: '', component: Dashboard },
-      { path: 'heroes/:id', component: HeroDetail },
-    ])],
-  });
-  harness = await RouterTestingHarness.create();
-});
-
-it('should navigate and return component instance', async () => {
-  const dashboard = await harness.navigateByUrl('/', Dashboard);
-  dashboard.selectHero({ id: 42 });
-  await harness.fixture.whenStable();
-  expect(harness.router.url).toEqual('/heroes/42');
-});
-```
-
-Use `RouterTestingHarness` for new code when you want to test the full routing pipeline
-(guards + resolvers + component activation) in a single test. Use the `runInInjectionContext()`
-approach when you only need to test a guard's allow/deny logic in isolation.
+- **CRITICAL for Angular 22+:** Guard functions now take 3 arguments — include `{} as PartialMatchRouteSnapshot` as the 3rd argument in all test invocations.
+- **Alignment:** ⚠ Project uses `runInInjectionContext` where Angular recommends `RouterTestingHarness` for integration tests. Guard specs also need the Angular 22 3-argument signature update (see `README-TEST-INSIGHTS.md`).
 
 ### Angular docs reference: [angular.dev/guide/routing/testing](https://angular.dev/guide/routing/testing)
 
