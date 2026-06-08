@@ -199,6 +199,193 @@ describe('Auth', () => {
 
 ---
 
+## Interceptors
+
+### What to test
+
+- Modifies the outgoing request correctly (e.g., adds headers, transforms URL)
+- Does NOT modify requests it should skip
+- Handles response transformations (if applicable)
+
+### Angular Recommended
+
+Register the interceptor with `provideHttpClient(withInterceptors([...]))` and use a real
+`HttpClient` to make requests that pass through the interceptor. Assert on the resulting
+request properties.
+
+### Project Pattern
+
+The project follows this pattern exactly. No gap.
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { HttpClient } from '@angular/common/http';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { credentialsInterceptor } from './credentials.interceptor';
+
+describe('credentialsInterceptor', () => {
+  let http: HttpClient;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([credentialsInterceptor])),
+        provideHttpClientTesting(),
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should add withCredentials to regular API requests', () => {
+    http.get('/api/pizzerias').subscribe();
+    const req = httpTesting.expectOne('/api/pizzerias');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush([]);
+  });
+
+  it('should not add withCredentials to Photon external API', () => {
+    http.get('https://photon.komoot.io/api/?q=rome').subscribe();
+    const req = httpTesting.expectOne('https://photon.komoot.io/api/?q=rome');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({});
+  });
+});
+```
+
+### Key rules
+
+- Register the interceptor with `provideHttpClient(withInterceptors([...]))` — it runs through the real pipeline.
+- Use a real `HttpClient` to make requests that pass through the interceptor.
+- Test the request's **side effects** — modified headers, URL, `withCredentials`, etc.
+- Test both "should modify" and "should not modify" branches.
+- **Alignment:** ✓ No gap between Angular recommended and project pattern.
+
+---
+
+## Stores / State
+
+### What to test
+
+- Initial state (empty items, null values, isEmpty = true)
+- Adding items (state mutates correctly, derived signals update)
+- Removing items (state mutates, edge case: removing last item)
+- Cross-entity constraints (e.g., can't add items from different pizzerias)
+- Side effects (HTTP requests triggered by state changes)
+- Negative: no HTTP when state is empty
+
+### Angular Recommended
+
+Angular's `httpResource` is the standard way to fetch data into signal state. When testing
+stores that use `httpResource`, the key is to use `TestBed.flushEffects()` to trigger the
+reactive pipeline and `HttpTestingController` to intercept the resulting HTTP requests.
+
+Reference: `angular-developer` skill `resource.md`, `effects.md`
+
+### Project Pattern
+
+The realworld-angular `CartStore` tests use `TestBed.flushEffects()` after state mutations
+to trigger effect-driven `httpResource` calls. The `httpTesting.match()` pattern is a project
+innovation for flushing multiple intermediate requests at once.
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { CartStore, CartData } from './cart.store';
+
+const mockCartData: CartData = {
+  pizzeria: { id: 'p1', name: 'Roma', image: 'roma.jpg' },
+  items: [{ id: 'item1', pizza: { id: 'pizza1', name: 'Margherita', ... }, quantity: 2, ... }],
+  total: 23,
+};
+
+describe('CartStore', () => {
+  let store: CartStore;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    store = TestBed.inject(CartStore);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  describe('initial state', () => {
+    it('should have empty items', () => {
+      expect(store.items()).toEqual([]);
+    });
+
+    it('should be empty', () => {
+      expect(store.isEmpty()).toBe(true);
+    });
+
+    it('should not make an HTTP request when cart is empty', () => {
+      TestBed.flushEffects();
+      httpTesting.expectNone(() => true);
+    });
+  });
+
+  describe('addItem()', () => {
+    it('should add an item and set the pizzeria', () => {
+      store.addItem('pizza1', 1, 's1', [], 'p1');
+      expect(store.items().length).toBe(1);
+      expect(store.pizzeria()).toEqual({ id: 'p1' });
+      expect(store.isEmpty()).toBe(false);
+    });
+
+    it('should increment quantity when adding same item', () => {
+      store.addItem('pizza1', 1, 's1', [], 'p1');
+      store.addItem('pizza1', 2, 's1', [], 'p1');
+      expect(store.items().length).toBe(1);
+      expect(store.items()[0].quantity).toBe(3);
+    });
+
+    it('should clear and reset when adding item from different pizzeria', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      store.addItem('pizza2', 1, null, [], 'p2');
+      expect(store.pizzeria()).toEqual({ id: 'p2' });
+      expect(store.items().length).toBe(1);
+    });
+  });
+
+  describe('removeItem()', () => {
+    it('should clear pizzeria when last item is removed', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      // flush any httpResource-triggered requests
+      httpTesting.match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+      const itemId = store.items()[0].id;
+      store.removeItem(itemId);
+      expect(store.pizzeria()).toBeNull();
+    });
+  });
+});
+```
+
+### Key rules
+
+- `TestBed.flushEffects()` after state changes to trigger effect-driven HTTP.
+- `httpTesting.match()` for multi-request scenarios — flush all pending cart requests at once.
+- `httpTesting.expectNone()` for asserting no requests should fire.
+- Test **domain constraints** (same pizzeria, quantity merges) — these are the business rules.
+- **Alignment:** ✓ Mostly aligned. The project's `httpTesting.match()` pattern is a useful
+  innovation not directly covered by Angular docs.
+
+---
+
 ## Components
 
 ### What to test
@@ -399,6 +586,8 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PizzeriaListPage } from './pizzeria-list-page';
 import { PizzeriaDetailPage } from '../pizzeria-details-page/pizzeria-details-page';
+import { Page } from '../../../../core/models/pagination.model';
+import { PizzeriaSummary } from '../../models/pizzeria.models';
 
 const mockPizzeria: PizzeriaSummary = { /* ... */ };
 function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> { /* ... */ }
@@ -418,6 +607,7 @@ describe('PizzeriaListPage (RouterTestingHarness)', () => {
       ],
     });
     harness = await RouterTestingHarness.create();
+    // Navigate into the page
     await harness.navigateByUrl('/', PizzeriaListPage);
     httpTesting = TestBed.inject(HttpTestingController);
   });
@@ -745,77 +935,6 @@ describe('noPizzeriaGuard', () => {
 
 ---
 
-## Interceptors
-
-### What to test
-
-- Modifies the outgoing request correctly (e.g., adds headers, transforms URL)
-- Does NOT modify requests it should skip
-- Handles response transformations (if applicable)
-
-### Angular Recommended
-
-Register the interceptor with `provideHttpClient(withInterceptors([...]))` and use a real
-`HttpClient` to make requests that pass through the interceptor. Assert on the resulting
-request properties.
-
-### Project Pattern
-
-The project follows this pattern exactly. No gap.
-
-```typescript
-import { TestBed } from '@angular/core/testing';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { HttpClient } from '@angular/common/http';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { credentialsInterceptor } from './credentials.interceptor';
-
-describe('credentialsInterceptor', () => {
-  let http: HttpClient;
-  let httpTesting: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(withInterceptors([credentialsInterceptor])),
-        provideHttpClientTesting(),
-      ],
-    });
-    http = TestBed.inject(HttpClient);
-    httpTesting = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    httpTesting.verify();
-  });
-
-  it('should add withCredentials to regular API requests', () => {
-    http.get('/api/pizzerias').subscribe();
-    const req = httpTesting.expectOne('/api/pizzerias');
-    expect(req.request.withCredentials).toBe(true);
-    req.flush([]);
-  });
-
-  it('should not add withCredentials to Photon external API', () => {
-    http.get('https://photon.komoot.io/api/?q=rome').subscribe();
-    const req = httpTesting.expectOne('https://photon.komoot.io/api/?q=rome');
-    expect(req.request.withCredentials).toBe(false);
-    req.flush({});
-  });
-});
-```
-
-### Key rules
-
-- Register the interceptor with `provideHttpClient(withInterceptors([...]))` — it runs through the real pipeline.
-- Use a real `HttpClient` to make requests that pass through the interceptor.
-- Test the request's **side effects** — modified headers, URL, `withCredentials`, etc.
-- Test both "should modify" and "should not modify" branches.
-- **Alignment:** ✓ No gap between Angular recommended and project pattern.
-
----
-
 ## Directives
 
 ### What to test
@@ -825,7 +944,10 @@ describe('credentialsInterceptor', () => {
 - Every branch: different roles, else template, null state
 - Negative cases: elements WITHOUT the directive are unaffected
 
-### Pattern — Host Component
+### Angular Recommended & Project Pattern
+
+The host component pattern is the canonical approach for both Angular recommended
+and the project. No gap.
 
 ```typescript
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
@@ -901,124 +1023,9 @@ describe('RoleDirective', () => {
 - Test **reactivity** — change a signal, wait for stability, assert the DOM updated.
 - Test the `else` template branch if the directive supports one.
 - Test both "element should exist" (positive) and "element should be null" (negative) for each mode.
+- **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ### Angular docs reference: [angular.dev/guide/testing/attribute-directives](https://angular.dev/guide/testing/attribute-directives)
-
----
-
-## Stores / State
-
-### What to test
-
-- Initial state (empty items, null values, isEmpty = true)
-- Adding items (state mutates correctly, derived signals update)
-- Removing items (state mutates, edge case: removing last item)
-- Cross-entity constraints (e.g., can't add items from different pizzerias)
-- Side effects (HTTP requests triggered by state changes)
-- Negative: no HTTP when state is empty
-
-### Angular Recommended
-
-Angular's `httpResource` is the standard way to fetch data into signal state. When testing
-stores that use `httpResource`, the key is to use `TestBed.flushEffects()` to trigger the
-reactive pipeline and `HttpTestingController` to intercept the resulting HTTP requests.
-
-Reference: `angular-developer` skill `resource.md`, `effects.md`
-
-### Project Pattern
-
-The realworld-angular `CartStore` tests use `TestBed.flushEffects()` after state mutations
-to trigger effect-driven `httpResource` calls. The `httpTesting.match()` pattern is a project
-innovation for flushing multiple intermediate requests at once.
-
-```typescript
-import { TestBed } from '@angular/core/testing';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { CartStore, CartData } from './cart.store';
-
-const mockCartData: CartData = {
-  pizzeria: { id: 'p1', name: 'Roma', image: 'roma.jpg' },
-  items: [{ id: 'item1', pizza: { id: 'pizza1', name: 'Margherita', ... }, quantity: 2, ... }],
-  total: 23,
-};
-
-describe('CartStore', () => {
-  let store: CartStore;
-  let httpTesting: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [provideHttpClientTesting()],
-    });
-    store = TestBed.inject(CartStore);
-    httpTesting = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    httpTesting.verify();
-  });
-
-  describe('initial state', () => {
-    it('should have empty items', () => {
-      expect(store.items()).toEqual([]);
-    });
-
-    it('should be empty', () => {
-      expect(store.isEmpty()).toBe(true);
-    });
-
-    it('should not make an HTTP request when cart is empty', () => {
-      TestBed.flushEffects();
-      httpTesting.expectNone(() => true);
-    });
-  });
-
-  describe('addItem()', () => {
-    it('should add an item and set the pizzeria', () => {
-      store.addItem('pizza1', 1, 's1', [], 'p1');
-      expect(store.items().length).toBe(1);
-      expect(store.pizzeria()).toEqual({ id: 'p1' });
-      expect(store.isEmpty()).toBe(false);
-    });
-
-    it('should increment quantity when adding same item', () => {
-      store.addItem('pizza1', 1, 's1', [], 'p1');
-      store.addItem('pizza1', 2, 's1', [], 'p1');
-      expect(store.items().length).toBe(1);
-      expect(store.items()[0].quantity).toBe(3);
-    });
-
-    it('should clear and reset when adding item from different pizzeria', () => {
-      store.addItem('pizza1', 1, null, [], 'p1');
-      store.addItem('pizza2', 1, null, [], 'p2');
-      expect(store.pizzeria()).toEqual({ id: 'p2' });
-      expect(store.items().length).toBe(1);
-    });
-  });
-
-  describe('removeItem()', () => {
-    it('should clear pizzeria when last item is removed', () => {
-      store.addItem('pizza1', 1, null, [], 'p1');
-      // flush any httpResource-triggered requests
-      httpTesting.match((r) => r.url.includes('/api/orders/cart'))
-        .forEach((r) => r.flush(mockCartData));
-      const itemId = store.items()[0].id;
-      store.removeItem(itemId);
-      expect(store.pizzeria()).toBeNull();
-    });
-  });
-});
-```
-
-### Key rules
-
-- `TestBed.flushEffects()` after state changes to trigger effect-driven HTTP.
-- `httpTesting.match()` for multi-request scenarios — flush all pending cart requests at once.
-- `httpTesting.expectNone()` for asserting no requests should fire.
-- Test **domain constraints** (same pizzeria, quantity merges) — these are the business rules.
-- **Alignment:** ✓ Mostly aligned. The project's `httpTesting.match()` pattern is a useful
-  innovation not directly covered by Angular docs.
 
 ---
 
@@ -1032,7 +1039,19 @@ describe('CartStore', () => {
 - Step progression (validate → mark success → advance)
 - Cross-field effects (e.g., "use same as billing" clears billing fields)
 
-### Pattern — Real Service, Stubbed External Dependencies
+### Angular Recommended
+
+For Angular v21+, use **signal forms** for new form implementations. Signal forms integrate
+natively with Angular's reactivity system and can be tested by directly manipulating form
+control values and asserting on computed derivations.
+
+Reference: `angular-developer` skill `signal-forms.md`, `effects.md`
+
+### Project Pattern — Real Service, Stubbed External Dependencies
+
+The realworld-angular project tests the wizard service as a real instance with stubbed
+dependencies. Form state is manipulated through the service's public API, and effects
+are flushed with `TestBed.flushEffects()`.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -1123,6 +1142,7 @@ describe('CheckoutWizard', () => {
 - `TestBed.flushEffects()` after every form mutation to let computed signals and effects run.
 - Test **derived values** (computed signals that depend on form state), not just setters.
 - Test **cross-field effects** — changing one field should clear/update another.
+- **Alignment:** ✓ Mostly aligned. Angular v21+ signal forms are the recommended approach for new code. The project's real-service-with-stubs pattern is valid for the current form implementation.
 
 ---
 
@@ -1130,7 +1150,7 @@ describe('CheckoutWizard', () => {
 
 ### What to test
 
-Route config files (`*.routes.ts`) contain only declarative route definitions — no runtime logic. They are **NOT tested**. Testing them would be testing Angular's router, not your code.
+Route config files (`*.routes.ts`) contain only declarative route definitions — no runtime logic. They are **NOT tested**.
 
 What you test instead:
 - **Guards** that protect those routes → guard spec
@@ -1143,18 +1163,17 @@ What you test instead:
 
 ## Quick Reference Table
 
-| Unit | TestBed? | Provide | Stub Strategy | Key Pattern |
-|------|----------|---------|---------------|-------------|
-| **Service (API)** | Yes | `provideHttpClientTesting()` | None — test real HTTP contract | `httpTesting.expectOne()` → assert method/body → `flush()` → assert state |
-| **Service (pure logic)** | Yes | Nothing | Stub dependencies with `useValue` | `TestBed.inject()` → call method → assert return |
-| **Presentational component** | Yes | Nothing | `NO_ERRORS_SCHEMA` for child components | `componentRef.setInput()` → `whenStable()` → DOM query → assert |
-| **Page component** | Yes | `provideHttpClientTesting()` + `provideRouter([])` | Plain object stubs with signals | Control stub signals → `flushEffects()` → assert DOM states |
-| **Guard** | Yes | `provideRouter([])` | `vi.fn()` stubs via `useValue` | `runInInjectionContext()` → assert `true` or `UrlTree` path |
-| **Interceptor** | Yes | `provideHttpClient(withInterceptors([...]))` | None — test real pipeline | Real `HttpClient.get()` → assert request properties |
-| **Pipe** | **No** | N/A | N/A | `new MyPipe()` → `.transform()` → assert output |
-| **Directive** | Yes | Stub dependencies | Signal-based stubs | Host component → change signal → `whenStable()` → assert DOM |
-| **Store** | Yes | `provideHttpClientTesting()` | None for store, flush HTTP side-effects | Mutate → `flushEffects()` → assert signals → `httpTesting.match().flush()` |
-| **Wizard / Form service** | Yes | `provideRouter(testRoutes)` | Plain object stubs for external deps | Real service → mutate form state → `flushEffects()` → assert computed |
+| Unit | Angular Recommended | Project Pattern | Key Difference |
+|------|-------------------|-----------------|----------------|
+| Service | HttpTestingController | HttpTestingController | ✓ Same |
+| Component | Component Harnesses | querySelector + NO_ERRORS_SCHEMA | Harness vs raw DOM |
+| Page | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA | Integration vs isolation |
+| Guard | RouterTestingHarness | runInInjectionContext + vi.fn() | Full pipeline vs unit |
+| Interceptor | withInterceptors + real HttpClient | withInterceptors + real HttpClient | ✓ Same |
+| Pipe | new Pipe() | new Pipe() | ✓ Same |
+| Directive | Host component | Host component | ✓ Same |
+| Store | httpResource patterns | httpTesting.match() | ✓ Mostly same |
+| Wizard | Real service + stubs | Real service + stubs | ✓ Same |
 
 ---
 
