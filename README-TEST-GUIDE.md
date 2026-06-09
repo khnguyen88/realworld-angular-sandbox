@@ -28,6 +28,7 @@ new tests or maintaining existing ones.
 - [Interceptors](#interceptors)
 - [Stores / State](#stores--state)
 - [Components](#components)
+- [Dialogs & Overlays](#dialogs--overlays)
 - [Page Components (Smart / Container)](#page-components-smart--container)
 - [Guards](#guards)
 - [Directives](#directives)
@@ -760,7 +761,7 @@ describe('PizzaOrderFormDialog', () => {
 - Test ARIA: dialog panel should have `role="document"` or `role="dialog"`, close button should have `aria-label`.
 - **Alignment:** ✓ Project pattern matches Angular recommended for dialog testing. Both use `DialogRef` + `DIALOG_DATA` stubs.
 
-### Angular docs reference: [angular.dev/guide/cdk/dialog/overview](https://material.angular.io/cdk/dialog/overview)
+### Angular docs reference: [material.angular.io/cdk/dialog/overview](https://material.angular.io/cdk/dialog/overview)
 
 ---
 
