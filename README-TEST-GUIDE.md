@@ -558,6 +558,212 @@ describe('Button', () => {
 
 ---
 
+## Dialogs & Overlays
+
+### What to test
+
+- Dialog renders content from injected `DIALOG_DATA`
+- Close button calls `DialogRef.close()` with or without a result
+- ARIA attributes on the overlay panel (`role="document"`, `aria-label`)
+- Conditional rendering when optional data fields are missing
+- Form submission inside a dialog (HTTP + close interaction)
+
+### Angular Recommended
+
+For dialogs built with `@angular/cdk/dialog`, stub the `DialogRef` and provide test data
+via `DIALOG_DATA` injection token. Use `vi.fn()` for the close method to assert close behavior.
+For Angular Material dialogs, use the CDK testing harnesses.
+
+Reference: `angular-developer` skill `testing-fundamentals.md`
+
+### Project Pattern
+
+The realworld-angular project uses `DialogRef` + `DIALOG_DATA` stubs with `NO_ERRORS_SCHEMA`
+for dialog chrome. The `PizzaOrderFormDialog` test adds real component imports for form integration.
+
+**Example 1: Simple dialog (Modal)**
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { DialogRef } from '@angular/cdk/dialog';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Modal } from './modal';
+
+describe('Modal', () => {
+  let fixture: ComponentFixture<Modal>;
+  let el: HTMLElement;
+  let closeFn: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: DialogRef, useValue: { close: closeFn } }],
+    }).overrideComponent(Modal, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(Modal);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should render the title from input', async () => {
+    fixture.componentRef.setInput('title', 'Confirm action');
+    await fixture.whenStable();
+    expect(el.textContent).toContain('Confirm action');
+  });
+
+  it('should close dialog when close button is clicked', () => {
+    el.querySelector<HTMLButtonElement>('[aria-label="Close dialog"]')!.click();
+    expect(closeFn).toHaveBeenCalled();
+  });
+
+  it('should have role document on the panel', () => {
+    expect(el.querySelector('[role="document"]')).not.toBeNull();
+  });
+});
+```
+
+**Example 2: Dialog with injected data (ConfirmDialog)**
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ConfirmDialog, ConfirmDialogData, ConfirmDialogResult } from './confirm-dialog';
+
+describe('ConfirmDialog', () => {
+  let fixture: ComponentFixture<ConfirmDialog>;
+  let el: HTMLElement;
+  let closeFn: ReturnType<typeof vi.fn>;
+
+  const defaultData: ConfirmDialogData = {
+    title: 'Are you sure?',
+    message: 'This action cannot be undone.',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+  };
+
+  beforeEach(async () => {
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: defaultData },
+      ],
+    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should render the title and message from data', () => {
+    expect(el.textContent).toContain('Are you sure?');
+    expect(el.textContent).toContain('This action cannot be undone.');
+  });
+
+  it('should not show message element when message is not provided', async () => {
+    // Reconfigure TestBed with different data
+    TestBed.resetTestingModule();
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: { title: 'Test' } },
+      ],
+    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+    expect(el.querySelector('.confirm-dialog__message')).toBeNull();
+  });
+});
+```
+
+**Example 3: Dialog with form + HTTP (PizzaOrderFormDialog)**
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
+import { PizzaOrderFormDialog } from './pizza-order-form-dialog';
+import { PizzaOrderFormDialogData } from '../../order.models';
+import { Pizza } from '../../../pizzerias/models/pizza.models';
+
+const mockPizza: Pizza = {
+  id: 'pizza1', name: 'Margherita', basePrice: 9.5,
+  image: 'marg.jpg', createdAt: '2024-01-01',
+  toppings: [{ id: 't1', label: 'Mozzarella', price: 0, sortOrder: 1 }],
+};
+
+const dialogData: PizzaOrderFormDialogData = {
+  pizza: mockPizza,
+  pizzeriaId: 'p1',
+  displayPizzeriaName: 'Roma',
+};
+
+describe('PizzaOrderFormDialog', () => {
+  let fixture: ComponentFixture<PizzaOrderFormDialog>;
+  let el: HTMLElement;
+  let httpTesting: HttpTestingController;
+  let closeFn: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClientTesting(),
+        { provide: DialogRef, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: dialogData },
+      ],
+      // Use real imports for form integration
+      imports: [PizzaOrderFormDialog],
+    });
+    fixture = TestBed.createComponent(PizzaOrderFormDialog);
+    el = fixture.nativeElement;
+    httpTesting = TestBed.inject(HttpTestingController);
+    TestBed.flushEffects();
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should load sizes and toppings on init', () => {
+    httpTesting.expectOne('/api/options/sizes').flush([]);
+    httpTesting.expectOne('/api/options/toppings').flush([]);
+  });
+
+  it('should close dialog on form submission', async () => {
+    httpTesting.expectOne('/api/options/sizes').flush([]);
+    httpTesting.expectOne('/api/options/toppings').flush([]);
+    await fixture.whenStable();
+    TestBed.flushEffects();
+
+    el.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    TestBed.flushEffects();
+    httpTesting.expectOne('/api/orders/cart').flush({});
+
+    expect(closeFn).toHaveBeenCalled();
+  });
+});
+```
+
+### Key rules
+
+- Stub `DialogRef` with `{ close: vi.fn() }` — the simplest useful stub.
+- Provide `DIALOG_DATA` as a plain object — no need for the real injection token class.
+- Use `TestBed.resetTestingModule()` when reconfiguring providers with different data within the same `describe`.
+- For dialogs with real forms, use real `imports` instead of `NO_ERRORS_SCHEMA` so that `FormRoot` and `FormField` directives wire up correctly.
+- Test the close flow: user action → `expect(closeFn).toHaveBeenCalled()`.
+- Test ARIA: dialog panel should have `role="document"` or `role="dialog"`, close button should have `aria-label`.
+- **Alignment:** ✓ Project pattern matches Angular recommended for dialog testing. Both use `DialogRef` + `DIALOG_DATA` stubs.
+
+### Angular docs reference: [angular.dev/guide/cdk/dialog/overview](https://material.angular.io/cdk/dialog/overview)
+
+---
+
 ## Page Components (Smart / Container)
 
 ### What to test
