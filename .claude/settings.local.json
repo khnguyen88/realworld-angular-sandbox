@@ -13,7 +13,10 @@
       "Bash(git clone *)",
       "Bash(uv *)",
       "Bash(git merge *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "mcp__angular-cli__list_projects",
+      "mcp__angular-cli__get_best_practices",
+      "PowerShell(\\(Get-Content README-TEST-GUIDE.md | Measure-Object -Line\\).Lines)"
     ]
   },
   "hooks": {
