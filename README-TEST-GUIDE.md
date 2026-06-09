@@ -793,6 +793,107 @@ describe('PizzaOrderFormDialog', () => {
 
 ---
 
+## [Illustrative] @defer Blocks
+
+> **Not based on realworld-angular** — illustrative example generated from Angular official documentation.
+
+### What to test
+
+- Deferred content is NOT rendered before the trigger condition is met
+- Placeholder content IS rendered before the trigger
+- Loading state renders when deferred content is being fetched
+- Deferred content renders after the trigger activates
+- Error state renders if deferred loading fails
+
+### Angular Recommended
+
+Angular provides `DeferBlockBehavior.Manual` in `TestBed` to step through `@defer` block states.
+Use `fixture.getDeferBlocks()` to retrieve defer block fixtures, then call
+`deferBlockFixture.render(DeferBlockState.X)` to manually control state transitions.
+
+Reference: `angular-developer` skill `testing-fundamentals.md`
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { Component } from '@angular/core';
+import { DeferBlockBehavior, DeferBlockState } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-heavy',
+  template: '<p>Heavy component loaded!</p>',
+  standalone: true,
+})
+class HeavyComponent {}
+
+@Component({
+  imports: [HeavyComponent],
+  template: `
+    @defer (when isReady) {
+      <app-heavy />
+    } @placeholder {
+      <p>Placeholder content</p>
+    } @loading {
+      <p>Loading...</p>
+    } @error {
+      <p>Failed to load</p>
+    }
+  `,
+  standalone: true,
+})
+class TestDeferComponent {
+  isReady = false;
+}
+
+describe('@defer blocks', () => {
+  let fixture: ComponentFixture<TestDeferComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      deferBlockBehavior: DeferBlockBehavior.Manual,
+    });
+    fixture = TestBed.createComponent(TestDeferComponent);
+  });
+
+  it('should render placeholder before trigger', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Placeholder);
+    expect(fixture.nativeElement.innerHTML).toContain('Placeholder content');
+  });
+
+  it('should render loading state', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Loading);
+    expect(fixture.nativeElement.innerHTML).toContain('Loading...');
+  });
+
+  it('should render deferred content in complete state', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Complete);
+    expect(fixture.nativeElement.innerHTML).toContain('Heavy component loaded!');
+  });
+
+  it('should render error state when deferred load fails', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Error);
+    expect(fixture.nativeElement.innerHTML).toContain('Failed to load');
+  });
+});
+```
+
+### Key rules
+
+- Set `deferBlockBehavior: DeferBlockBehavior.Manual` in `TestBed.configureTestingModule()` for manual control.
+- `DeferBlockBehavior.PlayThrough` (default) plays through states naturally — use when you want real-world behavior.
+- `fixture.getDeferBlocks()` returns a `Promise<DeferBlockFixture[]>` — always `await` it.
+- `deferBlockFixture.render(DeferBlockState.X)` transitions the block to the target state. States: `Placeholder`, `Loading`, `Complete`, `Error`.
+- Use `@defer (when condition)` for testable trigger conditions controlled by a component property.
+- Test all four states: placeholder → loading → complete, plus error path.
+
+### Angular docs reference: [angular.dev/guide/templates/defer#testing-defer-blocks](https://angular.dev/guide/templates/defer#testing-defer-blocks)
+
+---
+
 ## Page Components (Smart / Container)
 
 ### What to test
