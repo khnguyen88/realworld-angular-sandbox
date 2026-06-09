@@ -119,25 +119,45 @@ Services that make HTTP requests are tested with Angular's `HttpTestingControlle
 **Example** from `src/app/core/services/auth.spec.ts`:
 
 ```ts
-beforeEach(() => {
-  TestBed.configureTestingModule({
-    providers: [provideHttpClientTesting()],
+import { User } from '../models/user.model';
+
+const mockUser: User = {
+  id: '1',
+  email: 'test@example.com',
+  role: 'CUSTOMER',
+  name: 'Test User',
+};
+const mockAdmin: User = {
+  id: '2',
+  email: 'admin@example.com',
+  role: 'PIZZERIA_ADMIN',
+  name: 'Admin User',
+};
+
+describe('Auth', () => {
+  let service: Auth;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    service = TestBed.inject(Auth);
+    httpTesting = TestBed.inject(HttpTestingController);
   });
-  service = TestBed.inject(Auth);
-  httpTesting = TestBed.inject(HttpTestingController);
-});
 
-afterEach(() => {
-  httpTesting.verify(); // ensures no outstanding HTTP requests
-});
+  afterEach(() => {
+    httpTesting.verify(); // ensures no outstanding HTTP requests
+  });
 
-it('should POST credentials and update user signal', () => {
-  service.login('test@example.com', 'password').subscribe();
-  const req = httpTesting.expectOne('/api/auth/login');
-  expect(req.request.method).toBe('POST');
-  expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
-  req.flush(mockUser); // respond with mock data
-  expect(service.user()).toEqual(mockUser); // assert signal state
+  it('should POST credentials and update user signal', () => {
+    service.login('test@example.com', 'password').subscribe();
+    const req = httpTesting.expectOne('/api/auth/login');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
+    req.flush(mockUser); // respond with mock data
+    expect(service.user()).toEqual(mockUser); // assert signal state
+  });
 });
 ```
 
@@ -158,6 +178,23 @@ The `CartStore` (`src/app/features/cart/cart.store.spec.ts`) tests a signal-base
 - `httpTesting.match()` with a predicate captures matching requests without failing if none exist, useful when multiple requests fire reactively
 
 ```ts
+import { CartData } from './cart.store';
+
+const mockCartData: CartData = {
+  pizzeria: { id: 'p1', name: 'Roma', image: 'roma.jpg' },
+  items: [
+    {
+      id: 'item1',
+      pizza: { id: 'pizza1', name: 'Margherita', image: 'marg.jpg', basePrice: 9.5 },
+      quantity: 2,
+      size: { id: 's1', label: 'Large', price: 2 },
+      extraToppings: [],
+      totalPrice: 23,
+    },
+  ],
+  total: 23,
+};
+
 it('should not make an HTTP request when cart is empty', () => {
   TestBed.flushEffects();
   httpTesting.expectNone(() => true); // no request of any kind should fire
@@ -322,35 +359,50 @@ it('should show loading spinner when isLoading is true', async () => {
 Page tests additionally provide `provideRouter([])` and interact with form elements by dispatching DOM events:
 
 ```ts
-beforeEach(async () => {
-  TestBed.configureTestingModule({
-    providers: [provideHttpClientTesting(), provideRouter([])],
-  }).overrideComponent(LoginPage, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+import { User } from '../../../../core/models/user.model';
 
-  fixture = TestBed.createComponent(LoginPage);
-  el = fixture.nativeElement;
-  httpTesting = TestBed.inject(HttpTestingController);
-  await fixture.whenStable();
-});
+const mockUser: User = {
+  id: '1',
+  email: 'test@example.com',
+  role: 'CUSTOMER',
+  name: 'Test',
+};
 
-it('should call POST /api/auth/login on form submit with valid credentials', async () => {
-  const emailInput = el.querySelector<HTMLInputElement>('input[autocomplete="email"]');
-  const passwordInput = el.querySelector<HTMLInputElement>(
-    'input[autocomplete="current-password"]',
-  );
+describe('LoginPage', () => {
+  let fixture: ComponentFixture<LoginPage>;
+  let el: HTMLElement;
+  let httpTesting: HttpTestingController;
 
-  emailInput.value = 'test@example.com';
-  emailInput.dispatchEvent(new Event('input'));
-  passwordInput.value = 'password123';
-  passwordInput.dispatchEvent(new Event('input'));
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting(), provideRouter([])],
+    }).overrideComponent(LoginPage, { set: { schemas: [NO_ERRORS_SCHEMA] } });
 
-  const form = el.querySelector('form');
-  form?.dispatchEvent(new Event('submit'));
-  await fixture.whenStable();
+    fixture = TestBed.createComponent(LoginPage);
+    el = fixture.nativeElement;
+    httpTesting = TestBed.inject(HttpTestingController);
+    await fixture.whenStable();
+  });
 
-  const req = httpTesting.expectOne('/api/auth/login');
-  expect(req.request.method).toBe('POST');
-  req.flush(mockUser);
+  it('should call POST /api/auth/login on form submit with valid credentials', async () => {
+    const emailInput = el.querySelector<HTMLInputElement>('input[autocomplete="email"]');
+    const passwordInput = el.querySelector<HTMLInputElement>(
+      'input[autocomplete="current-password"]',
+    );
+
+    emailInput.value = 'test@example.com';
+    emailInput.dispatchEvent(new Event('input'));
+    passwordInput.value = 'password123';
+    passwordInput.dispatchEvent(new Event('input'));
+
+    const form = el.querySelector('form');
+    form?.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const req = httpTesting.expectOne('/api/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.flush(mockUser);
+  });
 });
 ```
 
@@ -367,21 +419,36 @@ Key conventions:
 Dialog components receive data via Angular CDK's `DIALOG_DATA` injection token and close via `DialogRef`. Tests provide mock values for both:
 
 ```ts
-beforeEach(async () => {
-  closeFn = vi.fn();
-  TestBed.configureTestingModule({
-    providers: [
-      { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
-      { provide: DIALOG_DATA, useValue: { title: 'Are you sure?', message: '...' } },
-    ],
-  }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
-  fixture = TestBed.createComponent(ConfirmDialog);
-  el = fixture.nativeElement;
-  await fixture.whenStable();
-});
+import { ConfirmDialogData, ConfirmDialogResult } from './confirm-dialog';
 
-it('should render the title from data', () => {
-  expect(el.textContent).toContain('Are you sure?');
+const defaultData: ConfirmDialogData = {
+  title: 'Are you sure?',
+  message: 'This action cannot be undone.',
+  confirmLabel: 'Confirm',
+  cancelLabel: 'Cancel',
+};
+
+describe('ConfirmDialog', () => {
+  let fixture: ComponentFixture<ConfirmDialog>;
+  let el: HTMLElement;
+  let closeFn: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: defaultData },
+      ],
+    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should render the title from data', () => {
+    expect(el.textContent).toContain('Are you sure?');
+  });
 });
 ```
 

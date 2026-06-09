@@ -16,7 +16,13 @@
       "Bash(git stash *)",
       "mcp__angular-cli__list_projects",
       "mcp__angular-cli__get_best_practices",
-      "PowerShell(\\(Get-Content README-TEST-GUIDE.md | Measure-Object -Line\\).Lines)"
+      "PowerShell(\\(Get-Content README-TEST-GUIDE.md | Measure-Object -Line\\).Lines)",
+      "Bash(git fetch *)",
+      "Bash(bash *)",
+      "PowerShell(git clone *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm exec *)",
+      "mcp__angular-cli__search_documentation"
     ]
   },
   "hooks": {
