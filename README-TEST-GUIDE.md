@@ -690,6 +690,14 @@ import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
 import { PizzaOrderFormDialog } from './pizza-order-form-dialog';
 import { PizzaOrderFormDialogData } from '../../order.models';
 import { Pizza } from '../../../pizzerias/models/pizza.models';
+import { DecimalPipe, NgOptimizedImage } from '@angular/common';
+import { FormField, FormRoot } from '@angular/forms/signals';
+import { CatalogImageUrlPipe } from '../../../../shared/pipes/catalog-image-url.pipe';
+import { Button } from '../../../../shared/components/button/button';
+import { Modal } from '../../../../shared/components/modal/modal';
+import { Input } from '../../../../shared/components/input/input';
+import { Spinner } from '../../../../shared/components/spinner/spinner';
+import { SizeOptionField } from '../pizza-size-option-field/pizza-size-option-field';
 
 const mockPizza: Pizza = {
   id: 'pizza1', name: 'Margherita', basePrice: 9.5,
@@ -718,8 +726,21 @@ describe('PizzaOrderFormDialog', () => {
         { provide: DialogRef, useValue: { close: closeFn } },
         { provide: DIALOG_DATA, useValue: dialogData },
       ],
-      // Use real imports for form integration
-      imports: [PizzaOrderFormDialog],
+    }).overrideComponent(PizzaOrderFormDialog, {
+      set: {
+        imports: [
+          DecimalPipe,
+          NgOptimizedImage,
+          CatalogImageUrlPipe,
+          Modal,
+          Spinner,
+          Button,
+          Input,
+          SizeOptionField,
+          FormRoot,
+          FormField,
+        ],
+      },
     });
     fixture = TestBed.createComponent(PizzaOrderFormDialog);
     el = fixture.nativeElement;
@@ -737,9 +758,16 @@ describe('PizzaOrderFormDialog', () => {
   });
 
   it('should close dialog on form submission', async () => {
-    httpTesting.expectOne('/api/options/sizes').flush([]);
+    httpTesting.expectOne('/api/options/sizes').flush([{ id: 's1', label: 'Medium', price: 1, sortOrder: 1 }]);
     httpTesting.expectOne('/api/options/toppings').flush([]);
     await fixture.whenStable();
+    TestBed.flushEffects();
+
+    // Select a size (required by form validation)
+    const sizeDe = fixture.debugElement.query(
+      (de) => de.componentInstance instanceof SizeOptionField,
+    );
+    sizeDe.componentInstance.value.set({ id: 's1', label: 'Medium', price: 1 });
     TestBed.flushEffects();
 
     el.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
