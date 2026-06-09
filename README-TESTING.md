@@ -6,7 +6,7 @@ This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/
 >
 > - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — This file: factual inventory of what exists (60 specs, categories, patterns)
+> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 ## Table of Contents
@@ -70,13 +70,13 @@ There is no watch mode script defined in `package.json`, but `ng test --watch` w
 
 ## Test Inventory
 
-**60 spec files** across the entire codebase. All tests are **unit tests** — there are no e2e, integration, or visual regression tests (see [Coverage Gap Analysis](#coverage-gap-analysis)).
+**59 spec files** across the entire codebase. All tests are **unit tests** — there are no e2e, integration, or visual regression tests (see [Coverage Gap Analysis](#coverage-gap-analysis)).
 
 ### By Category
 
 | Category                | Count | Files                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Service tests           | 6     | `auth.spec.ts`, `photon-api.spec.ts`, `order-api.spec.ts`, `pizzeria-api.spec.ts`, `pizza-api.spec.ts`, `checkout-wizard.spec.ts`                                                                                                                                                                                                                                                         |
+| Service tests           | 5     | `auth.spec.ts`, `order-api.spec.ts`, `pizzeria-api.spec.ts`, `pizza-api.spec.ts`, `checkout-wizard.spec.ts`                                                                                                                                                                                                                                                                               |
 | Store tests             | 1     | `cart.store.spec.ts`                                                                                                                                                                                                                                                                                                                                                                      |
 | Interceptor tests       | 2     | `credentials.interceptor.spec.ts`, `base-url.interceptor.spec.ts`                                                                                                                                                                                                                                                                                                                         |
 | Guard tests             | 5     | `auth.guard.spec.ts` (covers `authGuard` and `guestGuard`), `role.guard.spec.ts`, `cart-not-empty.guard.spec.ts`, `checkout-step.guard.spec.ts`, `no-pizzeria.guard.spec.ts`                                                                                                                                                                                                              |
@@ -223,7 +223,7 @@ This pattern tests the interceptor as a black box — the test only asserts the 
 
 ### Functional Guards
 
-> **Angular Alignment:** ⚠ Works but has a better alternative. The `runInInjectionContext()` approach tests guard logic in isolation but Angular recommends `RouterTestingHarness` for integration testing guards with their routes. Also, the current specs use the Angular 21 2-argument signature — Angular 22 requires a 3rd `currentSnapshot` argument. See `README-TEST-GUIDE.md` for both patterns.
+> **Angular Alignment:** ⚠ Works but has a better alternative. The `runInInjectionContext()` approach tests guard logic in isolation but Angular recommends `RouterTestingHarness` for integration testing guards with their routes. The Angular 22 3-argument signature has been resolved upstream. See `README-TEST-GUIDE.md` for both patterns.
 
 The project uses functional guards (`authGuard`, `guestGuard`, `roleGuard`, `cartNotEmptyGuard`, `checkoutStepGuard`, `noPizzeriaGuard`). These are plain functions (not injectable classes), so they are tested via `TestBed.runInInjectionContext()`.
 

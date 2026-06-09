@@ -38,12 +38,13 @@ sync commit is the user's (or LLM agent's) responsibility.
 
 ## Current pinned upstream SHA
 
-`3322c2d498f82bb00fd0e56fd048a23288c95ce1`
+`264c697ec6e6a3c5e55db0b0c4db0bafd23e3b34`
 
 ## Sync log
 
 | Date       | Upstream SHA                               | Notes                                                                                    |
 | ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 2026-06-09 | `264c697ec6e6a3c5e55db0b0c4db0bafd23e3b34` | 2 new commits: guard-spec fixes (18 TS2554 errors resolved) + Photon API simplification. |
 | 2026-06-07 | `3322c2d498f82bb00fd0e56fd048a23288c95ce1` | Re-sync — no new upstream commits. Build verified (same 4 CSS budget warnings).          |
 | 2026-06-05 | (this migration)                           | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history. |
 

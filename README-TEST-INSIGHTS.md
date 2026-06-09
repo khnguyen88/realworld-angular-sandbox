@@ -7,21 +7,21 @@
 > - **README-TESTING.md** — Factual inventory of what exists (60 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
-> **Status snapshot (2026-06-08):** The test suite is comprehensive in scope and well-structured, but it is **not currently green**. 18 TypeScript compile errors prevent `pnpm run test` from producing any results. All stem from Angular 22.0's `CanActivateFn` / `CanMatchFn` signature change. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
+> **Status snapshot (2026-06-09):** The 18 guard-signature compile errors have been fixed upstream. The suite now compiles and runs: **56/59 specs pass, 3 specs fail (10 test failures)**. The remaining failures are fixture-drift and missing-provider issues in checkout specs — not signature errors. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
 
 ---
 
 ## TL;DR
 
-| Question                                   | Answer                                                                                                                                                            |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| How many test files?                       | **60 `*.spec.ts`** co-located with source.                                                                                                                        |
-| How much test code?                        | **~5,188 lines** of test code vs. **~3,743 lines** of source.                                                                                                     |
-| Is the suite green?                        | **No** — `pnpm run test` fails at the TypeScript build step with **18 errors across 5 guard spec files**.                                                         |
-| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 2 categories have actionable gaps (components, pages), 1 category blocked (guard signatures outdated). |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, but **failing** in Angular version compatibility and alignment with modern practices.                               |
-| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                                        |
-| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                                 |
+| Question                                   | Answer                                                                                                                                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How many test files?                       | **60 `*.spec.ts`** co-located with source.                                                                                                                                    |
+| How much test code?                        | **~5,188 lines** of test code vs. **~3,743 lines** of source.                                                                                                                 |
+| Is the suite green?                        | **Mostly** — `pnpm run test` compiles and runs: **56/59 specs pass, 3 fail** (checkout-step.guard, checkout-review-step, checkout-page). Guard signature errors are resolved. |
+| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have actionable gaps (components, pages, guards).                                                     |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with **known gaps** in component harness adoption and route integration testing.                                                |
+| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                                                    |
+| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                                             |
 
 ---
 
@@ -33,25 +33,30 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 ---
 
-## 2. Current Run Status — RED
+## 2. Current Run Status — YELLOW
 
-`pnpm run test` (i.e. `ng test --watch=false`) currently **fails to compile**. 18 TypeScript errors, all `TS2554` ("Expected 3 arguments, but got 2"):
+`pnpm run test` (i.e. `ng test --watch=false`) now **compiles and runs**. The 18 guard-signature errors were fixed upstream (commit `8684732`). Results:
 
-| File                                                    | Errors | Root cause                                                                                                                                                                                    |
-| ------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core/guards/auth/auth.guard.spec.ts`                   | 4      | Angular 22.0 changed `CanActivateFn` / `CanMatchFn` to require a 3rd argument (`currentSnapshot: PartialMatchRouteSnapshot`). Guard specs call guards with only 2 args (`route`, `segments`). |
-| `core/guards/role/role.guard.spec.ts`                   | 4      | Same — `roleGuard([...])(route, segments)` missing `currentSnapshot`.                                                                                                                         |
-| `features/checkout/guards/cart-not-empty.guard.spec.ts` | 2      | Same — `cartNotEmptyGuard(route, segments)` missing `currentSnapshot`.                                                                                                                        |
-| `features/checkout/guards/checkout-step.guard.spec.ts`  | 5      | Same — `checkoutStepGuard(step)(route, segments)` missing `currentSnapshot`.                                                                                                                  |
-| `features/pizzerias/guards/no-pizzeria.guard.spec.ts`   | 3      | Same — `noPizzeriaGuard(route, segments)` missing `currentSnapshot`.                                                                                                                          |
+| Metric     | Value                                                                      |
+| ---------- | -------------------------------------------------------------------------- |
+| Spec files | **59** (1 removed: `photon-api.spec.ts` was deleted in upstream `264c697`) |
+| Passed     | **56 specs, 341 tests**                                                    |
+| Failed     | **3 specs, 10 tests**                                                      |
 
-**Pattern:** Angular 22.0 introduced a breaking change to the functional guard signature. The production guards compile fine (they match the new signature), but the test invocations pass only 2 arguments — the old Angular 21 signature. All 18 errors are in 5 guard spec files; no other test files are affected.
+**Failing specs:**
 
-**Hidden errors:** Once the 18 guard-signature errors are fixed, the original fixture-drift errors from the 2026-06-03 snapshot (`TS2739` mock-model mismatches + `TS2339` `canDeactivate`) will likely re-surface. The TypeScript compiler stops at the guard specs first, so these errors are currently invisible.
+| File                                                                             | Failures | Error type                                         |
+| -------------------------------------------------------------------------------- | -------- | -------------------------------------------------- |
+| `features/checkout/pages/checkout-page/checkout-page.spec.ts`                    | 6        | `NG0201`: No provider for `_CheckoutWizard`        |
+| `features/checkout/guards/checkout-step.guard.spec.ts`                           | 2        | `NG0201`: No provider for `_CheckoutWizard`        |
+| `features/checkout/components/checkout-review-step/checkout-review-step.spec.ts` | 1        | Missing provider / fixture drift                   |
+| `shared/components/photon-location-field/photon-location-field.spec.ts`          | 1        | Component refactor broke spec (upstream `264c697`) |
 
-**Lint status (unchanged):** `pnpm run lint` produces 19 errors (19 errors, 0 warnings) across 8 files — 14 `@typescript-eslint/no-explicit-any`, 1 `no-unused-vars`, 6 `no-empty-function` (IntersectionObserver stubs). These are pre-existing upstream issues, not introduced by the sync.
+**Root cause:** The upstream refactor in `264c697` simplified `PhotonLocationField` (removed `PhotonApi` service, moved logic inline) but the corresponding spec wasn't fully updated. Additionally, `checkout-page.spec.ts` has a pre-existing missing-provider issue (`_CheckoutWizard`) unrelated to the guard signature fix.
 
-> **Bottom line:** Right now you can't run the suite. The fix is mechanical: add a 3rd `{} as PartialMatchRouteSnapshot` argument to every guard invocation in the 5 affected spec files (~18 call sites).
+**Lint status (unchanged):** `pnpm run lint` produces 19 errors (19 errors, 0 warnings) across 8 files — 14 `@typescript-eslint/no-explicit-any`, 1 `no-unused-vars`, 6 `no-empty-function` (IntersectionObserver stubs). These are pre-existing upstream issues.
+
+> **Bottom line:** The guard-signature blocker is resolved. The suite runs and 95% of specs pass. The remaining 3 failing specs are fixture-integration issues in checkout + photon-location-field, not signature errors.
 
 ---
 
@@ -60,20 +65,20 @@ That framing matters for the conclusions below: this is reference code whose pur
 The following table compares each test category against Angular official recommendations
 (sourced from `angular-developer` skill references and `search_documentation` MCP tool).
 
-| Category     | Project Pattern                                                  | Angular Recommendation                          | Alignment        | Priority |
-| ------------ | ---------------------------------------------------------------- | ----------------------------------------------- | ---------------- | -------- |
-| Services     | `HttpTestingController` + `provideHttpClientTesting()`           | `HttpTestingController`                         | ✓ Aligned        | —        |
-| Interceptors | `provideHttpClient(withInterceptors([...]))` + real `HttpClient` | Same                                            | ✓ Aligned        | —        |
-| Pipes        | `new Pipe()` no TestBed                                          | `new Pipe()` no TestBed                         | ✓ Aligned        | —        |
-| Directives   | Host component with `signal()` stub                              | Host component                                  | ✓ Aligned        | —        |
-| Stores       | `TestBed.flushEffects()` + `httpTesting.match()`                 | `httpResource` testing                          | ✓ Mostly aligned | Low      |
-| Forms        | Real service + plain stubs                                       | Signal forms + real service                     | ✓ Mostly aligned | Low      |
-| Components   | `querySelector` + `NO_ERRORS_SCHEMA`                             | Component Harnesses                             | ⚠ Misaligned     | Medium   |
-| Pages        | `provideRouter([])` + `NO_ERRORS_SCHEMA`                         | `RouterTestingHarness` + real imports           | ⚠ Misaligned     | Medium   |
-| Guards       | `runInInjectionContext()` with 2 args (outdated)                 | `RouterTestingHarness` with 3 args (Angular 22) | ✗ Blocked        | High     |
-| Route Config | No tests                                                         | No tests                                        | ✓ Aligned        | —        |
+| Category     | Project Pattern                                                     | Angular Recommendation                | Alignment        | Priority |
+| ------------ | ------------------------------------------------------------------- | ------------------------------------- | ---------------- | -------- |
+| Services     | `HttpTestingController` + `provideHttpClientTesting()`              | `HttpTestingController`               | ✓ Aligned        | —        |
+| Interceptors | `provideHttpClient(withInterceptors([...]))` + real `HttpClient`    | Same                                  | ✓ Aligned        | —        |
+| Pipes        | `new Pipe()` no TestBed                                             | `new Pipe()` no TestBed               | ✓ Aligned        | —        |
+| Directives   | Host component with `signal()` stub                                 | Host component                        | ✓ Aligned        | —        |
+| Stores       | `TestBed.flushEffects()` + `httpTesting.match()`                    | `httpResource` testing                | ✓ Mostly aligned | Low      |
+| Forms        | Real service + plain stubs                                          | Signal forms + real service           | ✓ Mostly aligned | Low      |
+| Components   | `querySelector` + `NO_ERRORS_SCHEMA`                                | Component Harnesses                   | ⚠ Misaligned     | Medium   |
+| Pages        | `provideRouter([])` + `NO_ERRORS_SCHEMA`                            | `RouterTestingHarness` + real imports | ⚠ Misaligned     | Medium   |
+| Guards       | `runInInjectionContext()` + `vi.fn()` (3-arg signature now correct) | `RouterTestingHarness`                | ⚠ Misaligned     | Medium   |
+| Route Config | No tests                                                            | No tests                              | ✓ Aligned        | —        |
 
-**Score: 7/10 categories aligned, 2 with actionable gaps, 1 blocked.**
+**Score: 7/10 categories aligned, 3 with actionable gaps.**
 
 ### Detail on Misaligned Categories
 
@@ -81,7 +86,7 @@ The following table compares each test category against Angular official recomme
 
 **Pages (⚠):** Angular recommends `RouterTestingHarness` with real child component imports for page tests. The project uses `provideRouter([])` and `NO_ERRORS_SCHEMA`, which verifies page structure but not child component integration. Mitigation: adopt `RouterTestingHarness` for critical page flows.
 
-**Guards (✗):** Two issues: (1) the project uses `runInInjectionContext()` where `RouterTestingHarness` is recommended for integration-testing guards with their routes, and (2) the 2-argument calls are incompatible with Angular 22's 3-argument signature. This is the highest-priority fix.
+**Guards (⚠):** The project uses `runInInjectionContext()` where `RouterTestingHarness` is recommended for integration-testing guards with their routes. The Angular 22 3-argument signature issue has been resolved (upstream `8684732`). Remaining gap: testing guards through the routing pipeline rather than in isolation.
 
 ---
 
@@ -130,11 +135,8 @@ Cross-checked all 10 test categories against `angular-developer` skill reference
 
 ### Blocking (must fix to run tests)
 
-**5.1 Angular version compatibility — 18 guard signature errors**
-The 18 `TS2554` errors all stem from the Angular 21 → 22 upgrade. Angular 22.0 changed `CanActivateFn` and `CanMatchFn` to accept a 3rd `currentSnapshot: PartialMatchRouteSnapshot` argument. The production guards were updated to match, but the spec files still call guards with the old 2-argument signature.
-
-**5.2 Hidden fixture-drift errors**
-Once the guard errors are fixed, 5 additional TypeScript errors will re-surface: `TS2739` mock-model mismatches (mock objects missing `tipAmount`, `scheduledAt` fields) and `TS2339` `canDeactivate` reference in `checkout-page.spec.ts`. These are currently masked because the compiler stops at the guard specs first.
+**5.1 Fixture-drift in checkout specs**
+`checkout-page.spec.ts` has a missing `_CheckoutWizard` provider (6 test failures). `checkout-step.guard.spec.ts` has 2 similar missing-provider failures. `checkout-review-step.spec.ts` and `photon-location-field.spec.ts` each have 1 fixture-drift failure from upstream refactors. These 10 test failures are the only remaining blockers.
 
 ### Structural (design improvements)
 
@@ -163,10 +165,9 @@ With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a
 
 ## 6. Improvement Roadmap
 
-### Tier 1 — Unblock the test suite
+### Tier 1 — Fix remaining test failures
 
-1. **Fix the 18 guard-spec errors.** Add the 3rd `currentSnapshot` argument to every guard invocation across the 5 affected spec files. This is ~18 mechanical changes and unblocks the test suite.
-2. **Fix the re-surfaced fixture-drift errors.** Once the guard errors are resolved, update the mock fixtures for `mockOrder` / `AdminOrderListItem` (add `tipAmount`, `scheduledAt`) and resolve the `canDeactivate` reference in `checkout-page.spec.ts`.
+1. **Fix the 10 remaining test failures.** Add missing `_CheckoutWizard` provider to `checkout-page.spec.ts` and `checkout-step.guard.spec.ts`. Update `photon-location-field.spec.ts` and `checkout-review-step.spec.ts` for the upstream refactors.
 
 ### Tier 2 — Align with Angular recommendations
 
@@ -186,7 +187,7 @@ With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a
 
 ## 7. One-line verdict
 
-The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **red from an Angular 22 guard-signature change (18 errors), has a hidden layer of fixture-drift errors underneath, has no coverage measurement, and is the only layer of testing**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 2 categories (components, pages) having actionable gaps and 1 (guards) blocked. Fix the guard specs, then the fixtures, add coverage, and the story changes from "looks committed" to "actually trustworthy."
+The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **yellow (56/59 specs pass) with 3 checkout and photon-location-field specs failing from upstream refactors, has no coverage measurement, and is the only layer of testing**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The 18 guard-signature errors that previously blocked the suite entirely have been resolved upstream. Fix the 3 remaining failing specs, add coverage, and the story changes from "looks committed" to "actually trustworthy."
 
 ---
 
@@ -196,12 +197,11 @@ The unit-test _discipline_ here is genuinely good — patterns, structure, and b
 - `README-TESTING.md` — author's own testing documentation
 - `README-TEST-GUIDE.md` — Angular recommended + project pattern guide
 - `package.json` — scripts and dev dependencies (Angular 22.0.0, Vitest 4.1.6, TypeScript 6.0.3)
-- `pnpm exec ng test --watch=false` — current run output (failed build, 18 TS2554 errors across 5 guard spec files)
+- `pnpm exec ng test --watch=false` — current run output (56/59 specs pass, 3 fail: checkout-page, checkout-step.guard, checkout-review-step, photon-location-field)
 - `pnpm exec ng lint` — current run output (19 errors, 0 warnings, across 8 files)
 - `angular-developer` skill references: `testing-fundamentals.md`, `component-harnesses.md`, `router-testing.md`, `resource.md`, `signal-forms.md`
 - MCP `search_documentation` — Angular 22 official testing documentation (testing fundamentals, @defer testing, data resolvers, router testing)
-- `angular-developer` skill references: `signal-forms.md`
-- `find src -name "*.spec.ts" | wc -l` → 60
-- `find src -name "*.ts" -not -name "*.spec.ts" | wc -l` → 84
-- `wc -l` of all spec files → 5,188 lines
-- `wc -l` of all source files → 3,743 lines
+- `find src -name "*.spec.ts" | wc -l` → 59
+- `find src -name "*.ts" -not -name "*.spec.ts" | wc -l` → 83
+- `wc -l` of all spec files → ~5,095 lines
+- `wc -l` of all source files → ~3,630 lines

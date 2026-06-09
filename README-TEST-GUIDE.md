@@ -541,22 +541,118 @@ describe('afterRenderEffect', () => {
 });
 ```
 
+### [Illustrative] resource & httpResource
+
+> **Note:** Not yet exercised directly in the realworld-angular test suite. The project's
+> `CartStore` uses `httpResource` under the hood but tests it indirectly through store
+> mutations. The example below tests `resource()` directly using a fictional `UserLoader`.
+
+```typescript
+import { resource, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+describe('resource', () => {
+  it('should start in loading state', () => {
+    const userId = signal('123');
+    let resolveLoader: (v: unknown) => void;
+    const loaderPromise = new Promise((r) => (resolveLoader = r));
+
+    const userResource = TestBed.runInInjectionContext(() =>
+      resource({
+        params: () => ({ id: userId() }),
+        loader: async () => loaderPromise,
+      }),
+    );
+
+    TestBed.flushEffects();
+    expect(userResource.isLoading()).toBe(true);
+    expect(userResource.hasValue()).toBe(false);
+  });
+
+  it('should resolve to a value when loader completes', async () => {
+    const userId = signal('123');
+    const mockUser = { id: '123', name: 'Alice' };
+
+    const userResource = TestBed.runInInjectionContext(() =>
+      resource({
+        params: () => ({ id: userId() }),
+        loader: async () => mockUser,
+      }),
+    );
+
+    TestBed.flushEffects();
+    // Let the loader promise resolve
+    await vi.waitFor(() => userResource.hasValue());
+    expect(userResource.value()).toEqual(mockUser);
+    expect(userResource.status()).toBe('resolved');
+  });
+
+  it('should reload when params change', () => {
+    const userId = signal('123');
+    let callCount = 0;
+
+    TestBed.runInInjectionContext(() =>
+      resource({
+        params: () => ({ id: userId() }),
+        loader: async () => {
+          callCount++;
+          return { id: userId(), name: 'User' };
+        },
+      }),
+    );
+
+    TestBed.flushEffects();
+    userId.set('456');
+    TestBed.flushEffects();
+    expect(callCount).toBe(2);
+  });
+
+  it('should handle loader errors', async () => {
+    const userId = signal('123');
+
+    const userResource = TestBed.runInInjectionContext(() =>
+      resource({
+        params: () => ({ id: userId() }),
+        loader: async () => {
+          throw new Error('Network failure');
+        },
+      }),
+    );
+
+    TestBed.flushEffects();
+    await vi.waitFor(() => userResource.status() === 'error');
+    expect(userResource.error()).toBeInstanceOf(Error);
+  });
+});
+```
+
+**httpResource testing:** For `httpResource` (which uses Angular's `HttpClient`), use
+`HttpTestingController` exactly as shown in the [Services](#services) section — the pattern
+is identical: `expectOne()` → assert method/body → `flush()` → assert signal state.
+
+Reference: `angular-developer` skill `resource.md`
+
 ### Key rules
 
 - `effect()` and `afterRenderEffect()` must be created inside an injection context
   (constructor or `runInInjectionContext`).
-- Use `TestBed.flushEffects()` to synchronously flush pending effects in tests.
-- Use `TestBed.runInInjectionContext()` to create effects outside a component constructor.
+- Use `TestBed.flushEffects()` to synchronously flush pending effects and resource loading in tests.
+- Use `TestBed.runInInjectionContext()` to create effects/resources outside a component constructor.
 - For `afterRenderEffect`, call `await fixture.whenStable()` to let the render cycle complete.
 - **Never** use `effect` to propagate state between signals — use `computed()` or
   `linkedSignal()` instead. This is a critical Angular rule.
-- **Alignment:** N/A — these primitives are not exercised in the realworld-angular test suite.
-  The examples above are illustrative per the `angular-developer` skill references.
+- **resource() status flow:** `idle` → `loading` → `resolved` (or `error`). Use
+  `vi.waitFor()` for async resolution in Vitest.
+- **Alignment:** N/A — standalone `resource()` and `afterRenderEffect` are not exercised
+  in the realworld-angular test suite. The examples above are illustrative per the
+  `angular-developer` skill references. `httpResource` testing is covered in Stores.
 
 ### Angular docs reference
 
 - [angular.dev/guide/signals/linked-signal](https://angular.dev/guide/signals/linked-signal)
 - [angular.dev/guide/signals/effect](https://angular.dev/guide/signals/effect)
+- [angular.dev/guide/signals/resource](https://angular.dev/guide/signals/resource)
 - [angular.dev/api/core/testing/TestBed#flushEffects](https://angular.dev/api/core/testing/TestBed#flushEffects)
 
 ---
@@ -1561,8 +1657,8 @@ describe('noPizzeriaGuard', () => {
 - Always assert the **exact redirect URL**, not just `UrlTree` type.
 - Use `provideRouter([])` — the real router is needed for `serializeUrl()`.
 - For multi-step guards (like checkout), use the real route config with `provideRouter(testRoutes)` so the guard can find prerequisite step URLs.
-- **CRITICAL for Angular 22+:** Guard functions now take 3 arguments — include `{} as PartialMatchRouteSnapshot` as the 3rd argument in all test invocations.
-- **Alignment:** ⚠ Project uses `runInInjectionContext` where Angular recommends `RouterTestingHarness` for integration tests. Guard specs also need the Angular 22 3-argument signature update (see `README-TEST-INSIGHTS.md`).
+- **Angular 22+:** Guard functions require 3 arguments — include `{} as PartialMatchRouteSnapshot` as the 3rd argument. The project specs now follow this signature (resolved upstream `8684732`).
+- **Alignment:** ⚠ Project uses `runInInjectionContext` where Angular recommends `RouterTestingHarness` for integration tests.
 
 ### Angular docs reference: [angular.dev/guide/routing/testing](https://angular.dev/guide/routing/testing)
 
@@ -2151,6 +2247,7 @@ What you test instead:
 | Wizard              | Real service + stubs                         | Real service + stubs               | ✓ Same                   |
 | Custom Form Control | TestHostComponent + signal forms             | —                                  | Illustrative only        |
 | linkedSignal        | `new` + `TestBed.flushEffects()`             | —                                  | Illustrative only        |
+| resource            | `runInInjectionContext` + mock loader        | —                                  | Illustrative only        |
 | effect              | `runInInjectionContext` + `flushEffects()`   | —                                  | Illustrative only        |
 | Signal Output       | `.subscribe()` on `output()` emitter         | —                                  | Illustrative only        |
 | Host Bindings       | `nativeElement` attribute/class/style checks | —                                  | Illustrative only        |
