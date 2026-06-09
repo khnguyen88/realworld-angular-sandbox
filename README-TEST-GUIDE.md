@@ -855,9 +855,8 @@ describe('@defer blocks', () => {
     fixture = TestBed.createComponent(TestDeferComponent);
   });
 
-  it('should render placeholder before trigger', async () => {
-    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
-    await deferBlockFixture.render(DeferBlockState.Placeholder);
+  it('should render placeholder by default', async () => {
+    // In Manual mode, the defer block starts in Placeholder state — no render() needed
     expect(fixture.nativeElement.innerHTML).toContain('Placeholder content');
   });
 
@@ -884,6 +883,7 @@ describe('@defer blocks', () => {
 ### Key rules
 
 - Set `deferBlockBehavior: DeferBlockBehavior.Manual` in `TestBed.configureTestingModule()` for manual control.
+- In `Manual` mode, the defer block starts in the Placeholder state — no `render()` call is needed to assert placeholder content.
 - `DeferBlockBehavior.PlayThrough` (default) plays through states naturally — use when you want real-world behavior.
 - `fixture.getDeferBlocks()` returns a `Promise<DeferBlockFixture[]>` — always `await` it.
 - `deferBlockFixture.render(DeferBlockState.X)` transitions the block to the target state. States: `Placeholder`, `Loading`, `Complete`, `Error`.
