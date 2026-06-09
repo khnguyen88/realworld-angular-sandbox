@@ -28,6 +28,7 @@ new tests or maintaining existing ones.
 - [Services](#services)
 - [Interceptors](#interceptors)
 - [Stores / State](#stores--state)
+- [[Illustrative] Reactive Primitives](#illustrative-reactive-primitives)
 - [Components](#components)
 - [Dialogs & Overlays](#dialogs--overlays)
 - [[Illustrative] @defer Blocks](#illustrative-defer-blocks)
@@ -56,7 +57,11 @@ What kind of behavior?
 ├── Request transformation → Interceptor test
 ├── Input→output data transformation → Pipe test
 ├── DOM manipulation via attribute → Directive test (host component)
+├── Event emission from component → output() test
+├── Root element bindings (role, class, style) → host element test
 ├── Reactive state with computed signals → Store test
+├── Writable derived state with reset logic → linkedSignal test
+├── Side effects (logging, sync, canvas) → effect / afterRenderEffect test
 └── Multi-step form workflow → Wizard/Service test with real forms
 
 Which approach?
@@ -392,6 +397,170 @@ describe('CartStore', () => {
 
 ---
 
+## [Illustrative] Reactive Primitives
+
+> **Note:** The topics in this section are not yet exercised in the realworld-angular test
+> suite. The examples below use a fictional `ShippingPicker` component and are generated from
+> the `angular-developer` skill references (`linked-signal.md`, `effects.md`).
+
+### What to test
+
+- **linkedSignal:** Default value derived from source; manual overrides; reset when source
+  changes; preserve override when value still valid in new source
+- **effect:** Runs at least once; re-runs when tracked signals change; cleanup function
+  executes before next run; does NOT propagate state changes (use `computed`/`linkedSignal` instead)
+- **afterRenderEffect:** Correct phase ordering (earlyRead → write → mixedReadWrite → read);
+  write phase receives data from prior read phase; never runs during SSR
+
+### [Illustrative] linkedSignal
+
+```typescript
+import { Component, signal, linkedSignal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-shipping-picker',
+  template: `
+    <select (change)="onChange($event)">
+      @for (opt of shippingOptions(); track opt) {
+        <option [value]="opt">{{ opt }}</option>
+      }
+    </select>
+  `,
+})
+class ShippingPicker {
+  readonly shippingOptions = signal(['Ground', 'Air', 'Sea']);
+  readonly selectedOption = linkedSignal(() => this.shippingOptions()[0]);
+
+  onChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.selectedOption.set(select.value);
+  }
+}
+
+describe('ShippingPicker (linkedSignal)', () => {
+  let component: ShippingPicker;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    const fixture = TestBed.createComponent(ShippingPicker);
+    component = fixture.componentInstance;
+  });
+
+  it('should default to the first shipping option', () => {
+    expect(component.selectedOption()).toBe('Ground');
+  });
+
+  it('should allow manual override', () => {
+    component.selectedOption.set('Air');
+    expect(component.selectedOption()).toBe('Air');
+  });
+
+  it('should reset to first option when source signal changes', () => {
+    component.selectedOption.set('Air');
+    component.shippingOptions.set(['Express', 'Overnight', 'Drone']);
+    TestBed.flushEffects();
+    expect(component.selectedOption()).toBe('Express');
+  });
+});
+```
+
+Reference: `angular-developer` skill `linked-signal.md`
+
+### [Illustrative] effect & afterRenderEffect
+
+```typescript
+import { Component, signal, effect, afterRenderEffect, Injector, effect } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+describe('effect', () => {
+  it('should run at least once', () => {
+    const counter = signal(0);
+    let runs = 0;
+    TestBed.runInInjectionContext(() => {
+      effect(() => {
+        counter(); // track this signal
+        runs++;
+      });
+    });
+    TestBed.flushEffects();
+    expect(runs).toBe(1);
+  });
+
+  it('should re-run when a tracked signal changes', () => {
+    const counter = signal(0);
+    let captured = 0;
+    TestBed.runInInjectionContext(() => {
+      effect(() => {
+        captured = counter();
+      });
+    });
+    TestBed.flushEffects();
+    counter.set(42);
+    TestBed.flushEffects();
+    expect(captured).toBe(42);
+  });
+
+  it('should run cleanup before the next execution', () => {
+    const counter = signal(0);
+    const cleaned: number[] = [];
+    TestBed.runInInjectionContext(() => {
+      effect((onCleanup) => {
+        const val = counter();
+        onCleanup(() => cleaned.push(val));
+      });
+    });
+    TestBed.flushEffects();
+    counter.set(1);
+    TestBed.flushEffects();
+    expect(cleaned).toEqual([0]); // cleanup captured value from first run
+  });
+});
+
+describe('afterRenderEffect', () => {
+  it('should execute phases in order', async () => {
+    const source = signal(100);
+    let writeReceived = 0;
+    const fixture = TestBed.createComponent(
+      class {
+        constructor() {
+          afterRenderEffect({
+            earlyRead: () => source(),
+            write: (w) => {
+              writeReceived = w;
+            },
+          });
+        }
+      },
+    );
+    await fixture.whenStable();
+    expect(writeReceived).toBe(100);
+  });
+});
+```
+
+### Key rules
+
+- `effect()` and `afterRenderEffect()` must be created inside an injection context
+  (constructor or `runInInjectionContext`).
+- Use `TestBed.flushEffects()` to synchronously flush pending effects in tests.
+- Use `TestBed.runInInjectionContext()` to create effects outside a component constructor.
+- For `afterRenderEffect`, call `await fixture.whenStable()` to let the render cycle complete.
+- **Never** use `effect` to propagate state between signals — use `computed()` or
+  `linkedSignal()` instead. This is a critical Angular rule.
+- **Alignment:** N/A — these primitives are not exercised in the realworld-angular test suite.
+  The examples above are illustrative per the `angular-developer` skill references.
+
+### Angular docs reference
+
+- [angular.dev/guide/signals/linked-signal](https://angular.dev/guide/signals/linked-signal)
+- [angular.dev/guide/signals/effect](https://angular.dev/guide/signals/effect)
+- [angular.dev/api/core/testing/TestBed#flushEffects](https://angular.dev/api/core/testing/TestBed#flushEffects)
+
+---
+
 ## Components
 
 ### What to test
@@ -561,6 +730,119 @@ describe('Button', () => {
 - Test accessibility attributes (`aria-*`, `role`) as assertions — not an afterthought.
 - **Alignment:** ⚠ Project uses `querySelector` where Angular recommends harnesses.
   See `README-TEST-INSIGHTS.md` for the improvement roadmap.
+- **Signal outputs:** Subscribe via `.subscribe()` on the `OutputEmitterRef`. Clean up with
+  `.unsubscribe()` or let Angular handle it on component destroy.
+- **Host bindings:** Test directly on `fixture.nativeElement` — the root element IS the
+  host element. Use `await fixture.whenStable()` to let bindings propagate.
+- **Host events:** Trigger with `fixture.nativeElement.dispatchEvent(new KeyboardEvent(...))`.
+
+### [Illustrative] Signal Outputs
+
+> **Note:** Not yet exercised in the realworld-angular test suite. Example uses a fictional
+> `TodoList` component.
+
+```typescript
+import { Component, output, input } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-todo-list',
+  template: `
+    @for (item of items(); track item) {
+      <button (click)="remove.emit(item)">Remove {{ item }}</button>
+    }
+  `,
+})
+class TodoList {
+  readonly items = input<string[]>([]);
+  readonly remove = output<string>();
+}
+
+describe('TodoList (signal output)', () => {
+  let fixture: ComponentFixture<TodoList>;
+  let component: TodoList;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(TodoList);
+    component = fixture.componentInstance;
+  });
+
+  it('should emit the removed item through the signal output', () => {
+    fixture.componentRef.setInput('items', ['Buy milk', 'Walk dog']);
+    const emitted: string[] = [];
+    const sub = component.remove.subscribe((item) => emitted.push(item));
+
+    // Simulate clicking the first remove button
+    const buttons = fixture.nativeElement.querySelectorAll('button');
+    (buttons[0] as HTMLButtonElement).click();
+
+    expect(emitted).toEqual(['Buy milk']);
+    sub.unsubscribe();
+  });
+});
+```
+
+### [Illustrative] Host Element Bindings
+
+> **Note:** Not yet exercised in the realworld-angular test suite. Example uses a fictional
+> `ToggleChip` component with `host:` bindings.
+
+```typescript
+import { Component, input, output } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-toggle-chip',
+  template: `{{ label() }}`,
+  host: {
+    role: 'switch',
+    '[attr.aria-checked]': 'checked()',
+    '[class.chip--active]': 'checked()',
+    '[style.borderColor]': 'checked() ? "green" : "gray"',
+  },
+})
+class ToggleChip {
+  readonly label = input.required<string>();
+  readonly checked = input(false);
+}
+
+describe('ToggleChip (host bindings)', () => {
+  let fixture: ComponentFixture<ToggleChip>;
+  let el: HTMLElement;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(ToggleChip);
+    el = fixture.nativeElement;
+  });
+
+  it('should apply static host attribute (role)', () => {
+    expect(el.getAttribute('role')).toBe('switch');
+  });
+
+  it('should reflect aria-checked from input signal', async () => {
+    fixture.componentRef.setInput('checked', true);
+    await fixture.whenStable();
+    expect(el.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('should toggle CSS class from input signal', async () => {
+    expect(el.classList.contains('chip--active')).toBe(false);
+    fixture.componentRef.setInput('checked', true);
+    await fixture.whenStable();
+    expect(el.classList.contains('chip--active')).toBe(true);
+  });
+
+  it('should update inline style from input signal', async () => {
+    fixture.componentRef.setInput('checked', true);
+    await fixture.whenStable();
+    expect(el.style.borderColor).toBe('green');
+  });
+});
+```
 
 ### Angular docs reference: [angular.dev/guide/testing/components-basics](https://angular.dev/guide/testing/components-basics)
 
@@ -1868,6 +2150,10 @@ What you test instead:
 | Store               | httpResource patterns                        | httpTesting.match()                | ✓ Mostly same            |
 | Wizard              | Real service + stubs                         | Real service + stubs               | ✓ Same                   |
 | Custom Form Control | TestHostComponent + signal forms             | —                                  | Illustrative only        |
+| linkedSignal        | `new` + `TestBed.flushEffects()`             | —                                  | Illustrative only        |
+| effect              | `runInInjectionContext` + `flushEffects()`   | —                                  | Illustrative only        |
+| Signal Output       | `.subscribe()` on `output()` emitter         | —                                  | Illustrative only        |
+| Host Bindings       | `nativeElement` attribute/class/style checks | —                                  | Illustrative only        |
 
 ---
 
@@ -1911,18 +2197,22 @@ approaches are valid.
 
 ## One-Sentence Summary Per Unit
 
-| Unit                | The test should answer this question                                                |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| Service             | "Did it call the right endpoint with the right data and update state correctly?"    |
-| Component           | "Given these inputs, does it render the right DOM with the right attributes?"       |
-| Dialog              | "Given injected data, does it render correctly and close with the right result?"    |
-| @defer              | "Does each state (placeholder/loading/complete/error) render the correct content?"  |
-| Page                | "For each logical state (loading/empty/error/data), does it show the correct UI?"   |
-| Guard               | "Does it allow or redirect, and redirect exactly where?"                            |
-| Data Resolver       | "Does it fetch data and provide it to the component, and handle errors gracefully?" |
-| Interceptor         | "Did it modify (or not modify) the outgoing request as expected?"                   |
-| Pipe                | "Given this input, does it produce this output?"                                    |
-| Directive           | "Does it manipulate the DOM correctly and react to state changes?"                  |
-| Store               | "Do mutations produce correct state and trigger correct side effects?"              |
-| Wizard              | "Do the form rules, computed values, and validation logic work correctly?"          |
-| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?"   |
+| Unit                | The test should answer this question                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| Service             | "Did it call the right endpoint with the right data and update state correctly?"     |
+| Component           | "Given these inputs, does it render the right DOM with the right attributes?"        |
+| Dialog              | "Given injected data, does it render correctly and close with the right result?"     |
+| @defer              | "Does each state (placeholder/loading/complete/error) render the correct content?"   |
+| Page                | "For each logical state (loading/empty/error/data), does it show the correct UI?"    |
+| Guard               | "Does it allow or redirect, and redirect exactly where?"                             |
+| Data Resolver       | "Does it fetch data and provide it to the component, and handle errors gracefully?"  |
+| Interceptor         | "Did it modify (or not modify) the outgoing request as expected?"                    |
+| Pipe                | "Given this input, does it produce this output?"                                     |
+| Directive           | "Does it manipulate the DOM correctly and react to state changes?"                   |
+| Store               | "Do mutations produce correct state and trigger correct side effects?"               |
+| Wizard              | "Do the form rules, computed values, and validation logic work correctly?"           |
+| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?"    |
+| linkedSignal        | "Does it default correctly, allow overrides, and reset when its source changes?"     |
+| effect              | "Does it run when tracked signals change, and clean up correctly between runs?"      |
+| Signal Output       | "Does the component emit the correct value when an event occurs?"                    |
+| Host Bindings       | "Do the root element's attributes, classes, and styles reflect the component state?" |
