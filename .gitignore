@@ -45,3 +45,12 @@ Thumbs.db
 
 # Memory compiler (third-party, self-contained)
 /memory-compiler
+
+# --- upstream clone (throwaway; re-cloned on every sync) ---
+realworld-angular/
+realworld-angular/node_modules/
+realworld-angular/dist/
+realworld-angular/.angular/
+# End of upstream clone ignore block
+
+.agents/
