@@ -197,7 +197,8 @@ The unit-test *discipline* here is genuinely good — patterns, structure, and b
 - `pnpm exec ng test --watch=false` — current run output (failed build, 18 TS2554 errors across 5 guard spec files)
 - `pnpm exec ng lint` — current run output (19 errors, 0 warnings, across 8 files)
 - `angular-developer` skill references: `testing-fundamentals.md`, `component-harnesses.md`, `router-testing.md`, `resource.md`, `signal-forms.md`
-- MCP `search_documentation` — Angular 22 official testing documentation
+- MCP `search_documentation` — Angular 22 official testing documentation (testing fundamentals, @defer testing, data resolvers, router testing)
+- `angular-developer` skill references: `signal-forms.md`
 - `find src -name "*.spec.ts" | wc -l` → 60
 - `find src -name "*.ts" -not -name "*.spec.ts" | wc -l` → 84
 - `wc -l` of all spec files → 5,188 lines

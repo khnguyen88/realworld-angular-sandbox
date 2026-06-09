@@ -361,7 +361,7 @@ Key conventions:
 
 ### Dialogs & Overlays
 
-> **Angular Alignment:** ✓ Fully aligned. The `DIALOG_DATA` + `DialogRef` pattern is the standard approach.
+> **Angular Alignment:** ✓ Aligned with Angular. Stubs `DialogRef` and provides `DIALOG_DATA` injection token for CDK-based dialog components. See GUIDE for Modal, ConfirmDialog, and Form Dialog examples.
 
 Dialog components receive data via Angular CDK's `DIALOG_DATA` injection token and close via `DialogRef`. Tests provide mock values for both:
 
@@ -476,6 +476,11 @@ describe('CatalogImageUrlPipe', () => {
 ```
 
 The `environment` import is used directly — the test runs against the default `environment.ts` (not the development override).
+
+> **Illustrative sections in the GUIDE:** Three additional patterns are documented in
+> README-TEST-GUIDE.md as `[Illustrative]` sections — @defer blocks, Data Resolvers, and
+> Custom Form Controls (ControlValueAccessor). These are not based on realworld-angular
+> but are generated from Angular official documentation for reference.
 
 ## Coverage Gap Analysis
 
