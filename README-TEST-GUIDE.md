@@ -31,6 +31,7 @@ new tests or maintaining existing ones.
 - [Dialogs & Overlays](#dialogs--overlays)
 - [Page Components (Smart / Container)](#page-components-smart--container)
 - [Guards](#guards)
+- [Data Resolvers](#data-resolvers)
 - [Directives](#directives)
 - [Forms & Wizard Services](#forms--wizard-services)
 - [Route Config Files](#route-config-files)
@@ -1271,6 +1272,125 @@ describe('noPizzeriaGuard', () => {
 
 ---
 
+## [Illustrative] Data Resolvers
+
+> **Not based on realworld-angular** — illustrative example generated from Angular official documentation.
+
+### What to test
+
+- Resolver fetches data and returns it to the route
+- Resolver handles 404 (returns empty, null, or redirect)
+- Resolver handles 500 / network error (returns error state or redirect)
+- Resolved data is available to the component via input bindings or `ActivatedRoute.data`
+
+### Angular Recommended
+
+Use `RouterTestingHarness` with `provideRouter` and `resolve` in the route config. Flush
+HTTP requests with `HttpTestingController`, then assert the resolved data reaches the
+component. Prefer `withComponentInputBinding()` — resolved data maps directly to component
+`input()` signals.
+
+Reference: `angular-developer` skill `router-testing.md`
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { Component, input, inject } from '@angular/core';
+import { ResolveFn } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Resolver under test
+const userResolver: ResolveFn<User> = (route) => {
+  const http = inject(HttpClient);
+  const userId = route.paramMap.get('id')!;
+  return http.get<User>(`/api/users/${userId}`);
+};
+
+// Target component using withComponentInputBinding
+@Component({
+  template: `<h1>{{ user().name }}</h1><p>{{ user().email }}</p>`,
+  standalone: true,
+})
+class UserDetailPage {
+  user = input.required<User>();
+}
+
+const mockUser: User = { id: '1', name: 'Alice', email: 'alice@example.com' };
+
+describe('userResolver (RouterTestingHarness)', () => {
+  let harness: RouterTestingHarness;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClientTesting(),
+        provideRouter(
+          [
+            {
+              path: 'users/:id',
+              component: UserDetailPage,
+              resolve: { user: userResolver },
+            },
+          ],
+          withComponentInputBinding(),
+        ),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should resolve user data and pass it to the component', async () => {
+    const component = await harness.navigateByUrl('/users/1', UserDetailPage);
+    const req = httpTesting.expectOne('/api/users/1');
+    req.flush(mockUser);
+    harness.detectChanges();
+
+    expect(component.user()).toEqual(mockUser);
+    expect(harness.routeNativeElement?.textContent).toContain('Alice');
+  });
+
+  it('should handle resolver error (404)', async () => {
+    await harness.navigateByUrl('/users/99');
+    httpTesting
+      .expectOne('/api/users/99')
+      .flush('Not found', { status: 404, statusText: 'Not Found' });
+
+    // The navigation completes but the component won't render.
+    // With withNavigationErrorHandler, test the error handler instead.
+    // Here we verify the request was attempted.
+    expect(harness.router.url).toBe('/users/99');
+  });
+});
+```
+
+### Key rules
+
+- Use `withComponentInputBinding()` — resolved data maps directly to `input.required<T>()` signals.
+- Combine `RouterTestingHarness` + `HttpTestingController` for end-to-end resolver testing.
+- Always call `harness.detectChanges()` after flushing HTTP to trigger change detection with new data.
+- Test both success (data resolves → component renders) and error (404, 500) paths.
+- For error handling, test `withNavigationErrorHandler` or `RedirectCommand` in the resolver.
+- Resolvers run before navigation completes — the target component won't render on failure.
+
+### Angular docs reference: [angular.dev/guide/routing/data-resolvers](https://angular.dev/guide/routing/data-resolvers)
+
+---
+
 ## Directives
 
 ### What to test
@@ -1505,6 +1625,7 @@ What you test instead:
 | Component | Component Harnesses | querySelector + NO_ERRORS_SCHEMA | Harness vs raw DOM |
 | Page | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA | Integration vs isolation |
 | Guard | RouterTestingHarness | runInInjectionContext + vi.fn() | Full pipeline vs unit |
+| Data Resolver | RouterTestingHarness + HttpTestingController | - (illustrative) | - |
 | Interceptor | withInterceptors + real HttpClient | withInterceptors + real HttpClient | ✓ Same |
 | Pipe | new Pipe() | new Pipe() | ✓ Same |
 | Directive | Host component | Host component | ✓ Same |
@@ -1558,6 +1679,7 @@ approaches are valid.
 | Component | "Given these inputs, does it render the right DOM with the right attributes?" |
 | Page | "For each logical state (loading/empty/error/data), does it show the correct UI?" |
 | Guard | "Does it allow or redirect, and redirect exactly where?" |
+| Data Resolver | "Does it fetch data and provide it to the component, and handle errors gracefully?" |
 | Interceptor | "Did it modify (or not modify) the outgoing request as expected?" |
 | Pipe | "Given this input, does it produce this output?" |
 | Directive | "Does it manipulate the DOM correctly and react to state changes?" |
