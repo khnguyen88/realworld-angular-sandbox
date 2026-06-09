@@ -29,6 +29,7 @@ new tests or maintaining existing ones.
 - [Stores / State](#stores--state)
 - [Components](#components)
 - [Dialogs & Overlays](#dialogs--overlays)
+- [[Illustrative] @defer Blocks](#illustrative-defer-blocks)
 - [Page Components (Smart / Container)](#page-components-smart--container)
 - [Guards](#guards)
 - [[Illustrative] Data Resolvers](#illustrative-data-resolvers)
@@ -1838,6 +1839,8 @@ What you test instead:
 |------|-------------------|-----------------|----------------|
 | Service | HttpTestingController | HttpTestingController | ✓ Same |
 | Component | Component Harnesses | querySelector + NO_ERRORS_SCHEMA | Harness vs raw DOM |
+| Dialog | DialogRef stub + DIALOG_DATA | DialogRef stub + DIALOG_DATA | ✓ Same |
+| @defer | DeferBlockBehavior.Manual + render() | — | Illustrative only |
 | Page | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA | Integration vs isolation |
 | Guard | RouterTestingHarness | runInInjectionContext + vi.fn() | Full pipeline vs unit |
 | Data Resolver | RouterTestingHarness + HttpTestingController | - (illustrative) | - |
@@ -1893,6 +1896,8 @@ approaches are valid.
 |------|--------------------------------------|
 | Service | "Did it call the right endpoint with the right data and update state correctly?" |
 | Component | "Given these inputs, does it render the right DOM with the right attributes?" |
+| Dialog | "Given injected data, does it render correctly and close with the right result?" |
+| @defer | "Does each state (placeholder/loading/complete/error) render the correct content?" |
 | Page | "For each logical state (loading/empty/error/data), does it show the correct UI?" |
 | Guard | "Does it allow or redirect, and redirect exactly where?" |
 | Data Resolver | "Does it fetch data and provide it to the component, and handle errors gracefully?" |
