@@ -31,7 +31,7 @@ new tests or maintaining existing ones.
 - [Dialogs & Overlays](#dialogs--overlays)
 - [Page Components (Smart / Container)](#page-components-smart--container)
 - [Guards](#guards)
-- [Data Resolvers](#data-resolvers)
+- [[Illustrative] Data Resolvers](#illustrative-data-resolvers)
 - [Directives](#directives)
 - [Forms & Wizard Services](#forms--wizard-services)
 - [[Illustrative] Custom Form Controls](#illustrative-custom-form-controls)
@@ -1617,9 +1617,10 @@ describe('CheckoutWizard', () => {
 
 ### Angular Recommended
 
-Create a `TestHostComponent` that uses the custom control inside a signal form. Spy on
-`onChange` and `onTouched` callbacks, then manipulate the control via its form API and
-assert DOM updates and callback invocations.
+Create a `TestHostComponent` that uses the custom control inside a signal form. Manipulate
+the control via its form API (`setValue`, `disable`) and assert DOM updates and form state
+changes. Do not spy on `onChange`/`onTouched` directly — test their effects through form
+integration.
 
 Reference: `angular-developer` skill `signal-forms.md`, `testing-fundamentals.md`
 
@@ -1691,7 +1692,7 @@ export class RatingControl implements ControlValueAccessor {
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { Component } from '@angular/core';
-import { FormField, FormRoot } from '@angular/forms/signals';
+import { FormField, FormRoot, FormGroup, FormControl, Validators } from '@angular/forms/signals';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RatingControl } from './rating-control';
 
