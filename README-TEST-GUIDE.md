@@ -34,6 +34,7 @@ new tests or maintaining existing ones.
 - [Data Resolvers](#data-resolvers)
 - [Directives](#directives)
 - [Forms & Wizard Services](#forms--wizard-services)
+- [[Illustrative] Custom Form Controls](#illustrative-custom-form-controls)
 - [Route Config Files](#route-config-files)
 - [Quick Reference Table](#quick-reference-table)
 
@@ -1602,6 +1603,219 @@ describe('CheckoutWizard', () => {
 
 ---
 
+## [Illustrative] Custom Form Controls
+
+> **Not based on realworld-angular** — illustrative example generated from Angular official documentation.
+
+### What to test
+
+- `writeValue` updates the internal control value and DOM
+- User interaction calls `onChange` with the new value
+- `registerOnTouched` fires on blur
+- `setDisabledState` toggles the disabled mode
+- Validation: required, pattern, min/max, custom validators
+
+### Angular Recommended
+
+Create a `TestHostComponent` that uses the custom control inside a signal form. Spy on
+`onChange` and `onTouched` callbacks, then manipulate the control via its form API and
+assert DOM updates and callback invocations.
+
+Reference: `angular-developer` skill `signal-forms.md`, `testing-fundamentals.md`
+
+**Custom control under test:**
+
+```typescript
+// rating-control.ts
+import { Component, forwardRef } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+
+@Component({
+  selector: 'app-rating-control',
+  template: `
+    <div class="rating" [class.disabled]="isDisabled">
+      @for (star of stars; track star) {
+        <button
+          type="button"
+          [class.filled]="star <= value"
+          [disabled]="isDisabled"
+          (click)="selectRating(star)"
+          (blur)="onTouched()"
+        >{{ star <= value ? '★' : '☆' }}</button>
+      }
+    </div>
+  `,
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => RatingControl),
+      multi: true,
+    },
+  ],
+  standalone: true,
+})
+export class RatingControl implements ControlValueAccessor {
+  stars = [1, 2, 3, 4, 5];
+  value = 0;
+  isDisabled = false;
+  onChange: (value: number) => void = () => {};
+  onTouched: () => void = () => {};
+
+  writeValue(value: number): void {
+    this.value = value;
+  }
+
+  registerOnChange(fn: (value: number) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.isDisabled = isDisabled;
+  }
+
+  selectRating(star: number): void {
+    if (!this.isDisabled) {
+      this.value = star;
+      this.onChange(star);
+    }
+  }
+}
+```
+
+**Test with signal forms:**
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { Component } from '@angular/core';
+import { FormField, FormRoot } from '@angular/forms/signals';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { RatingControl } from './rating-control';
+
+@Component({
+  imports: [FormRoot, FormField, RatingControl],
+  template: `
+    <form #formRoot="formRoot" [formRoot]="form">
+      <app-rating-control [formField]="'rating'" />
+    </form>
+  `,
+  standalone: true,
+})
+class TestHostComponent {
+  form = new FormGroup({
+    rating: new FormControl(0, { validators: [Validators.required, Validators.min(1)] }),
+  });
+}
+
+describe('RatingControl', () => {
+  let fixture: ComponentFixture<TestHostComponent>;
+  let el: HTMLElement;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(TestHostComponent);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should render stars via writeValue', () => {
+    fixture.componentInstance.form.controls.rating.setValue(3);
+    TestBed.flushEffects();
+    const filledStars = el.querySelectorAll('.rating .filled');
+    expect(filledStars.length).toBe(3);
+  });
+
+  it('should call onChange when a star is clicked', () => {
+    const buttons = el.querySelectorAll<HTMLButtonElement>('.rating button');
+    buttons[4].click(); // select 5th star
+    TestBed.flushEffects();
+    expect(fixture.componentInstance.form.controls.rating.value()).toBe(5);
+  });
+
+  it('should not select when disabled', () => {
+    fixture.componentInstance.form.controls.rating.disable();
+    TestBed.flushEffects();
+    const buttons = el.querySelectorAll<HTMLButtonElement>('.rating button');
+    buttons[2].click();
+    TestBed.flushEffects();
+    expect(fixture.componentInstance.form.controls.rating.value()).toBe(0);
+  });
+
+  it('should fail validation when value is 0', () => {
+    TestBed.flushEffects();
+    expect(fixture.componentInstance.form.controls.rating.hasError('required')).toBe(true);
+  });
+});
+```
+
+**Test with reactive forms (alternative):**
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { Component } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { RatingControl } from './rating-control';
+
+@Component({
+  imports: [ReactiveFormsModule, RatingControl],
+  template: `
+    <form [formGroup]="form">
+      <app-rating-control formControlName="rating" />
+    </form>
+  `,
+  standalone: true,
+})
+class TestHostComponent {
+  form = new FormGroup({
+    rating: new FormControl(0, { validators: [Validators.required, Validators.min(1)] }),
+  });
+}
+
+describe('RatingControl (reactive forms)', () => {
+  let fixture: ComponentFixture<TestHostComponent>;
+  let el: HTMLElement;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(TestHostComponent);
+    el = fixture.nativeElement;
+    fixture.detectChanges();
+  });
+
+  it('should write value from form to DOM', () => {
+    fixture.componentInstance.form.controls.rating.setValue(4);
+    fixture.detectChanges();
+    const filledStars = el.querySelectorAll('.rating .filled');
+    expect(filledStars.length).toBe(4);
+  });
+
+  it('should update form when star is clicked', () => {
+    el.querySelectorAll<HTMLButtonElement>('.rating button')[0].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.rating.value).toBe(1);
+  });
+});
+```
+
+### Key rules
+
+- Create a `TestHostComponent` that wraps the custom control in a real form (signal forms for Angular v21+, reactive forms for v20-).
+- Signal forms: use `FormField` + `FormRoot`, call `TestBed.flushEffects()` after mutations.
+- Reactive forms: use `ReactiveFormsModule`, call `fixture.detectChanges()` after mutations.
+- Test `writeValue` by setting the form control's value and asserting DOM output.
+- Test `onChange` by interacting with the DOM and asserting the form control's value updated.
+- Test `setDisabledState` by disabling the form control and asserting buttons are disabled.
+- Test validation by asserting `control.hasError('required')`, `control.valid`, etc.
+- Do NOT test `registerOnChange` or `registerOnTouched` directly — they are framework internals. Test their effects through form integration.
+
+### Angular docs reference: [angular.dev/guide/forms/custom-form-controls](https://angular.dev/guide/forms/custom-form-controls)
+
+---
+
 ## Route Config Files
 
 ### What to test
@@ -1631,6 +1845,7 @@ What you test instead:
 | Directive | Host component | Host component | ✓ Same |
 | Store | httpResource patterns | httpTesting.match() | ✓ Mostly same |
 | Wizard | Real service + stubs | Real service + stubs | ✓ Same |
+| Custom Form Control | TestHostComponent + signal forms | — | Illustrative only |
 
 ---
 
@@ -1685,3 +1900,4 @@ approaches are valid.
 | Directive | "Does it manipulate the DOM correctly and react to state changes?" |
 | Store | "Do mutations produce correct state and trigger correct side effects?" |
 | Wizard | "Do the form rules, computed values, and validation logic work correctly?" |
+| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?" |
