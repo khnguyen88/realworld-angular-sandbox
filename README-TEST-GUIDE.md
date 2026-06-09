@@ -1370,10 +1370,10 @@ describe('userResolver (RouterTestingHarness)', () => {
       .expectOne('/api/users/99')
       .flush('Not found', { status: 404, statusText: 'Not Found' });
 
-    // The navigation completes but the component won't render.
-    // With withNavigationErrorHandler, test the error handler instead.
-    // Here we verify the request was attempted.
-    expect(harness.router.url).toBe('/users/99');
+    // When a resolver errors, the router cancels navigation.
+    // The URL stays at the previous location (root from harness creation).
+    // Use withNavigationErrorHandler to test error handling behavior.
+    expect(harness.router.url).toBe('/');
   });
 });
 ```
@@ -1384,7 +1384,7 @@ describe('userResolver (RouterTestingHarness)', () => {
 - Combine `RouterTestingHarness` + `HttpTestingController` for end-to-end resolver testing.
 - Always call `harness.detectChanges()` after flushing HTTP to trigger change detection with new data.
 - Test both success (data resolves → component renders) and error (404, 500) paths.
-- For error handling, test `withNavigationErrorHandler` or `RedirectCommand` in the resolver.
+- When a resolver errors, navigation is cancelled and the URL does not advance. Use `withNavigationErrorHandler` for centralized error handling or `catchError` with `RedirectCommand` in the resolver to redirect gracefully.
 - Resolvers run before navigation completes — the target component won't render on failure.
 
 ### Angular docs reference: [angular.dev/guide/routing/data-resolvers](https://angular.dev/guide/routing/data-resolvers)
