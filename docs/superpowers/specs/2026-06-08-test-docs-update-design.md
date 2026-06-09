@@ -11,11 +11,11 @@ project itself.
 
 ## File Map
 
-| File | Role | Action |
-|------|------|--------|
-| `README-TEST-GUIDE.md` | Actionable "how to test" reference | Major rewrite — dual-pattern sections |
-| `README-TEST-INSIGHTS.md` | Quality evaluation & improvement roadmap | Restructure around MCP/skill cross-check |
-| `README-TESTING.md` | Factual inventory of what exists | Refine with alignment badges & cross-links |
+| File                      | Role                                     | Action                                     |
+| ------------------------- | ---------------------------------------- | ------------------------------------------ |
+| `README-TEST-GUIDE.md`    | Actionable "how to test" reference       | Major rewrite — dual-pattern sections      |
+| `README-TEST-INSIGHTS.md` | Quality evaluation & improvement roadmap | Restructure around MCP/skill cross-check   |
+| `README-TESTING.md`       | Factual inventory of what exists         | Refine with alignment badges & cross-links |
 
 ---
 
@@ -38,6 +38,7 @@ project itself.
 ### Section 1: Decision Flow
 
 Add a second branch: "Angular recommended or project pattern?"
+
 - Refer to the decision rules in each section
 - Cross-reference: use Angular recommended for new code, project pattern for
   maintaining existing code
@@ -82,6 +83,7 @@ Add references to Angular skill: `resource.md`, `linked-signal.md`.
 **This is the biggest change.** Two subsections:
 
 **Angular Recommended — Component Harnesses:**
+
 ```
 - Use TestbedHarnessEnvironment.loader(fixture) + HarnessLoader
 - Create a custom harness class for the component
@@ -90,18 +92,21 @@ Add references to Angular skill: `resource.md`, `linked-signal.md`.
 ```
 
 **Project Pattern — querySelector + NO_ERRORS_SCHEMA:**
+
 ```
 - Keep current code examples
 - fixture.componentRef.setInput() + await whenStable() + querySelector
 ```
 
 **Decision rule:**
+
 - Use harnesses for shared component libraries and components consumed by many tests
 - Use querySelector for one-off page components where harness overhead isn't justified
 - Replace "querySelector is simpler and just as correct" with "querySelector works
   but harnesses are more robust against template refactors"
 
 **NO_ERRORS_SCHEMA guidance:**
+
 - Appropriate for leaf components tested in isolation
 - Prefer real `imports` when testing component integration
 - Angular docs warn against blanket use
@@ -111,6 +116,7 @@ Add references to Angular skill: `resource.md`, `linked-signal.md`.
 Two subsections:
 
 **Angular Recommended — RouterTestingHarness + real imports:**
+
 ```
 - TestBed with provideRouter([...]) containing actual routes
 - RouterTestingHarness.create() then navigateByUrl()
@@ -119,12 +125,14 @@ Two subsections:
 ```
 
 **Project Pattern — provideRouter + NO_ERRORS_SCHEMA + querySelector:**
+
 ```
 - Keep current code examples
 - Note: this tests the page in isolation, not the integration with its child routes
 ```
 
 **Decision rule:**
+
 - Use RouterTestingHarness when you want to verify the full routing context
 - Use current pattern for quick smoke tests of page-level DOM structure
 
@@ -133,6 +141,7 @@ Two subsections:
 **Second biggest change.** Two subsections:
 
 **Angular Recommended — RouterTestingHarness:**
+
 ```
 - provideRouter([{path: 'admin', component: AdminPage, canActivate: [authGuard]}])
 - harness.navigateByUrl('/admin') — if guard blocks, expect harness.router.url to stay at /login
@@ -140,6 +149,7 @@ Two subsections:
 ```
 
 **Project Pattern — runInInjectionContext + vi.fn():**
+
 ```
 - Keep current code examples
 - CRITICAL FIX: All examples must use 3-argument signature for Angular 22:
@@ -148,6 +158,7 @@ Two subsections:
 ```
 
 **Decision rule:**
+
 - Use RouterTestingHarness for integration-style guard tests
 - Use runInInjectionContext for unit-testing guard logic in isolation
 
@@ -171,17 +182,17 @@ form validation).
 
 Expand to dual-column format:
 
-| Unit | Angular Recommended | Project Pattern | Key Difference |
-|------|-------------------|-----------------|----------------|
-| Service | HttpTestingController | HttpTestingController | ✓ Same |
-| Component | Component Harnesses | querySelector + NO_ERRORS_SCHEMA | Harness vs raw DOM |
-| Page | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA | Integration vs isolation |
-| Guard | RouterTestingHarness | runInInjectionContext + vi.fn() | Full pipeline vs unit |
-| Interceptor | withInterceptors + real HttpClient | withInterceptors + real HttpClient | ✓ Same |
-| Pipe | new Pipe() | new Pipe() | ✓ Same |
-| Directive | Host component | Host component | ✓ Same |
-| Store | httpResource patterns | httpTesting.match() | ✓ Mostly same |
-| Wizard | Real service + stubs | Real service + stubs | ✓ Same |
+| Unit        | Angular Recommended                 | Project Pattern                    | Key Difference           |
+| ----------- | ----------------------------------- | ---------------------------------- | ------------------------ |
+| Service     | HttpTestingController               | HttpTestingController              | ✓ Same                   |
+| Component   | Component Harnesses                 | querySelector + NO_ERRORS_SCHEMA   | Harness vs raw DOM       |
+| Page        | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA   | Integration vs isolation |
+| Guard       | RouterTestingHarness                | runInInjectionContext + vi.fn()    | Full pipeline vs unit    |
+| Interceptor | withInterceptors + real HttpClient  | withInterceptors + real HttpClient | ✓ Same                   |
+| Pipe        | new Pipe()                          | new Pipe()                         | ✓ Same                   |
+| Directive   | Host component                      | Host component                     | ✓ Same                   |
+| Store       | httpResource patterns               | httpTesting.match()                | ✓ Mostly same            |
+| Wizard      | Real service + stubs                | Real service + stubs               | ✓ Same                   |
 
 ---
 
@@ -199,47 +210,39 @@ Expand to dual-column format:
 
 ### Section 3: Cross-Check Table
 
-| Category | Project Pattern | Angular Recommendation | Alignment | Priority |
-|----------|----------------|----------------------|-----------|----------|
-| Services | HttpTestingController | HttpTestingController | ✓ Aligned | — |
-| Interceptors | withInterceptors + HttpClient | withInterceptors + HttpClient | ✓ Aligned | — |
-| Pipes | new Pipe() | new Pipe() | ✓ Aligned | — |
-| Directives | Host component | Host component | ✓ Aligned | — |
-| Stores | TestBed.flushEffects + httpTesting.match | httpResource testing | ✓ Mostly aligned | Low |
-| Forms | Real service + stubs | Signal forms + real service | ✓ Mostly aligned | Low |
-| Components | querySelector + NO_ERRORS_SCHEMA | Component Harnesses | ⚠ Misaligned | Medium |
-| Pages | NO_ERRORS_SCHEMA + provideRouter | RouterTestingHarness + real imports | ⚠ Misaligned | Medium |
-| Guards | runInInjectionContext (2-arg, outdated) | RouterTestingHarness (3-arg for v22) | ✗ Blocked | High |
+| Category     | Project Pattern                          | Angular Recommendation               | Alignment        | Priority |
+| ------------ | ---------------------------------------- | ------------------------------------ | ---------------- | -------- |
+| Services     | HttpTestingController                    | HttpTestingController                | ✓ Aligned        | —        |
+| Interceptors | withInterceptors + HttpClient            | withInterceptors + HttpClient        | ✓ Aligned        | —        |
+| Pipes        | new Pipe()                               | new Pipe()                           | ✓ Aligned        | —        |
+| Directives   | Host component                           | Host component                       | ✓ Aligned        | —        |
+| Stores       | TestBed.flushEffects + httpTesting.match | httpResource testing                 | ✓ Mostly aligned | Low      |
+| Forms        | Real service + stubs                     | Signal forms + real service          | ✓ Mostly aligned | Low      |
+| Components   | querySelector + NO_ERRORS_SCHEMA         | Component Harnesses                  | ⚠ Misaligned     | Medium   |
+| Pages        | NO_ERRORS_SCHEMA + provideRouter         | RouterTestingHarness + real imports  | ⚠ Misaligned     | Medium   |
+| Guards       | runInInjectionContext (2-arg, outdated)  | RouterTestingHarness (3-arg for v22) | ✗ Blocked        | High     |
 
 **Score: 7/10 categories aligned, 2 with actionable gaps, 1 blocked.**
 
 ### Section 5: Weaknesses — Two Groups
 
 **Blocking (must fix to run tests):**
+
 1. 18 guard signature errors (TS2554) — Angular 22 3rd argument
 2. Hidden fixture-drift errors (5 errors, currently masked)
 
-**Structural (design improvements):**
-3. No component harnesses — shared component tests vulnerable to template refactors
-4. No RouterTestingHarness — guards tested in isolation, not in routing context
-5. No coverage measurement — can't quantify test depth
-6. NO_ERRORS_SCHEMA on pages — tests verify structure, not integration
+**Structural (design improvements):** 3. No component harnesses — shared component tests vulnerable to template refactors 4. No RouterTestingHarness — guards tested in isolation, not in routing context 5. No coverage measurement — can't quantify test depth 6. NO_ERRORS_SCHEMA on pages — tests verify structure, not integration
 
 ### Section 6: Improvement Roadmap
 
 **Tier 1 — Unblock:**
+
 1. Fix 18 guard signature errors (add 3rd argument to all guard invocations)
 2. Fix re-surfaced fixture-drift errors
 
-**Tier 2 — Align with Angular:**
-3. Add component harnesses to high-value shared components (Button, Input, Modal)
-4. Add RouterTestingHarness examples for guard integration tests
-5. Add signal-forms testing patterns
+**Tier 2 — Align with Angular:** 3. Add component harnesses to high-value shared components (Button, Input, Modal) 4. Add RouterTestingHarness examples for guard integration tests 5. Add signal-forms testing patterns
 
-**Tier 3 — Measure & Protect:**
-6. Add @vitest/coverage-v8 with coverage thresholds
-7. Add CI job (GitHub Actions: pnpm install && pnpm test)
-8. Add 1-2 smoke e2e tests with Playwright
+**Tier 3 — Measure & Protect:** 6. Add @vitest/coverage-v8 with coverage thresholds 7. Add CI job (GitHub Actions: pnpm install && pnpm test) 8. Add 1-2 smoke e2e tests with Playwright
 
 ---
 
@@ -256,6 +259,7 @@ Expand to dual-column format:
 ### Cross-Reference Header (top of file)
 
 > **Testing Docs Index:**
+>
 > - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — This file: factual inventory of what exists
@@ -279,6 +283,7 @@ Each subsection gets a badge:
 ### Section 5: Coverage Gap Analysis
 
 Update:
+
 - "Route integration" — now partially addressed (guide documents RouterTestingHarness)
 - "Component harnesses" — now on the roadmap (guide documents pattern, insights prioritizes)
 - Add: Link to insights for prioritized improvement roadmap

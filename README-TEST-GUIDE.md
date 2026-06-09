@@ -5,6 +5,7 @@ A practical walkthrough of what to test and how to write it, based on the
 test suite and Angular's official testing documentation.
 
 > **Testing Docs Index:**
+>
 > - **README-TEST-GUIDE.md** — This file: how to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists (60 specs, categories, patterns)
@@ -64,6 +65,7 @@ Which approach?
 ```
 
 For every unit you test, **cover these states**:
+
 - **Initial state** (what does it look like before anything happens?)
 - **Success path** (when everything works)
 - **Error / empty / edge case** (when things go wrong)
@@ -162,7 +164,7 @@ describe('Auth', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();   // catches leaked requests
+    httpTesting.verify(); // catches leaked requests
   });
 
   // Initial state
@@ -176,7 +178,7 @@ describe('Auth', () => {
     const req = httpTesting.expectOne('/api/auth/login');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email: 'user@example.com', password: 'password' });
-    req.flush(mockUser);                          // respond with success
+    req.flush(mockUser); // respond with success
     expect(service.user()).toEqual(mockUser);
   });
 
@@ -468,7 +470,9 @@ export class ButtonHarness extends ComponentHarness {
 
   async isLoading(): Promise<boolean> {
     const host = await this.host();
-    return (await host.hasClass('btn--loading')) || (await host.getAttribute('aria-busy')) === 'true';
+    return (
+      (await host.hasClass('btn--loading')) || (await host.getAttribute('aria-busy')) === 'true'
+    );
   }
 
   async getAriaAttribute(name: string): Promise<string | null> {
@@ -536,12 +540,12 @@ describe('Button', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
-| Shared component library (Button, Input, Modal) | **Harnesses** — consumed by many tests, template changes cascade |
-| One-off page component | **querySelector** — harness overhead not justified for a single consumer |
-| Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))` |
-| New project or new feature | **Harnesses** — start with the modern approach |
+| Situation                                             | Use                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| Shared component library (Button, Input, Modal)       | **Harnesses** — consumed by many tests, template changes cascade         |
+| One-off page component                                | **querySelector** — harness overhead not justified for a single consumer |
+| Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))`     |
+| New project or new feature                            | **Harnesses** — start with the modern approach                           |
 
 ### NO_ERRORS_SCHEMA Guidance
 
@@ -703,8 +707,11 @@ import { Spinner } from '../../../../shared/components/spinner/spinner';
 import { SizeOptionField } from '../pizza-size-option-field/pizza-size-option-field';
 
 const mockPizza: Pizza = {
-  id: 'pizza1', name: 'Margherita', basePrice: 9.5,
-  image: 'marg.jpg', createdAt: '2024-01-01',
+  id: 'pizza1',
+  name: 'Margherita',
+  basePrice: 9.5,
+  image: 'marg.jpg',
+  createdAt: '2024-01-01',
   toppings: [{ id: 't1', label: 'Mozzarella', price: 0, sortOrder: 1 }],
 };
 
@@ -761,7 +768,9 @@ describe('PizzaOrderFormDialog', () => {
   });
 
   it('should close dialog on form submission', async () => {
-    httpTesting.expectOne('/api/options/sizes').flush([{ id: 's1', label: 'Medium', price: 1, sortOrder: 1 }]);
+    httpTesting
+      .expectOne('/api/options/sizes')
+      .flush([{ id: 's1', label: 'Medium', price: 1, sortOrder: 1 }]);
     httpTesting.expectOne('/api/options/toppings').flush([]);
     await fixture.whenStable();
     TestBed.flushEffects();
@@ -928,8 +937,12 @@ import { PizzeriaDetailPage } from '../pizzeria-details-page/pizzeria-details-pa
 import { Page } from '../../../../core/models/pagination.model';
 import { PizzeriaSummary } from '../../models/pizzeria.models';
 
-const mockPizzeria: PizzeriaSummary = { /* ... */ };
-function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> { /* ... */ }
+const mockPizzeria: PizzeriaSummary = {
+  /* ... */
+};
+function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> {
+  /* ... */
+}
 
 describe('PizzeriaListPage (RouterTestingHarness)', () => {
   let harness: RouterTestingHarness;
@@ -956,9 +969,7 @@ describe('PizzeriaListPage (RouterTestingHarness)', () => {
   });
 
   it('should render pizzerias after a successful response', async () => {
-    httpTesting
-      .expectOne((r) => r.url.includes('/api/pizzerias'))
-      .flush(makePage([mockPizzeria]));
+    httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([mockPizzeria]));
     await harness.fixture.whenStable();
     expect(harness.fixture.nativeElement.textContent).toContain('Pizza Roma');
   });
@@ -991,7 +1002,7 @@ describe('PizzeriaListPage', () => {
     fixture = TestBed.createComponent(PizzeriaListPage);
     el = fixture.nativeElement;
     httpTesting = TestBed.inject(HttpTestingController);
-    TestBed.flushEffects();      // trigger effect-driven httpResource calls
+    TestBed.flushEffects(); // trigger effect-driven httpResource calls
   });
 
   afterEach(() => {
@@ -1048,11 +1059,11 @@ describe('PizzeriaListPage', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
-| Testing page in its routing context | **RouterTestingHarness** — verifies guards, resolvers, component activation |
-| Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution |
-| New code or shared page component | **RouterTestingHarness** — starts with modern approach |
+| Situation                              | Use                                                                         |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| Testing page in its routing context    | **RouterTestingHarness** — verifies guards, resolvers, component activation |
+| Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution      |
+| New code or shared page component      | **RouterTestingHarness** — starts with modern approach                      |
 
 ### Key rules
 
@@ -1245,7 +1256,8 @@ describe('noPizzeriaGuard', () => {
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush('Not found', {
-      status: 404, statusText: 'Not Found',
+      status: 404,
+      statusText: 'Not Found',
     });
     expect(result).toBe(true);
   });
@@ -1254,12 +1266,12 @@ describe('noPizzeriaGuard', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
+| Situation                              | Use                                                              |
+| -------------------------------------- | ---------------------------------------------------------------- |
 | Testing guard integration with routing | **RouterTestingHarness** — verifies guard + redirect + component |
-| Testing guard logic in isolation | **runInInjectionContext** — faster, simpler setup |
-| Multi-step guards (checkout) | **runInInjectionContext** with `provideRouter(testRoutes)` |
-| Guard with async logic (HTTP) | Either — both patterns support async guards |
+| Testing guard logic in isolation       | **runInInjectionContext** — faster, simpler setup                |
+| Multi-step guards (checkout)           | **runInInjectionContext** with `provideRouter(testRoutes)`       |
+| Guard with async logic (HTTP)          | Either — both patterns support async guards                      |
 
 ### Key rules
 
@@ -1319,7 +1331,8 @@ const userResolver: ResolveFn<User> = (route) => {
 
 // Target component using withComponentInputBinding
 @Component({
-  template: `<h1>{{ user().name }}</h1><p>{{ user().email }}</p>`,
+  template: `<h1>{{ user().name }}</h1>
+    <p>{{ user().email }}</p>`,
   standalone: true,
 })
 class UserDetailPage {
@@ -1540,9 +1553,9 @@ describe('CheckoutWizard', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter(testRoutes),
-        CheckoutWizard,                                   // real service
-        { provide: CartStore, useValue: cartStoreStub },   // stub
-        { provide: OrderApi, useValue: orderApiStub },     // stub
+        CheckoutWizard, // real service
+        { provide: CartStore, useValue: cartStoreStub }, // stub
+        { provide: OrderApi, useValue: orderApiStub }, // stub
       ],
     });
     service = TestBed.inject(CheckoutWizard);
@@ -1577,7 +1590,9 @@ describe('CheckoutWizard', () => {
 
   describe('billing fields effect', () => {
     it('should clear billing fields when useSameAsBilling is enabled', () => {
-      service.checkoutForm.delivery.billingLocation().value.set({ city: 'Milan', country: 'Italy' });
+      service.checkoutForm.delivery
+        .billingLocation()
+        .value.set({ city: 'Milan', country: 'Italy' });
       service.checkoutForm.delivery.billingStreet().value.set('456 Oak Ave');
       TestBed.flushEffects();
 
@@ -1643,7 +1658,9 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
           [disabled]="isDisabled"
           (click)="selectRating(star)"
           (blur)="onTouched()"
-        >{{ star <= value ? '★' : '☆' }}</button>
+        >
+          {{ star <= value ? '★' : '☆' }}
+        </button>
       }
     </div>
   `,
@@ -1825,6 +1842,7 @@ describe('RatingControl (reactive forms)', () => {
 Route config files (`*.routes.ts`) contain only declarative route definitions — no runtime logic. They are **NOT tested**.
 
 What you test instead:
+
 - **Guards** that protect those routes → guard spec
 - **Components** that are loaded by those routes → component spec
 - **Route parameter reading** in components → component spec with `provideRouter`
@@ -1835,21 +1853,21 @@ What you test instead:
 
 ## Quick Reference Table
 
-| Unit | Angular Recommended | Project Pattern | Key Difference |
-|------|-------------------|-----------------|----------------|
-| Service | HttpTestingController | HttpTestingController | ✓ Same |
-| Component | Component Harnesses | querySelector + NO_ERRORS_SCHEMA | Harness vs raw DOM |
-| Dialog | DialogRef stub + DIALOG_DATA | DialogRef stub + DIALOG_DATA | ✓ Same |
-| @defer | DeferBlockBehavior.Manual + render() | — | Illustrative only |
-| Page | RouterTestingHarness + real imports | provideRouter + NO_ERRORS_SCHEMA | Integration vs isolation |
-| Guard | RouterTestingHarness | runInInjectionContext + vi.fn() | Full pipeline vs unit |
-| Data Resolver | RouterTestingHarness + HttpTestingController | - (illustrative) | - |
-| Interceptor | withInterceptors + real HttpClient | withInterceptors + real HttpClient | ✓ Same |
-| Pipe | new Pipe() | new Pipe() | ✓ Same |
-| Directive | Host component | Host component | ✓ Same |
-| Store | httpResource patterns | httpTesting.match() | ✓ Mostly same |
-| Wizard | Real service + stubs | Real service + stubs | ✓ Same |
-| Custom Form Control | TestHostComponent + signal forms | — | Illustrative only |
+| Unit                | Angular Recommended                          | Project Pattern                    | Key Difference           |
+| ------------------- | -------------------------------------------- | ---------------------------------- | ------------------------ |
+| Service             | HttpTestingController                        | HttpTestingController              | ✓ Same                   |
+| Component           | Component Harnesses                          | querySelector + NO_ERRORS_SCHEMA   | Harness vs raw DOM       |
+| Dialog              | DialogRef stub + DIALOG_DATA                 | DialogRef stub + DIALOG_DATA       | ✓ Same                   |
+| @defer              | DeferBlockBehavior.Manual + render()         | —                                  | Illustrative only        |
+| Page                | RouterTestingHarness + real imports          | provideRouter + NO_ERRORS_SCHEMA   | Integration vs isolation |
+| Guard               | RouterTestingHarness                         | runInInjectionContext + vi.fn()    | Full pipeline vs unit    |
+| Data Resolver       | RouterTestingHarness + HttpTestingController | - (illustrative)                   | -                        |
+| Interceptor         | withInterceptors + real HttpClient           | withInterceptors + real HttpClient | ✓ Same                   |
+| Pipe                | new Pipe()                                   | new Pipe()                         | ✓ Same                   |
+| Directive           | Host component                               | Host component                     | ✓ Same                   |
+| Store               | httpResource patterns                        | httpTesting.match()                | ✓ Mostly same            |
+| Wizard              | Real service + stubs                         | Real service + stubs               | ✓ Same                   |
+| Custom Form Control | TestHostComponent + signal forms             | —                                  | Illustrative only        |
 
 ---
 
@@ -1867,6 +1885,7 @@ export default testProviders;
 ```
 
 Then reference it in `angular.json`:
+
 ```json
 {
   "projects": {
@@ -1892,18 +1911,18 @@ approaches are valid.
 
 ## One-Sentence Summary Per Unit
 
-| Unit | The test should answer this question |
-|------|--------------------------------------|
-| Service | "Did it call the right endpoint with the right data and update state correctly?" |
-| Component | "Given these inputs, does it render the right DOM with the right attributes?" |
-| Dialog | "Given injected data, does it render correctly and close with the right result?" |
-| @defer | "Does each state (placeholder/loading/complete/error) render the correct content?" |
-| Page | "For each logical state (loading/empty/error/data), does it show the correct UI?" |
-| Guard | "Does it allow or redirect, and redirect exactly where?" |
-| Data Resolver | "Does it fetch data and provide it to the component, and handle errors gracefully?" |
-| Interceptor | "Did it modify (or not modify) the outgoing request as expected?" |
-| Pipe | "Given this input, does it produce this output?" |
-| Directive | "Does it manipulate the DOM correctly and react to state changes?" |
-| Store | "Do mutations produce correct state and trigger correct side effects?" |
-| Wizard | "Do the form rules, computed values, and validation logic work correctly?" |
-| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?" |
+| Unit                | The test should answer this question                                                |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| Service             | "Did it call the right endpoint with the right data and update state correctly?"    |
+| Component           | "Given these inputs, does it render the right DOM with the right attributes?"       |
+| Dialog              | "Given injected data, does it render correctly and close with the right result?"    |
+| @defer              | "Does each state (placeholder/loading/complete/error) render the correct content?"  |
+| Page                | "For each logical state (loading/empty/error/data), does it show the correct UI?"   |
+| Guard               | "Does it allow or redirect, and redirect exactly where?"                            |
+| Data Resolver       | "Does it fetch data and provide it to the component, and handle errors gracefully?" |
+| Interceptor         | "Did it modify (or not modify) the outgoing request as expected?"                   |
+| Pipe                | "Given this input, does it produce this output?"                                    |
+| Directive           | "Does it manipulate the DOM correctly and react to state changes?"                  |
+| Store               | "Do mutations produce correct state and trigger correct side effects?"              |
+| Wizard              | "Do the form rules, computed values, and validation logic work correctly?"          |
+| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?"   |

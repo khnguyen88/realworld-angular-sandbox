@@ -42,10 +42,10 @@ sync commit is the user's (or LLM agent's) responsibility.
 
 ## Sync log
 
-| Date       | Upstream SHA                                  | Notes                                                                                          |
-| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 2026-06-07 | `3322c2d498f82bb00fd0e56fd048a23288c95ce1`   | Re-sync — no new upstream commits. Build verified (same 4 CSS budget warnings).              |
-| 2026-06-05 | (this migration)                              | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history.       |
+| Date       | Upstream SHA                               | Notes                                                                                    |
+| ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 2026-06-07 | `3322c2d498f82bb00fd0e56fd048a23288c95ce1` | Re-sync — no new upstream commits. Build verified (same 4 CSS budget warnings).          |
+| 2026-06-05 | (this migration)                           | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history. |
 
 ## Historical cherry-pick workflow (preserved for context)
 

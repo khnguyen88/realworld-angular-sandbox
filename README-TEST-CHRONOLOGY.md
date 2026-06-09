@@ -7,16 +7,16 @@
 
 ## Quick Reference
 
-| Phase | Date | Time (Local) | Commit | Action | Specs |
-|-------|------|-------------|--------|--------|-------|
-| **1** | 2026-05-14 | 23:12 CEST | `a1eb73e` — init | Created 9 skeleton specs | +9 |
-| **2** | 2026-05-18 | 00:57 CEST | `43a4c77` — base URL interceptor | Added 1 interceptor spec amid implementation work | +1 |
-| **3a** | 2026-05-19 | 01:52 CEST | `cdbf77a` — remove obsolete specs | **Deleted all 10** Phase 1+2 specs | −10 |
-| **3b** | 2026-05-19 | 12:14 CEST | `70dae9c` — add unit tests | **Replaced with 54** comprehensive specs | +54 |
-| **4** | 2026-05-23 | 00:19 CEST | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component | +1 |
-| **5** | 2026-05-26 | 12:41 CEST | `b7f434b` — checkout flow enhancement | Added 6 checkout specs, deleted `checkout-deactivate` guard | +6 −1 |
-| **6** | 2026-05-27+ | — | `7d23826`, `3322c2d` — coupon features | Refactored/extended existing specs for coupon code | 0 net |
-| **7** | 2026-05-19→27 | — | 8 refactor commits | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net |
+| Phase  | Date          | Time (Local) | Commit                                   | Action                                                       | Specs |
+| ------ | ------------- | ------------ | ---------------------------------------- | ------------------------------------------------------------ | ----- |
+| **1**  | 2026-05-14    | 23:12 CEST   | `a1eb73e` — init                         | Created 9 skeleton specs                                     | +9    |
+| **2**  | 2026-05-18    | 00:57 CEST   | `43a4c77` — base URL interceptor         | Added 1 interceptor spec amid implementation work            | +1    |
+| **3a** | 2026-05-19    | 01:52 CEST   | `cdbf77a` — remove obsolete specs        | **Deleted all 10** Phase 1+2 specs                           | −10   |
+| **3b** | 2026-05-19    | 12:14 CEST   | `70dae9c` — add unit tests               | **Replaced with 54** comprehensive specs                     | +54   |
+| **4**  | 2026-05-23    | 00:19 CEST   | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component            | +1    |
+| **5**  | 2026-05-26    | 12:41 CEST   | `b7f434b` — checkout flow enhancement    | Added 6 checkout specs, deleted `checkout-deactivate` guard  | +6 −1 |
+| **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code           | 0 net |
+| **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net |
 
 **Final count:** 60 spec files with ~344 individual `it()` test blocks.
 
@@ -31,19 +31,19 @@ The project scaffolding commit included 9 test files alongside the application c
 
 ### Files Created
 
-| # | File | Test Blocks | Feature Area |
-|---|------|-------------|--------------|
-| 1 | `src/app/app.spec.ts` | 4 | App root |
-| 2 | `src/app/core/services/auth.spec.ts` | 11 | Core — Auth |
-| 3 | `src/app/core/services/photon-api.spec.ts` | 6 | Core — Geocoding |
-| 4 | `src/app/core/guards/auth/auth.guard.spec.ts` | 4 * | Both `authGuard` + `guestGuard` |
-| 5 | `src/app/core/guards/role/role.guard.spec.ts` | ~4 | Core — Role guard |
-| 6 | `src/app/core/guards/checkout-deactivate/checkout-deactivate.guard.spec.ts` | ~3 | Checkout — Deactivate guard |
-| 7 | `src/app/core/interceptors/credentials.interceptor.spec.ts` | ~3 | Core — Credentials |
-| 8 | `src/app/features/cart/cart.store.spec.ts` | ~12 | Cart — Store (no HTTP sync) |
-| 9 | `src/app/features/pizzerias/services/pizzeria-api.spec.ts` | ~4 | Pizzerias — API |
+| #   | File                                                                        | Test Blocks | Feature Area                    |
+| --- | --------------------------------------------------------------------------- | ----------- | ------------------------------- |
+| 1   | `src/app/app.spec.ts`                                                       | 4           | App root                        |
+| 2   | `src/app/core/services/auth.spec.ts`                                        | 11          | Core — Auth                     |
+| 3   | `src/app/core/services/photon-api.spec.ts`                                  | 6           | Core — Geocoding                |
+| 4   | `src/app/core/guards/auth/auth.guard.spec.ts`                               | 4 \*        | Both `authGuard` + `guestGuard` |
+| 5   | `src/app/core/guards/role/role.guard.spec.ts`                               | ~4          | Core — Role guard               |
+| 6   | `src/app/core/guards/checkout-deactivate/checkout-deactivate.guard.spec.ts` | ~3          | Checkout — Deactivate guard     |
+| 7   | `src/app/core/interceptors/credentials.interceptor.spec.ts`                 | ~3          | Core — Credentials              |
+| 8   | `src/app/features/cart/cart.store.spec.ts`                                  | ~12         | Cart — Store (no HTTP sync)     |
+| 9   | `src/app/features/pizzerias/services/pizzeria-api.spec.ts`                  | ~4          | Pizzerias — API                 |
 
-> *\* Auth guard file covered 2 guards (`authGuard` + `guestGuard`) in a single spec — a pattern retained in the replacement.*
+> _\* Auth guard file covered 2 guards (`authGuard` + `guestGuard`) in a single spec — a pattern retained in the replacement._
 >
 > Note: `app.spec.ts` was not replaced in Phase 3 and was permanently removed.
 
@@ -92,7 +92,8 @@ function setup(isAuthenticated: boolean): void {
 it('should redirect to /auth/login when not authenticated', () => {
   setup(false);
   const result = TestBed.runInInjectionContext(() =>
-    authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot));
+    authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+  );
   expect(result).toBeInstanceOf(UrlTree);
   expect((result as UrlTree).toString()).toBe('/auth/login');
 });
@@ -127,9 +128,9 @@ it('should redirect to /auth/login when not authenticated', () => {
 
 ### File Created
 
-| # | File | Test Blocks | Feature Area |
-|---|------|-------------|--------------|
-| 1 | `src/app/core/interceptors/base-url.interceptor.spec.ts` | 3 | Core — Base URL |
+| #   | File                                                     | Test Blocks | Feature Area    |
+| --- | -------------------------------------------------------- | ----------- | --------------- |
+| 1   | `src/app/core/interceptors/base-url.interceptor.spec.ts` | 3           | Core — Base URL |
 
 ### Evaluation — Why Now?
 
@@ -177,93 +178,102 @@ This is the **defining commit** of the test suite. It adds 54 spec files coverin
 ### Files Created — By Category
 
 #### Core Infrastructure (6 specs)
-| # | File | `it()` Blocks | Tests What |
-|---|------|---------------|------------|
-| 1 | `core/services/auth.spec.ts` | 11 | Login, logout, register, init, role flags |
-| 2 | `core/services/photon-api.spec.ts` | 6 | Geocoding forward/reverse search |
-| 3 | `core/guards/auth/auth.guard.spec.ts` | 4 | authGuard + guestGuard (both in one file) |
-| 4 | `core/guards/role/role.guard.spec.ts` | 4 | Role-based route protection |
-| 5 | `core/interceptors/credentials.interceptor.spec.ts` | 3 | withCredentials for API vs Photon |
-| 6 | `core/interceptors/base-url.interceptor.spec.ts` | 3 | URL prefix transformation |
+
+| #   | File                                                | `it()` Blocks | Tests What                                |
+| --- | --------------------------------------------------- | ------------- | ----------------------------------------- |
+| 1   | `core/services/auth.spec.ts`                        | 11            | Login, logout, register, init, role flags |
+| 2   | `core/services/photon-api.spec.ts`                  | 6             | Geocoding forward/reverse search          |
+| 3   | `core/guards/auth/auth.guard.spec.ts`               | 4             | authGuard + guestGuard (both in one file) |
+| 4   | `core/guards/role/role.guard.spec.ts`               | 4             | Role-based route protection               |
+| 5   | `core/interceptors/credentials.interceptor.spec.ts` | 3             | withCredentials for API vs Photon         |
+| 6   | `core/interceptors/base-url.interceptor.spec.ts`    | 3             | URL prefix transformation                 |
 
 #### Shared Components (16 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 7 | `shared/components/button/button.spec.ts` | 8 |
-| 8 | `shared/components/input/input.spec.ts` | 7 |
-| 9 | `shared/components/textarea/textarea.spec.ts` | 7 |
-| 10 | `shared/components/modal/modal.spec.ts` | 4 |
-| 11 | `shared/components/spinner/spinner.spec.ts` | 3 |
-| 12 | `shared/components/callout/callout.spec.ts` | 8 |
-| 13 | `shared/components/confirm-dialog/confirm-dialog.spec.ts` | 4 |
-| 14 | `shared/components/empty-state/empty-state.spec.ts` | 6 |
-| 15 | `shared/components/hero-banner/hero-banner.spec.ts` | 3 |
-| 16 | `shared/components/image-picker/image-picker.spec.ts` | 7 |
-| 17 | `shared/components/pagination/pagination.spec.ts` | 9 |
-| 18 | `shared/components/photon-location-field/photon-location-field.spec.ts` | 7 |
-| 19 | `shared/components/pizza-logo/pizza-logo.spec.ts` | 6 |
-| 20 | `shared/components/avatar/avatar.spec.ts` | 4 |
-| 21 | `shared/components/status-badge/status-badge.spec.ts` | 5 |
-| 22 | `shared/directives/role.directive.spec.ts` | 11 |
-| 23 | `shared/pipes/catalog-image-url.pipe.spec.ts` | 5 |
+
+| #   | File                                                                    | `it()` Blocks |
+| --- | ----------------------------------------------------------------------- | ------------- |
+| 7   | `shared/components/button/button.spec.ts`                               | 8             |
+| 8   | `shared/components/input/input.spec.ts`                                 | 7             |
+| 9   | `shared/components/textarea/textarea.spec.ts`                           | 7             |
+| 10  | `shared/components/modal/modal.spec.ts`                                 | 4             |
+| 11  | `shared/components/spinner/spinner.spec.ts`                             | 3             |
+| 12  | `shared/components/callout/callout.spec.ts`                             | 8             |
+| 13  | `shared/components/confirm-dialog/confirm-dialog.spec.ts`               | 4             |
+| 14  | `shared/components/empty-state/empty-state.spec.ts`                     | 6             |
+| 15  | `shared/components/hero-banner/hero-banner.spec.ts`                     | 3             |
+| 16  | `shared/components/image-picker/image-picker.spec.ts`                   | 7             |
+| 17  | `shared/components/pagination/pagination.spec.ts`                       | 9             |
+| 18  | `shared/components/photon-location-field/photon-location-field.spec.ts` | 7             |
+| 19  | `shared/components/pizza-logo/pizza-logo.spec.ts`                       | 6             |
+| 20  | `shared/components/avatar/avatar.spec.ts`                               | 4             |
+| 21  | `shared/components/status-badge/status-badge.spec.ts`                   | 5             |
+| 22  | `shared/directives/role.directive.spec.ts`                              | 11            |
+| 23  | `shared/pipes/catalog-image-url.pipe.spec.ts`                           | 5             |
 
 #### Feature: Auth (2 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 24 | `features/auth/pages/login-page/login-page.spec.ts` | 3 |
-| 25 | `features/auth/pages/register-page/register-page.spec.ts` | 4 |
+
+| #   | File                                                      | `it()` Blocks |
+| --- | --------------------------------------------------------- | ------------- |
+| 24  | `features/auth/pages/login-page/login-page.spec.ts`       | 3             |
+| 25  | `features/auth/pages/register-page/register-page.spec.ts` | 4             |
 
 #### Feature: Cart (2 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 26 | `features/cart/cart.store.spec.ts` | 18 |
-| 27 | `features/cart/pages/cart-page/cart-page.spec.ts` | 4 |
+
+| #   | File                                              | `it()` Blocks |
+| --- | ------------------------------------------------- | ------------- |
+| 26  | `features/cart/cart.store.spec.ts`                | 18            |
+| 27  | `features/cart/pages/cart-page/cart-page.spec.ts` | 4             |
 
 #### Feature: Checkout (2 specs — initial)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 28 | `features/checkout/guards/cart-not-empty.guard.spec.ts` | 2 |
-| 29 | `features/checkout/pages/checkout-page/checkout-page.spec.ts` | 6 |
+
+| #   | File                                                          | `it()` Blocks |
+| --- | ------------------------------------------------------------- | ------------- |
+| 28  | `features/checkout/guards/cart-not-empty.guard.spec.ts`       | 2             |
+| 29  | `features/checkout/pages/checkout-page/checkout-page.spec.ts` | 6             |
 
 #### Feature: Orders (7 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 30 | `features/orders/order-api.spec.ts` | 3 |
-| 31 | `features/orders/components/pizza-order-form-dialog/pizza-order-form-dialog.spec.ts` | 7 |
-| 32 | `features/orders/components/pizza-size-option-field/pizza-size-option-field.spec.ts` | 8 |
-| 33 | `features/orders/pages/order-list-page/order-list-page.spec.ts` | 7 |
-| 34 | `features/orders/pages/order-details-page/order-details-page.spec.ts` | 7 |
-| 35 | `features/orders/pages/admin-order-list-page/admin-order-list-page.spec.ts` | 6 |
-| 36 | `features/orders/pages/admin-order-list-page/admin-order-row/admin-order-row.spec.ts` | 9 |
+
+| #   | File                                                                                  | `it()` Blocks |
+| --- | ------------------------------------------------------------------------------------- | ------------- |
+| 30  | `features/orders/order-api.spec.ts`                                                   | 3             |
+| 31  | `features/orders/components/pizza-order-form-dialog/pizza-order-form-dialog.spec.ts`  | 7             |
+| 32  | `features/orders/components/pizza-size-option-field/pizza-size-option-field.spec.ts`  | 8             |
+| 33  | `features/orders/pages/order-list-page/order-list-page.spec.ts`                       | 7             |
+| 34  | `features/orders/pages/order-details-page/order-details-page.spec.ts`                 | 7             |
+| 35  | `features/orders/pages/admin-order-list-page/admin-order-list-page.spec.ts`           | 6             |
+| 36  | `features/orders/pages/admin-order-list-page/admin-order-row/admin-order-row.spec.ts` | 9             |
 
 #### Feature: Pizzerias (11 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 37 | `features/pizzerias/services/pizzeria-api.spec.ts` | 4 |
-| 38 | `features/pizzerias/services/pizza-api.spec.ts` | 3 |
-| 39 | `features/pizzerias/guards/no-pizzeria.guard.spec.ts` | 3 |
-| 40 | `features/pizzerias/pages/pizzeria-list-page/pizzeria-list-page.spec.ts` | 8 |
-| 41 | `features/pizzerias/pages/pizzeria-details-page/pizzeria-details-page.spec.ts` | 16 |
-| 42 | `features/pizzerias/pages/admin-pizza-list-page/admin-pizza-list-page.spec.ts` | 6 |
-| 43 | `features/pizzerias/pages/admin-pizzeria-configuration-page/admin-pizzeria-configuration-page.spec.ts` | 6 |
-| 44 | `features/pizzerias/pages/admin-pizzeria-details-page/admin-pizzeria-details-page.spec.ts` | 3 |
-| 45 | `features/pizzerias/pages/admin-pizzeria-form-page/admin-pizzeria-form-page.spec.ts` | 2 |
-| 46 | `features/pizzerias/components/admin-pizza-form-dialog/admin-pizza-form-dialog.spec.ts` | 6 |
-| 47 | `features/pizzerias/components/admin-pizza-row/admin-pizza-row.spec.ts` | 9 |
+
+| #   | File                                                                                                   | `it()` Blocks |
+| --- | ------------------------------------------------------------------------------------------------------ | ------------- |
+| 37  | `features/pizzerias/services/pizzeria-api.spec.ts`                                                     | 4             |
+| 38  | `features/pizzerias/services/pizza-api.spec.ts`                                                        | 3             |
+| 39  | `features/pizzerias/guards/no-pizzeria.guard.spec.ts`                                                  | 3             |
+| 40  | `features/pizzerias/pages/pizzeria-list-page/pizzeria-list-page.spec.ts`                               | 8             |
+| 41  | `features/pizzerias/pages/pizzeria-details-page/pizzeria-details-page.spec.ts`                         | 16            |
+| 42  | `features/pizzerias/pages/admin-pizza-list-page/admin-pizza-list-page.spec.ts`                         | 6             |
+| 43  | `features/pizzerias/pages/admin-pizzeria-configuration-page/admin-pizzeria-configuration-page.spec.ts` | 6             |
+| 44  | `features/pizzerias/pages/admin-pizzeria-details-page/admin-pizzeria-details-page.spec.ts`             | 3             |
+| 45  | `features/pizzerias/pages/admin-pizzeria-form-page/admin-pizzeria-form-page.spec.ts`                   | 2             |
+| 46  | `features/pizzerias/components/admin-pizza-form-dialog/admin-pizza-form-dialog.spec.ts`                | 6             |
+| 47  | `features/pizzerias/components/admin-pizza-row/admin-pizza-row.spec.ts`                                | 9             |
 
 #### Feature: Profile, Legal, Not-Found, Unauthorized (4 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 48 | `features/profile/pages/profile-page/profile-page.spec.ts` | 3 |
-| 49 | `features/legal/pages/terms-and-conditions-page/terms-and-conditions-page.spec.ts` | 3 |
-| 50 | `features/not-found/pages/not-found-page/not-found-page.spec.ts` | 3 |
-| 51 | `features/unauthorized/pages/unauthorized-page/unauthorized-page.spec.ts` | 4 |
+
+| #   | File                                                                               | `it()` Blocks |
+| --- | ---------------------------------------------------------------------------------- | ------------- |
+| 48  | `features/profile/pages/profile-page/profile-page.spec.ts`                         | 3             |
+| 49  | `features/legal/pages/terms-and-conditions-page/terms-and-conditions-page.spec.ts` | 3             |
+| 50  | `features/not-found/pages/not-found-page/not-found-page.spec.ts`                   | 3             |
+| 51  | `features/unauthorized/pages/unauthorized-page/unauthorized-page.spec.ts`          | 4             |
 
 #### Layout Components (2 specs)
-| # | File | `it()` Blocks |
-|---|------|---------------|
-| 52 | `core/components/footer/footer.spec.ts` | 2 |
-| 53 | `core/components/header/header.spec.ts` | 8 |
+
+| #   | File                                    | `it()` Blocks |
+| --- | --------------------------------------- | ------------- |
+| 52  | `core/components/footer/footer.spec.ts` | 2             |
+| 53  | `core/components/header/header.spec.ts` | 8             |
 
 ### Key Test Code — Phase 3 Quality Leap
 
@@ -340,9 +350,9 @@ The batch follows a clear **dependency-first ordering within the commit itself**
 
 ### File Created
 
-| # | File | `it()` Blocks | Feature Area |
-|---|------|---------------|--------------|
-| 1 | `shared/components/load-more/load-more.spec.ts` | 3 | Shared — Infinite scroll |
+| #   | File                                            | `it()` Blocks | Feature Area             |
+| --- | ----------------------------------------------- | ------------- | ------------------------ |
+| 1   | `shared/components/load-more/load-more.spec.ts` | 3             | Shared — Infinite scroll |
 
 ### Key Test Code
 
@@ -350,7 +360,8 @@ The batch follows a clear **dependency-first ordering within the commit itself**
 // Phase 4 — load-more.spec.ts
 function stubViewportNearBottom(): void {
   Object.defineProperty(document.documentElement, 'scrollHeight', {
-    value: 1000, configurable: true,
+    value: 1000,
+    configurable: true,
   });
   Object.defineProperty(window, 'scrollY', { value: 700, configurable: true });
   Object.defineProperty(window, 'innerHeight', { value: 400, configurable: true });
@@ -392,20 +403,20 @@ This single-test addition shows the developer maintaining the 1:1 spec-to-source
 
 ### Files Created
 
-| # | File | `it()` Blocks | Feature Area |
-|---|------|---------------|--------------|
-| 1 | `features/checkout/services/checkout-wizard.spec.ts` | 20 | Checkout — Multi-step wizard state machine |
-| 2 | `features/checkout/guards/checkout-step.guard.spec.ts` | 7 | Checkout — Step sequence enforcement |
-| 3 | `features/checkout/components/checkout-delivery-step/checkout-delivery-step.spec.ts` | 2 | Checkout — Delivery form |
-| 4 | `features/checkout/components/checkout-schedule-step/checkout-schedule-step.spec.ts` | 3 | Checkout — Scheduling |
-| 5 | `features/checkout/components/checkout-review-step/checkout-review-step.spec.ts` | 6→9 | Checkout — Order review |
-| 6 | `features/checkout/components/checkout-progress-stepper/checkout-progress-stepper.spec.ts` | 4 | Checkout — Step indicator |
+| #   | File                                                                                       | `it()` Blocks | Feature Area                               |
+| --- | ------------------------------------------------------------------------------------------ | ------------- | ------------------------------------------ |
+| 1   | `features/checkout/services/checkout-wizard.spec.ts`                                       | 20            | Checkout — Multi-step wizard state machine |
+| 2   | `features/checkout/guards/checkout-step.guard.spec.ts`                                     | 7             | Checkout — Step sequence enforcement       |
+| 3   | `features/checkout/components/checkout-delivery-step/checkout-delivery-step.spec.ts`       | 2             | Checkout — Delivery form                   |
+| 4   | `features/checkout/components/checkout-schedule-step/checkout-schedule-step.spec.ts`       | 3             | Checkout — Scheduling                      |
+| 5   | `features/checkout/components/checkout-review-step/checkout-review-step.spec.ts`           | 6→9           | Checkout — Order review                    |
+| 6   | `features/checkout/components/checkout-progress-stepper/checkout-progress-stepper.spec.ts` | 4             | Checkout — Step indicator                  |
 
 ### Files Deleted
 
-| # | File | Reason |
-|---|------|--------|
-| 1 | `core/guards/checkout-deactivate/checkout-deactivate.guard.spec.ts` | Replaced by `checkout-step.guard` |
+| #   | File                                                                | Reason                            |
+| --- | ------------------------------------------------------------------- | --------------------------------- |
+| 1   | `core/guards/checkout-deactivate/checkout-deactivate.guard.spec.ts` | Replaced by `checkout-step.guard` |
 
 ### Key Test Code
 
@@ -451,8 +462,7 @@ describe('validateStep', () => {
 ```ts
 // Phase 5 — checkout-step.guard.spec.ts
 it('should redirect schedule to delivery when delivery is invalid', async () => {
-  const result = TestBed.runInInjectionContext(() =>
-    checkoutStepGuard('schedule')({}, []));
+  const result = TestBed.runInInjectionContext(() => checkoutStepGuard('schedule')({}, []));
   expect(result).toBeInstanceOf(UrlTree);
   expect(router.serializeUrl(result as UrlTree)).toBe('/checkout/delivery');
 });
@@ -487,10 +497,10 @@ The 6 new specs reveal a layered design:
 
 The developer built checkout iteratively over 3 days (May 23→26). The test creation tracks the implementation exactly:
 
-| Date | What Was Built | Tests Added |
-|------|---------------|-------------|
-| May 19 (Phase 3b) | Basic checkout page + cart-not-empty guard | 2 specs |
-| May 26 (Phase 5) | Full wizard + 3 step components + step guard | 6 specs |
+| Date              | What Was Built                               | Tests Added |
+| ----------------- | -------------------------------------------- | ----------- |
+| May 19 (Phase 3b) | Basic checkout page + cart-not-empty guard   | 2 specs     |
+| May 26 (Phase 5)  | Full wizard + 3 step components + step guard | 6 specs     |
 
 This is **incremental TDD for a complex feature** — start with the shell, get the full flow working, then add comprehensive tests. The 20-test CheckoutWizard spec shows the developer understood this was the highest-risk component in the app and invested testing effort proportionally.
 
@@ -504,6 +514,7 @@ This is **incremental TDD for a complex feature** — start with the shell, get 
 ### What Changed
 
 The `checkout-review-step.spec.ts` gained coupon-specific tests:
+
 - Coupon code input field in the review step
 - Coupon application logic
 - Coupon validation
@@ -522,17 +533,17 @@ This phase extends the checkout review spec rather than creating a new one, rein
 
 Eight commits improved existing tests without adding or removing spec files:
 
-| Date | Commit | What Changed |
-|------|--------|-------------|
-| 2026-05-19 | `debb2fd` | Prettier formatting applied to all specs |
-| 2026-05-19 | `9795b46` | ESLint fixes across specs |
-| 2026-05-22 | `293373a` | Updated tests alongside pizzeria details enhancements |
-| 2026-05-23 | `ba04b9d` | Refactored guard and component tests |
-| 2026-05-23 | `26e0388` | Updated component tests for change detection + type safety |
-| 2026-05-23 | `6cdda60` | Enhanced test structure and formatting |
+| Date       | Commit    | What Changed                                                  |
+| ---------- | --------- | ------------------------------------------------------------- |
+| 2026-05-19 | `debb2fd` | Prettier formatting applied to all specs                      |
+| 2026-05-19 | `9795b46` | ESLint fixes across specs                                     |
+| 2026-05-22 | `293373a` | Updated tests alongside pizzeria details enhancements         |
+| 2026-05-23 | `ba04b9d` | Refactored guard and component tests                          |
+| 2026-05-23 | `26e0388` | Updated component tests for change detection + type safety    |
+| 2026-05-23 | `6cdda60` | Enhanced test structure and formatting                        |
 | 2026-05-25 | `0d66ee7` | Replaced mock components with actual implementations in tests |
-| 2026-05-25 | `ca63022` | Removed `standalone` flag from mock components |
-| 2026-05-26 | `70725e2` | Cleaned up imports in pizza order form dialog tests |
+| 2026-05-25 | `ca63022` | Removed `standalone` flag from mock components                |
+| 2026-05-26 | `70725e2` | Cleaned up imports in pizza order form dialog tests           |
 
 ### Evaluation
 
@@ -550,23 +561,23 @@ These refactoring commits demonstrate a **test-as-first-class-citizen** mindset:
 
 ## Feature Cross-Reference: When Each Feature Got Tests
 
-| Feature | Phase 1 (init) | Phase 3b (batch) | Phase 4 | Phase 5 | Total Specs |
-|---------|---------------|------------------|---------|---------|-------------|
-| **Core — Auth** | auth.service, auth.guard, role.guard | ✓ (replaced) | — | — | 3 |
-| **Core — HTTP** | credentials.interceptor | ✓ + base-url.interceptor (replaced) | — | — | 2 |
-| **Core — Geocoding** | photon-api.service | ✓ (replaced) | — | — | 1 |
-| **Core — Layout** | — | header, footer | — | — | 2 |
-| **Shared Components** | — | 16 components + 1 directive + 1 pipe | load-more | — | 18 |
-| **Auth Pages** | — | login, register | — | — | 2 |
-| **Cart** | cart.store | ✓ (replaced) + cart-page | — | — | 2 |
-| **Checkout** | checkout-deactivate.guard | cart-not-empty.guard, checkout-page | — | 6 specs | 8 |
-| **Orders** | — | 7 specs | — | — | 7 |
-| **Pizzerias** | pizzeria-api.service | 10 more specs (replaced pizzeria-api) | — | — | 11 |
-| **Profile** | — | profile-page | — | — | 1 |
-| **Legal** | — | terms-and-conditions | — | — | 1 |
-| **Not Found** | — | not-found-page | — | — | 1 |
-| **Unauthorized** | — | unauthorized-page | — | — | 1 |
-| **App Root** | app.spec | — | — | — | 0 (deleted) |
+| Feature               | Phase 1 (init)                       | Phase 3b (batch)                      | Phase 4   | Phase 5 | Total Specs |
+| --------------------- | ------------------------------------ | ------------------------------------- | --------- | ------- | ----------- |
+| **Core — Auth**       | auth.service, auth.guard, role.guard | ✓ (replaced)                          | —         | —       | 3           |
+| **Core — HTTP**       | credentials.interceptor              | ✓ + base-url.interceptor (replaced)   | —         | —       | 2           |
+| **Core — Geocoding**  | photon-api.service                   | ✓ (replaced)                          | —         | —       | 1           |
+| **Core — Layout**     | —                                    | header, footer                        | —         | —       | 2           |
+| **Shared Components** | —                                    | 16 components + 1 directive + 1 pipe  | load-more | —       | 18          |
+| **Auth Pages**        | —                                    | login, register                       | —         | —       | 2           |
+| **Cart**              | cart.store                           | ✓ (replaced) + cart-page              | —         | —       | 2           |
+| **Checkout**          | checkout-deactivate.guard            | cart-not-empty.guard, checkout-page   | —         | 6 specs | 8           |
+| **Orders**            | —                                    | 7 specs                               | —         | —       | 7           |
+| **Pizzerias**         | pizzeria-api.service                 | 10 more specs (replaced pizzeria-api) | —         | —       | 11          |
+| **Profile**           | —                                    | profile-page                          | —         | —       | 1           |
+| **Legal**             | —                                    | terms-and-conditions                  | —         | —       | 1           |
+| **Not Found**         | —                                    | not-found-page                        | —         | —       | 1           |
+| **Unauthorized**      | —                                    | unauthorized-page                     | —         | —       | 1           |
+| **App Root**          | app.spec                             | —                                     | —         | —       | 0 (deleted) |
 
 ---
 
@@ -592,14 +603,14 @@ Phase 1+3b   Phase 1+3b      Phase 3b        Phase 3b       Phase 3b+5
 
 The number of tests per feature correlates with business-logic complexity, not with UI surface area:
 
-| Component | Test Count | Why |
-|-----------|-----------|-----|
-| `CheckoutWizard` | 20 | Multi-step state machine with tip math, cross-field effects |
-| `CartStore` | 18 | Signal-based cart with merge/deduplicate/clear logic |
-| `PizzeriaDetailsPage` | 16 | Pagination, loading states, catalog rendering |
-| `Auth` (service) | 11 | Auth lifecycle, race conditions, role computation |
-| `Header` | 8 | Auth-aware navigation, menu toggle, role display |
-| `Button` | 8 | Variant/palette/size/loading/disabled states |
+| Component             | Test Count | Why                                                         |
+| --------------------- | ---------- | ----------------------------------------------------------- |
+| `CheckoutWizard`      | 20         | Multi-step state machine with tip math, cross-field effects |
+| `CartStore`           | 18         | Signal-based cart with merge/deduplicate/clear logic        |
+| `PizzeriaDetailsPage` | 16         | Pagination, loading states, catalog rendering               |
+| `Auth` (service)      | 11         | Auth lifecycle, race conditions, role computation           |
+| `Header`              | 8          | Auth-aware navigation, menu toggle, role display            |
+| `Button`              | 8          | Variant/palette/size/loading/disabled states                |
 
 **Why it matters:** The developer didn't write equal tests for every file — they invested proportionally in the most logic-dense components. The `CheckoutWizard` at 20 tests wasn't because it's a "big file" — it's because it contains the most decisions, calculations, and state transitions.
 
@@ -625,6 +636,7 @@ The non-checkout features were implemented and tested in one massive batch (Phas
 ### 5. Test Maintenance as Continuous Practice (Process)
 
 The 8 refactoring commits (Phase 7) show that tests weren't "write once and forget":
+
 - Formatting/linting applied to all specs immediately
 - Tests kept pace with component evolution (change detection, type safety)
 - Mock-to-real migrations tightened integration fidelity

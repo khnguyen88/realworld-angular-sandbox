@@ -13,6 +13,7 @@
 ### Task 1: Add Dialogs & Overlays Section
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md` (insert after Components section, before Page Components)
 
 Insert the following section after the Components section closing `---` (after the Angular docs reference line for Components) and before `## Page Components (Smart / Container)`:
@@ -153,8 +154,11 @@ import { PizzaOrderFormDialogData } from '../../order.models';
 import { Pizza } from '../../../pizzerias/models/pizza.models';
 
 const mockPizza: Pizza = {
-  id: 'pizza1', name: 'Margherita', basePrice: 9.5,
-  image: 'marg.jpg', createdAt: '2024-01-01',
+  id: 'pizza1',
+  name: 'Margherita',
+  basePrice: 9.5,
+  image: 'marg.jpg',
+  createdAt: '2024-01-01',
   toppings: [{ id: 't1', label: 'Mozzarella', price: 0, sortOrder: 1 }],
 };
 
@@ -232,6 +236,7 @@ describe('PizzaOrderFormDialog', () => {
 ### Task 2: Add `[Illustrative]` @defer Blocks Section
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md` (insert after Dialogs & Overlays, before Page Components)
 
 Insert the following section after the Dialogs & Overlays closing `---` and before `## Page Components (Smart / Container)`:
@@ -346,6 +351,7 @@ describe('@defer blocks', () => {
 ### Task 3: Add `[Illustrative]` Data Resolvers Section
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md` (insert after Guards section, before Directives)
 
 Insert the following section after the Guards section closing `---` and before `## Directives`:
@@ -399,7 +405,8 @@ const userResolver: ResolveFn<User> = (route) => {
 
 // Target component using withComponentInputBinding
 @Component({
-  template: `<h1>{{ user().name }}</h1><p>{{ user().email }}</p>`,
+  template: `<h1>{{ user().name }}</h1>
+    <p>{{ user().email }}</p>`,
   standalone: true,
 })
 class UserDetailPage {
@@ -479,6 +486,7 @@ describe('userResolver (RouterTestingHarness)', () => {
 ### Task 4: Add `[Illustrative]` Custom Form Controls Section
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md` (insert after Forms & Wizard Services, before Route Config Files)
 
 Insert the following section after the Forms & Wizard Services closing `---` and before `## Route Config Files`:
@@ -524,7 +532,9 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
           [disabled]="isDisabled"
           (click)="selectRating(star)"
           (blur)="onTouched()"
-        >{{ star <= value ? '★' : '☆' }}</button>
+        >
+          {{ star <= value ? '★' : '☆' }}
+        </button>
       }
     </div>
   `,
@@ -705,6 +715,7 @@ describe('RatingControl (reactive forms)', () => {
 ### Task 5: Update Quick Reference Table and Table of Contents
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md` (update TOC and Quick Reference Table)
 
 - [ ] **Step 1: Update the Table of Contents**
@@ -759,6 +770,7 @@ In the One-Sentence Summary table (at the bottom of the file), add these rows af
 ### Task 6: Cross-Reference Updates
 
 **Files:**
+
 - Modify: `README-TESTING.md` (update Dialogs badge and add Illustrative note)
 - Modify: `README-TEST-INSIGHTS.md` (add note about new GUIDE sections)
 
@@ -800,6 +812,7 @@ In the Data Sources appendix, add to the list:
 ## Self-Review
 
 **Spec coverage:**
+
 - Task 1 → Dialogs & Overlays section (spec Section 1) ✓
 - Task 2 → @defer section (spec Section 2) ✓
 - Task 3 → Data Resolvers section (spec Section 3) ✓

@@ -10,99 +10,99 @@ Source: `commit-log.txt` (generated from upstream `git log`).
 
 ## Commit Summary Table
 
-| # | SHA | Date | Message | Files |
-|---|-----|------|---------|-------|
-| 1 | a1eb73e | 2026-05-14 | init | A:169 |
-| 2 | 072a8c6 | 2026-05-14 | Update API endpoints for pizzeria management to standardize route paths | A:48 |
-| 3 | 9bade76 | 2026-05-14 | Add noPizzeriaGuard to manage access based on pizzeria existence | R:1 M:1 |
-| 4 | b69db9f | 2026-05-14 | Add admin pizzeria form page with routing and styling | R:3 M:1 |
-| 5 | 1ecf2a3 | 2026-05-15 | Enhance checkout flow and clean up code | M:8 A:1 D:1 |
-| 6 | 17565f4 | 2026-05-15 | Remove postRegisterRedirect from auth routes and register page, simplifying navigation logic for pizzeria owner registration. | M:2 |
-| 7 | 157f436 | 2026-05-15 | Remove unused import from login-page component to streamline code and improve clarity. | M:1 |
-| 8 | a6d584d | 2026-05-15 | Update README and app configuration for improved functionality | M:2 |
-| 9 | 489895d | 2026-05-15 | Update README to remove outdated checklist item | M:1 |
-| 10 | cf005d0 | 2026-05-15 | Style update for password visibility toggle on login and register pages | M:2 |
-| 11 | 8f7148f | 2026-05-15 | Enhance password visibility toggle functionality on login and register pages | M:2 |
-| 12 | 2f47ea5 | 2026-05-15 | Update README to reflect current project tasks and remove outdated items | M:1 |
-| 13 | b08df5c | 2026-05-15 | Update Angular configuration and HTML for enhanced security and clarity | M:3 |
-| 14 | 95ffec9 | 2026-05-15 | Remove Content Security Policy meta tag from index.html for simplification | M:1 |
-| 15 | c281624 | 2026-05-15 | Refactor cart management and enhance cart reconstruction logic | M:10 |
-| 16 | bde53e1 | 2026-05-17 | Update pizzeria details page to modify image source format | M:1 |
-| 17 | 08317f7 | 2026-05-17 | Remove pizza image file from public assets | D:1 |
-| 18 | 0b950b3 | 2026-05-17 | Add full-width button class to login link on cart page | M:1 |
-| 19 | dfd03e7 | 2026-05-17 | Update footer link to direct users to GitHub Sponsors for project support | M:1 |
-| 20 | 1f623fe | 2026-05-17 | Refactor pizzeria admin routes and links for consistency | M:9 |
-| 21 | fd7f4dd | 2026-05-17 | Remove Orders tab from pizzeria admin details page for streamlined navigation | M:1 |
-| 22 | 43a4c77 | 2026-05-18 | Implement base URL interceptor for API requests and update environment configurations | M:2 D:1 A:4 |
-| 23 | 6367050 | 2026-05-18 | Enhance base URL interceptor to include image requests | M:1 |
-| 24 | cd435fb | 2026-05-18 | Remove proxy configuration from Angular serve options in angular.json | M:1 |
-| 25 | 1f7eb63 | 2026-05-18 | Update Angular dependencies in pnpm-lock.yaml to latest versions | M:1 |
-| 26 | 3199805 | 2026-05-18 | Refactor base URL handling in interceptor and image URL pipe | M:2 |
-| 27 | 7ee7518 | 2026-05-18 | Add MIT License to the project | A:1 |
-| 28 | 2c4dfbf | 2026-05-18 | Refactor order status handling in order details page | M:2 |
-| 29 | bca0306 | 2026-05-18 | Enhance routing titles and page title management across the application | M:12 |
-| 30 | 31a691b | 2026-05-18 | Refactor order row event handling and feedback display | M:5 |
-| 31 | 552299f | 2026-05-18 | Refactor pizzeria API service methods | M:1 |
-| 32 | edbca41 | 2026-05-18 | Refactor pizzeria details page layout and button integration | M:3 |
-| 33 | 9622b8e | 2026-05-18 | Refactor navigation handling in authentication and checkout pages | M:4 |
-| 34 | a34ed14 | 2026-05-18 | Enhance pizzeria details page event handling with takeUntilDestroyed | M:1 |
-| 35 | 6dfdac0 | 2026-05-18 | Integrate DestroyRef and takeUntilDestroyed for improved subscription management in admin pizza list page | M:1 |
-| 36 | 7166c62 | 2026-05-18 | Update profile route to use canMatch for authentication guard | M:1 |
-| 37 | b962582 | 2026-05-18 | Refactor confirm dialog imports for cleaner code structure | M:1 |
-| 38 | 21d74dd | 2026-05-18 | Fix typo in styleUrls property in admin pizza form dialog component | M:1 |
-| 39 | 4e53703 | 2026-05-18 | Remove Badge component and integrate styles into StatusBadge for improved design consistency | D:2 R:1 M:2 |
-| 40 | 700957e | 2026-05-18 | Refactor Callout component structure for improved clarity and maintainability | M:2 |
-| 41 | 7cf6ccc | 2026-05-18 | Refactor EmptyState component to streamline message handling | M:2 |
-| 42 | bb9d261 | 2026-05-18 | Refactor image picker component to improve category handling | M:1 |
-| 43 | bfeb289 | 2026-05-18 | Refactor form components to enhance accessibility and code clarity | M:11 |
-| 44 | d94e072 | 2026-05-18 | Refactor PhotonLocationField component for improved functionality and accessibility | M:2 |
-| 45 | 4235429 | 2026-05-18 | Refactor PizzeriaDetailsPage to improve banner visibility management | M:1 |
-| 46 | 396cfd7 | 2026-05-18 | Refactor AdminPizzeriaConfigurationPage for improved delete functionality and code clarity | M:2 |
-| 47 | d90296c | 2026-05-18 | Add AdminPizzaRow component for enhanced pizza management functionality | A:3 M:3 |
-| 48 | dd7eebd | 2026-05-18 | Refactor AdminPizzaFormDialog to utilize httpResource for toppings management | M:3 |
-| 49 | db82d83 | 2026-05-19 | Enhance Pizza Order Form Dialog with loading and error states for toppings | M:7 |
-| 50 | 61bdfc7 | 2026-05-19 | Refactor Pizza API methods for consistency and clarity | M:7 |
-| 51 | cdbf77a | 2026-05-19 | Remove obsolete spec files for various components and services | D:10 |
-| 52 | 771430c | 2026-05-19 | Refactor CartStore and related components for improved naming and functionality | M:9 |
-| 53 | 76ec4cc | 2026-05-19 | Refactor CartStore to utilize httpResource for cart management | M:1 |
-| 54 | 70dae9c | 2026-05-19 | Add unit tests for core components and services | A:54 M:7 |
-| 55 | 922d723 | 2026-05-19 | Update image handling in components to use ngSrc for optimized loading | M:17 |
-| 56 | eb25082 | 2026-05-19 | Remove redundant text from terms and conditions page for clarity | M:1 |
-| 57 | 02b8d04 | 2026-05-19 | Add FAQ section to terms and conditions page for clarity | M:1 |
-| 58 | 944d810 | 2026-05-19 | Update README.md to clarify project purpose and features | M:1 |
-| 59 | 2114d67 | 2026-05-19 | Update environment configuration for development | M:1 |
-| 60 | cd764d5 | 2026-05-19 | Remove unnecessary comment from environment.development.ts | M:1 |
-| 61 | f385a09 | 2026-05-19 | Update README.md to reflect project name change and enhance clarity | M:1 |
-| 62 | 49de7ab | 2026-05-19 | Enhance README.md with contribution guidelines and project scope clarification | M:1 |
-| 63 | e2ac29a | 2026-05-19 | Update README.md to include API documentation link | M:1 |
-| 64 | debb2fd | 2026-05-19 | chore: prettify | M:150 A:4 |
-| 65 | e267022 | 2026-05-19 | chore: add husky for improved Git hooks management | M:2 |
-| 66 | 5df43a6 | 2026-05-19 | chore: remove packageManager field from package.json | M:1 |
-| 67 | 0828a53 | 2026-05-19 | chore: add pnpm workspace configuration for build permissions | A:1 |
-| 68 | 0f8aff4 | 2026-05-20 | chore: simplify test command in CI workflow | M:1 |
-| 69 | 9795b46 | 2026-05-20 | chore: linting | M:11 |
-| 70 | 293373a | 2026-05-20 | refactor: update tests and enhance pizzeria details page | M:7 |
-| 71 | ba04b9d | 2026-05-21 | test: refactor unit tests for guards and components | M:16 |
-| 72 | 26e0388 | 2026-05-21 | refactor: update component tests for change detection and type safety | M:17 |
-| 73 | 6cdda60 | 2026-05-21 | refactor: enhance test structure and formatting across components | M:13 |
-| 74 | 0d66ee7 | 2026-05-21 | refactor: replace mock components with actual implementations in tests | M:6 |
-| 75 | ca63022 | 2026-05-21 | refactor: remove standalone flag from mock components in tests | M:3 |
-| 76 | 70725e2 | 2026-05-21 | refactor: clean up imports in pizza order form dialog tests | M:1 |
-| 77 | bd72c32 | 2026-05-23 | refactor: enhance pizzeria details page with pagination and loading states | M:3 A:4 |
-| 78 | b7f434b | 2026-05-26 | refactor: enhance checkout flow with new components and guards | M:13 D:2 A:18 |
-| 79 | 77c09fc | 2026-05-26 | feat: add email availability validation to registration form | M:1 |
-| 80 | 2c91bea | 2026-05-26 | refactor: linting | M:4 |
-| 81 | 2a1e52a | 2026-06-01 | chore: specify Node.js engine versions in package.json | M:1 |
-| 82 | fdd7553 | 2026-06-01 | refactor: update checkout progress stepper to use switch statement | M:1 |
-| 83 | 81abd79 | 2026-06-03 | fix: update user profile link accessibility | M:1 |
-| 84 | 7d23826 | 2026-06-03 | feat: add coupon code functionality to checkout review step | M:13 |
-| 85 | f3f1700 | 2026-06-03 | chore: update Angular dependencies and TypeScript version | M:3 |
-| 86 | 8fa08a5 | 2026-06-05 | feat: add footer placeholder and defer loading for footer component | M:2 |
-| 87 | ecd87f8 | 2026-06-05 | feat: add debounce to coupon code validation in checkout wizard | M:1 |
-| 88 | d5a7229 | 2026-06-05 | fix: handle discount reset on coupon validation error | M:2 |
-| 89 | 059e7fc | 2026-06-05 | fix: improve error handling in login and registration forms | M:2 |
-| 90 | bba14ca | 2026-06-05 | feat: add sync icon SVG to public icons directory | A:1 |
-| 91 | 3322c2d | 2026-06-05 | feat: enhance coupon code functionality in checkout review step | M:5 |
+| #   | SHA     | Date       | Message                                                                                                                       | Files         |
+| --- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | a1eb73e | 2026-05-14 | init                                                                                                                          | A:169         |
+| 2   | 072a8c6 | 2026-05-14 | Update API endpoints for pizzeria management to standardize route paths                                                       | A:48          |
+| 3   | 9bade76 | 2026-05-14 | Add noPizzeriaGuard to manage access based on pizzeria existence                                                              | R:1 M:1       |
+| 4   | b69db9f | 2026-05-14 | Add admin pizzeria form page with routing and styling                                                                         | R:3 M:1       |
+| 5   | 1ecf2a3 | 2026-05-15 | Enhance checkout flow and clean up code                                                                                       | M:8 A:1 D:1   |
+| 6   | 17565f4 | 2026-05-15 | Remove postRegisterRedirect from auth routes and register page, simplifying navigation logic for pizzeria owner registration. | M:2           |
+| 7   | 157f436 | 2026-05-15 | Remove unused import from login-page component to streamline code and improve clarity.                                        | M:1           |
+| 8   | a6d584d | 2026-05-15 | Update README and app configuration for improved functionality                                                                | M:2           |
+| 9   | 489895d | 2026-05-15 | Update README to remove outdated checklist item                                                                               | M:1           |
+| 10  | cf005d0 | 2026-05-15 | Style update for password visibility toggle on login and register pages                                                       | M:2           |
+| 11  | 8f7148f | 2026-05-15 | Enhance password visibility toggle functionality on login and register pages                                                  | M:2           |
+| 12  | 2f47ea5 | 2026-05-15 | Update README to reflect current project tasks and remove outdated items                                                      | M:1           |
+| 13  | b08df5c | 2026-05-15 | Update Angular configuration and HTML for enhanced security and clarity                                                       | M:3           |
+| 14  | 95ffec9 | 2026-05-15 | Remove Content Security Policy meta tag from index.html for simplification                                                    | M:1           |
+| 15  | c281624 | 2026-05-15 | Refactor cart management and enhance cart reconstruction logic                                                                | M:10          |
+| 16  | bde53e1 | 2026-05-17 | Update pizzeria details page to modify image source format                                                                    | M:1           |
+| 17  | 08317f7 | 2026-05-17 | Remove pizza image file from public assets                                                                                    | D:1           |
+| 18  | 0b950b3 | 2026-05-17 | Add full-width button class to login link on cart page                                                                        | M:1           |
+| 19  | dfd03e7 | 2026-05-17 | Update footer link to direct users to GitHub Sponsors for project support                                                     | M:1           |
+| 20  | 1f623fe | 2026-05-17 | Refactor pizzeria admin routes and links for consistency                                                                      | M:9           |
+| 21  | fd7f4dd | 2026-05-17 | Remove Orders tab from pizzeria admin details page for streamlined navigation                                                 | M:1           |
+| 22  | 43a4c77 | 2026-05-18 | Implement base URL interceptor for API requests and update environment configurations                                         | M:2 D:1 A:4   |
+| 23  | 6367050 | 2026-05-18 | Enhance base URL interceptor to include image requests                                                                        | M:1           |
+| 24  | cd435fb | 2026-05-18 | Remove proxy configuration from Angular serve options in angular.json                                                         | M:1           |
+| 25  | 1f7eb63 | 2026-05-18 | Update Angular dependencies in pnpm-lock.yaml to latest versions                                                              | M:1           |
+| 26  | 3199805 | 2026-05-18 | Refactor base URL handling in interceptor and image URL pipe                                                                  | M:2           |
+| 27  | 7ee7518 | 2026-05-18 | Add MIT License to the project                                                                                                | A:1           |
+| 28  | 2c4dfbf | 2026-05-18 | Refactor order status handling in order details page                                                                          | M:2           |
+| 29  | bca0306 | 2026-05-18 | Enhance routing titles and page title management across the application                                                       | M:12          |
+| 30  | 31a691b | 2026-05-18 | Refactor order row event handling and feedback display                                                                        | M:5           |
+| 31  | 552299f | 2026-05-18 | Refactor pizzeria API service methods                                                                                         | M:1           |
+| 32  | edbca41 | 2026-05-18 | Refactor pizzeria details page layout and button integration                                                                  | M:3           |
+| 33  | 9622b8e | 2026-05-18 | Refactor navigation handling in authentication and checkout pages                                                             | M:4           |
+| 34  | a34ed14 | 2026-05-18 | Enhance pizzeria details page event handling with takeUntilDestroyed                                                          | M:1           |
+| 35  | 6dfdac0 | 2026-05-18 | Integrate DestroyRef and takeUntilDestroyed for improved subscription management in admin pizza list page                     | M:1           |
+| 36  | 7166c62 | 2026-05-18 | Update profile route to use canMatch for authentication guard                                                                 | M:1           |
+| 37  | b962582 | 2026-05-18 | Refactor confirm dialog imports for cleaner code structure                                                                    | M:1           |
+| 38  | 21d74dd | 2026-05-18 | Fix typo in styleUrls property in admin pizza form dialog component                                                           | M:1           |
+| 39  | 4e53703 | 2026-05-18 | Remove Badge component and integrate styles into StatusBadge for improved design consistency                                  | D:2 R:1 M:2   |
+| 40  | 700957e | 2026-05-18 | Refactor Callout component structure for improved clarity and maintainability                                                 | M:2           |
+| 41  | 7cf6ccc | 2026-05-18 | Refactor EmptyState component to streamline message handling                                                                  | M:2           |
+| 42  | bb9d261 | 2026-05-18 | Refactor image picker component to improve category handling                                                                  | M:1           |
+| 43  | bfeb289 | 2026-05-18 | Refactor form components to enhance accessibility and code clarity                                                            | M:11          |
+| 44  | d94e072 | 2026-05-18 | Refactor PhotonLocationField component for improved functionality and accessibility                                           | M:2           |
+| 45  | 4235429 | 2026-05-18 | Refactor PizzeriaDetailsPage to improve banner visibility management                                                          | M:1           |
+| 46  | 396cfd7 | 2026-05-18 | Refactor AdminPizzeriaConfigurationPage for improved delete functionality and code clarity                                    | M:2           |
+| 47  | d90296c | 2026-05-18 | Add AdminPizzaRow component for enhanced pizza management functionality                                                       | A:3 M:3       |
+| 48  | dd7eebd | 2026-05-18 | Refactor AdminPizzaFormDialog to utilize httpResource for toppings management                                                 | M:3           |
+| 49  | db82d83 | 2026-05-19 | Enhance Pizza Order Form Dialog with loading and error states for toppings                                                    | M:7           |
+| 50  | 61bdfc7 | 2026-05-19 | Refactor Pizza API methods for consistency and clarity                                                                        | M:7           |
+| 51  | cdbf77a | 2026-05-19 | Remove obsolete spec files for various components and services                                                                | D:10          |
+| 52  | 771430c | 2026-05-19 | Refactor CartStore and related components for improved naming and functionality                                               | M:9           |
+| 53  | 76ec4cc | 2026-05-19 | Refactor CartStore to utilize httpResource for cart management                                                                | M:1           |
+| 54  | 70dae9c | 2026-05-19 | Add unit tests for core components and services                                                                               | A:54 M:7      |
+| 55  | 922d723 | 2026-05-19 | Update image handling in components to use ngSrc for optimized loading                                                        | M:17          |
+| 56  | eb25082 | 2026-05-19 | Remove redundant text from terms and conditions page for clarity                                                              | M:1           |
+| 57  | 02b8d04 | 2026-05-19 | Add FAQ section to terms and conditions page for clarity                                                                      | M:1           |
+| 58  | 944d810 | 2026-05-19 | Update README.md to clarify project purpose and features                                                                      | M:1           |
+| 59  | 2114d67 | 2026-05-19 | Update environment configuration for development                                                                              | M:1           |
+| 60  | cd764d5 | 2026-05-19 | Remove unnecessary comment from environment.development.ts                                                                    | M:1           |
+| 61  | f385a09 | 2026-05-19 | Update README.md to reflect project name change and enhance clarity                                                           | M:1           |
+| 62  | 49de7ab | 2026-05-19 | Enhance README.md with contribution guidelines and project scope clarification                                                | M:1           |
+| 63  | e2ac29a | 2026-05-19 | Update README.md to include API documentation link                                                                            | M:1           |
+| 64  | debb2fd | 2026-05-19 | chore: prettify                                                                                                               | M:150 A:4     |
+| 65  | e267022 | 2026-05-19 | chore: add husky for improved Git hooks management                                                                            | M:2           |
+| 66  | 5df43a6 | 2026-05-19 | chore: remove packageManager field from package.json                                                                          | M:1           |
+| 67  | 0828a53 | 2026-05-19 | chore: add pnpm workspace configuration for build permissions                                                                 | A:1           |
+| 68  | 0f8aff4 | 2026-05-20 | chore: simplify test command in CI workflow                                                                                   | M:1           |
+| 69  | 9795b46 | 2026-05-20 | chore: linting                                                                                                                | M:11          |
+| 70  | 293373a | 2026-05-20 | refactor: update tests and enhance pizzeria details page                                                                      | M:7           |
+| 71  | ba04b9d | 2026-05-21 | test: refactor unit tests for guards and components                                                                           | M:16          |
+| 72  | 26e0388 | 2026-05-21 | refactor: update component tests for change detection and type safety                                                         | M:17          |
+| 73  | 6cdda60 | 2026-05-21 | refactor: enhance test structure and formatting across components                                                             | M:13          |
+| 74  | 0d66ee7 | 2026-05-21 | refactor: replace mock components with actual implementations in tests                                                        | M:6           |
+| 75  | ca63022 | 2026-05-21 | refactor: remove standalone flag from mock components in tests                                                                | M:3           |
+| 76  | 70725e2 | 2026-05-21 | refactor: clean up imports in pizza order form dialog tests                                                                   | M:1           |
+| 77  | bd72c32 | 2026-05-23 | refactor: enhance pizzeria details page with pagination and loading states                                                    | M:3 A:4       |
+| 78  | b7f434b | 2026-05-26 | refactor: enhance checkout flow with new components and guards                                                                | M:13 D:2 A:18 |
+| 79  | 77c09fc | 2026-05-26 | feat: add email availability validation to registration form                                                                  | M:1           |
+| 80  | 2c91bea | 2026-05-26 | refactor: linting                                                                                                             | M:4           |
+| 81  | 2a1e52a | 2026-06-01 | chore: specify Node.js engine versions in package.json                                                                        | M:1           |
+| 82  | fdd7553 | 2026-06-01 | refactor: update checkout progress stepper to use switch statement                                                            | M:1           |
+| 83  | 81abd79 | 2026-06-03 | fix: update user profile link accessibility                                                                                   | M:1           |
+| 84  | 7d23826 | 2026-06-03 | feat: add coupon code functionality to checkout review step                                                                   | M:13          |
+| 85  | f3f1700 | 2026-06-03 | chore: update Angular dependencies and TypeScript version                                                                     | M:3           |
+| 86  | 8fa08a5 | 2026-06-05 | feat: add footer placeholder and defer loading for footer component                                                           | M:2           |
+| 87  | ecd87f8 | 2026-06-05 | feat: add debounce to coupon code validation in checkout wizard                                                               | M:1           |
+| 88  | d5a7229 | 2026-06-05 | fix: handle discount reset on coupon validation error                                                                         | M:2           |
+| 89  | 059e7fc | 2026-06-05 | fix: improve error handling in login and registration forms                                                                   | M:2           |
+| 90  | bba14ca | 2026-06-05 | feat: add sync icon SVG to public icons directory                                                                             | A:1           |
+| 91  | 3322c2d | 2026-06-05 | feat: enhance coupon code functionality in checkout review step                                                               | M:5           |
 
 ---
 
@@ -528,31 +528,31 @@ public/icons/sync.svg
 
 ## Stats
 
-| Metric | Value |
-|--------|-------|
-| Total commits | 91 |
-| Total files added across all commits | 308 |
-| Most active day (by commit count) | 2026-05-18 (27 commits) |
-| Most files in a single commit | 169 (commit 1, a1eb73e: "init") |
-| Date range | 2026-05-14 to 2026-06-05 (23 days) |
-| Commits that created new files | 12 |
-| Commits that only modified existing files | 72 |
-| Commits that only deleted files | 1 |
-| Commits that included renames | 3 |
+| Metric                                    | Value                              |
+| ----------------------------------------- | ---------------------------------- |
+| Total commits                             | 91                                 |
+| Total files added across all commits      | 308                                |
+| Most active day (by commit count)         | 2026-05-18 (27 commits)            |
+| Most files in a single commit             | 169 (commit 1, a1eb73e: "init")    |
+| Date range                                | 2026-05-14 to 2026-06-05 (23 days) |
+| Commits that created new files            | 12                                 |
+| Commits that only modified existing files | 72                                 |
+| Commits that only deleted files           | 1                                  |
+| Commits that included renames             | 3                                  |
 
 ### Files Added Per Commit (descending)
 
-| SHA | Message | Files Added |
-|-----|---------|-------------|
-| a1eb73e | init | 169 |
-| 70dae9c | Add unit tests for core components and services | 54 |
-| 072a8c6 | Update API endpoints for pizzeria management to standardize route paths | 48 |
-| b7f434b | refactor: enhance checkout flow with new components and guards | 18 |
-| 43a4c77 | Implement base URL interceptor for API requests and update environment configurations | 4 |
-| debb2fd | chore: prettify | 4 |
-| bd72c32 | refactor: enhance pizzeria details page with pagination and loading states | 4 |
-| d90296c | Add AdminPizzaRow component for enhanced pizza management functionality | 3 |
-| 1ecf2a3 | Enhance checkout flow and clean up code | 1 |
-| 7ee7518 | Add MIT License to the project | 1 |
-| 0828a53 | chore: add pnpm workspace configuration for build permissions | 1 |
-| bba14ca | feat: add sync icon SVG to public icons directory | 1 |
+| SHA     | Message                                                                               | Files Added |
+| ------- | ------------------------------------------------------------------------------------- | ----------- |
+| a1eb73e | init                                                                                  | 169         |
+| 70dae9c | Add unit tests for core components and services                                       | 54          |
+| 072a8c6 | Update API endpoints for pizzeria management to standardize route paths               | 48          |
+| b7f434b | refactor: enhance checkout flow with new components and guards                        | 18          |
+| 43a4c77 | Implement base URL interceptor for API requests and update environment configurations | 4           |
+| debb2fd | chore: prettify                                                                       | 4           |
+| bd72c32 | refactor: enhance pizzeria details page with pagination and loading states            | 4           |
+| d90296c | Add AdminPizzaRow component for enhanced pizza management functionality               | 3           |
+| 1ecf2a3 | Enhance checkout flow and clean up code                                               | 1           |
+| 7ee7518 | Add MIT License to the project                                                        | 1           |
+| 0828a53 | chore: add pnpm workspace configuration for build permissions                         | 1           |
+| bba14ca | feat: add sync icon SVG to public icons directory                                     | 1           |

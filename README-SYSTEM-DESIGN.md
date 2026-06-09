@@ -22,20 +22,20 @@ src/app/
 
 ### 1.1 Technology Stack
 
-| Layer | Choice | Version |
-|---|---|---|
-| Framework | Angular (standalone, signals, OnPush) | 22.0.0 |
-| Language | TypeScript | 6.0.3 |
-| State management | Angular signals + `httpResource` / `rxResource` | — |
-| Forms | Angular signal-based forms (`@angular/forms/signals`) | — |
-| HTTP | `provideHttpClient(withFetch())` | — |
-| Routing | Lazy-loaded feature routes with `CanMatchFn` guards | — |
-| UI | Custom component library (no Angular Material) | — |
-| CSS | Plain CSS, per-component stylesheets | — |
-| Testing | Vitest + jsdom via `@angular/build:unit-test` | Vitest 4.1.6 |
-| Linting | ESLint with `angular-eslint` + `typescript-eslint` | ESLint 10.4.0 |
-| Package manager | pnpm | 11.3.0 |
-| Git hooks | Husky | 9.1.7 |
+| Layer            | Choice                                                | Version       |
+| ---------------- | ----------------------------------------------------- | ------------- |
+| Framework        | Angular (standalone, signals, OnPush)                 | 22.0.0        |
+| Language         | TypeScript                                            | 6.0.3         |
+| State management | Angular signals + `httpResource` / `rxResource`       | —             |
+| Forms            | Angular signal-based forms (`@angular/forms/signals`) | —             |
+| HTTP             | `provideHttpClient(withFetch())`                      | —             |
+| Routing          | Lazy-loaded feature routes with `CanMatchFn` guards   | —             |
+| UI               | Custom component library (no Angular Material)        | —             |
+| CSS              | Plain CSS, per-component stylesheets                  | —             |
+| Testing          | Vitest + jsdom via `@angular/build:unit-test`         | Vitest 4.1.6  |
+| Linting          | ESLint with `angular-eslint` + `typescript-eslint`    | ESLint 10.4.0 |
+| Package manager  | pnpm                                                  | 11.3.0        |
+| Git hooks        | Husky                                                 | 9.1.7         |
 
 ### 1.2 Routing Topology
 
@@ -63,6 +63,7 @@ All routes use **lazy loading** via `loadChildren` pointing to per-feature `*.ro
 ```
 
 Key routing decisions:
+
 - **`canMatch` over `canActivate`** — guards prevent the lazy chunk from loading at all, not just the navigation. This is more efficient for unauthorized users.
 - **`withComponentInputBinding()`** — route params and query params are bound as component `@Input()` signals, avoiding imperative `ActivatedRoute` subscription.
 - **Functional guards** — all guards are `CanMatchFn` functions (not class-based `@Injectable()` guards), tested via `TestBed.runInInjectionContext()`.
@@ -71,12 +72,12 @@ Key routing decisions:
 
 No external state library (no NgRx, Akita, Elf, etc.). The app uses three tiers of Angular primitives:
 
-| Tier | Mechanism | Example |
-|---|---|---|
-| Global state | `providedIn: 'root'` service with signals | `Auth.user` signal, `CartStore` |
-| Scoped state | Route-level provider | `CheckoutWizard` (scoped to checkout subtree) |
-| Derived state | `computed()` signals | `Auth.isAuthenticated`, `CartStore.totalPrice` |
-| Reactive HTTP | `httpResource` / `rxResource` | Cart auto-sync, coupon validation |
+| Tier          | Mechanism                                 | Example                                        |
+| ------------- | ----------------------------------------- | ---------------------------------------------- |
+| Global state  | `providedIn: 'root'` service with signals | `Auth.user` signal, `CartStore`                |
+| Scoped state  | Route-level provider                      | `CheckoutWizard` (scoped to checkout subtree)  |
+| Derived state | `computed()` signals                      | `Auth.isAuthenticated`, `CartStore.totalPrice` |
+| Reactive HTTP | `httpResource` / `rxResource`             | Cart auto-sync, coupon validation              |
 
 ### 1.4 Component Design
 
@@ -206,6 +207,7 @@ Priority order (from commit history):
 **Shared components emerge from duplication.** The 16 shared components weren't all designed upfront. Many were extracted during Phase 2 refactoring (Badge → StatusBadge consolidation, Callout restructuring, EmptyState streamlining). The developer built features with inline solutions, then extracted the reusable parts.
 
 **Architectural decisions are deferred.** Key infrastructure decisions happened in Phase 2, not Phase 1:
+
 - Base URL interceptor: Phase 2
 - `httpResource` adoption: Phase 2
 - `canMatch` migration: Phase 2

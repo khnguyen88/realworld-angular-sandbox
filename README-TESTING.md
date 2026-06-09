@@ -3,6 +3,7 @@
 This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/jsdom/jsdom) as the test runner, replacing the traditional Karma/Jasmine setup. Tests are co-located with their source files as `*.spec.ts` files.
 
 > **Testing Docs Index:**
+>
 > - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — This file: factual inventory of what exists (60 specs, categories, patterns)
@@ -26,13 +27,13 @@ This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/
 
 ## Infrastructure
 
-| Layer          | Technology                                      |
-| -------------- | ----------------------------------------------- |
-| Test runner    | [Vitest](https://vitest.dev/) v4                |
-| DOM environment| jsdom v28                                       |
-| Angular builder| `@angular/build:unit-test`                      |
-| HTTP mocking   | `@angular/common/http/testing` (HttpTestingController) |
-| TypeScript     | `tsconfig.spec.json` extends `tsconfig.json`, adds `vitest/globals` types |
+| Layer           | Technology                                                                |
+| --------------- | ------------------------------------------------------------------------- |
+| Test runner     | [Vitest](https://vitest.dev/) v4                                          |
+| DOM environment | jsdom v28                                                                 |
+| Angular builder | `@angular/build:unit-test`                                                |
+| HTTP mocking    | `@angular/common/http/testing` (HttpTestingController)                    |
+| TypeScript      | `tsconfig.spec.json` extends `tsconfig.json`, adds `vitest/globals` types |
 
 **Configuration** — the test builder is defined in `angular.json`:
 
@@ -73,34 +74,34 @@ There is no watch mode script defined in `package.json`, but `ng test --watch` w
 
 ### By Category
 
-| Category              | Count | Files |
-| --------------------- | ----- | ----- |
-| Service tests         | 6     | `auth.spec.ts`, `photon-api.spec.ts`, `order-api.spec.ts`, `pizzeria-api.spec.ts`, `pizza-api.spec.ts`, `checkout-wizard.spec.ts` |
-| Store tests           | 1     | `cart.store.spec.ts` |
-| Interceptor tests     | 2     | `credentials.interceptor.spec.ts`, `base-url.interceptor.spec.ts` |
-| Guard tests           | 5     | `auth.guard.spec.ts` (covers `authGuard` and `guestGuard`), `role.guard.spec.ts`, `cart-not-empty.guard.spec.ts`, `checkout-step.guard.spec.ts`, `no-pizzeria.guard.spec.ts` |
-| Shared component tests| 16    | `button`, `input`, `textarea`, `modal`, `spinner`, `callout`, `confirm-dialog`, `empty-state`, `hero-banner`, `image-picker`, `load-more`, `pagination`, `photon-location-field`, `pizza-logo`, `avatar`, `status-badge` |
-| Feature page tests    | 17    | `login-page`, `register-page`, `cart-page`, `checkout-page`, `order-list-page`, `order-details-page`, `admin-order-list-page`, `pizzeria-list-page`, `pizzeria-details-page`, `admin-pizza-list-page`, `admin-pizzeria-configuration-page`, `admin-pizzeria-details-page`, `admin-pizzeria-form-page`, `profile-page`, `not-found-page`, `unauthorized-page`, `terms-and-conditions-page` |
-| Feature component tests| 9     | `checkout-delivery-step`, `checkout-progress-stepper`, `checkout-review-step`, `checkout-schedule-step`, `pizza-order-form-dialog`, `pizza-size-option-field`, `admin-pizza-form-dialog`, `admin-pizza-row`, `admin-order-row` |
-| Layout component tests| 2     | `footer.spec.ts`, `header.spec.ts` |
-| Directive tests       | 1     | `role.directive.spec.ts` |
-| Pipe tests            | 1     | `catalog-image-url.pipe.spec.ts` |
+| Category                | Count | Files                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service tests           | 6     | `auth.spec.ts`, `photon-api.spec.ts`, `order-api.spec.ts`, `pizzeria-api.spec.ts`, `pizza-api.spec.ts`, `checkout-wizard.spec.ts`                                                                                                                                                                                                                                                         |
+| Store tests             | 1     | `cart.store.spec.ts`                                                                                                                                                                                                                                                                                                                                                                      |
+| Interceptor tests       | 2     | `credentials.interceptor.spec.ts`, `base-url.interceptor.spec.ts`                                                                                                                                                                                                                                                                                                                         |
+| Guard tests             | 5     | `auth.guard.spec.ts` (covers `authGuard` and `guestGuard`), `role.guard.spec.ts`, `cart-not-empty.guard.spec.ts`, `checkout-step.guard.spec.ts`, `no-pizzeria.guard.spec.ts`                                                                                                                                                                                                              |
+| Shared component tests  | 16    | `button`, `input`, `textarea`, `modal`, `spinner`, `callout`, `confirm-dialog`, `empty-state`, `hero-banner`, `image-picker`, `load-more`, `pagination`, `photon-location-field`, `pizza-logo`, `avatar`, `status-badge`                                                                                                                                                                  |
+| Feature page tests      | 17    | `login-page`, `register-page`, `cart-page`, `checkout-page`, `order-list-page`, `order-details-page`, `admin-order-list-page`, `pizzeria-list-page`, `pizzeria-details-page`, `admin-pizza-list-page`, `admin-pizzeria-configuration-page`, `admin-pizzeria-details-page`, `admin-pizzeria-form-page`, `profile-page`, `not-found-page`, `unauthorized-page`, `terms-and-conditions-page` |
+| Feature component tests | 9     | `checkout-delivery-step`, `checkout-progress-stepper`, `checkout-review-step`, `checkout-schedule-step`, `pizza-order-form-dialog`, `pizza-size-option-field`, `admin-pizza-form-dialog`, `admin-pizza-row`, `admin-order-row`                                                                                                                                                            |
+| Layout component tests  | 2     | `footer.spec.ts`, `header.spec.ts`                                                                                                                                                                                                                                                                                                                                                        |
+| Directive tests         | 1     | `role.directive.spec.ts`                                                                                                                                                                                                                                                                                                                                                                  |
+| Pipe tests              | 1     | `catalog-image-url.pipe.spec.ts`                                                                                                                                                                                                                                                                                                                                                          |
 
 ### By Feature Area
 
-| Feature           | Spec Files |
-| ----------------- | ---------- |
-| Core (services, guards, interceptors, layout) | 8 |
-| Shared (components, directives, pipes)        | 18 |
-| Auth              | 2 |
-| Cart              | 2 |
-| Checkout          | 8 |
-| Orders            | 7 |
-| Pizzerias         | 11 |
-| Profile           | 1 |
-| Legal             | 1 |
-| Not Found         | 1 |
-| Unauthorized      | 1 |
+| Feature                                       | Spec Files |
+| --------------------------------------------- | ---------- |
+| Core (services, guards, interceptors, layout) | 8          |
+| Shared (components, directives, pipes)        | 18         |
+| Auth                                          | 2          |
+| Cart                                          | 2          |
+| Checkout                                      | 8          |
+| Orders                                        | 7          |
+| Pizzerias                                     | 11         |
+| Profile                                       | 1          |
+| Legal                                         | 1          |
+| Not Found                                     | 1          |
+| Unauthorized                                  | 1          |
 
 ## Testing Patterns
 
@@ -135,12 +136,13 @@ it('should POST credentials and update user signal', () => {
   const req = httpTesting.expectOne('/api/auth/login');
   expect(req.request.method).toBe('POST');
   expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
-  req.flush(mockUser);          // respond with mock data
+  req.flush(mockUser); // respond with mock data
   expect(service.user()).toEqual(mockUser); // assert signal state
 });
 ```
 
 Key conventions:
+
 - Mock data objects (`mockUser`, `mockPizzeria`, etc.) are defined at the top of the file outside `describe` blocks
 - Error scenarios are tested by flushing with error status: `req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' })`
 - Every HTTP method is asserted: `expect(req.request.method).toBe('GET')` / `'POST'` / `'PATCH'` / `'DELETE'`
@@ -332,9 +334,7 @@ beforeEach(async () => {
 });
 
 it('should call POST /api/auth/login on form submit with valid credentials', async () => {
-  const emailInput = el.querySelector<HTMLInputElement>(
-    'input[autocomplete="email"]',
-  );
+  const emailInput = el.querySelector<HTMLInputElement>('input[autocomplete="email"]');
   const passwordInput = el.querySelector<HTMLInputElement>(
     'input[autocomplete="current-password"]',
   );
@@ -355,6 +355,7 @@ it('should call POST /api/auth/login on form submit with valid credentials', asy
 ```
 
 Key conventions:
+
 - Query DOM elements with attribute selectors (`[autocomplete="email"]`) or component selectors (`rw-input[label="Email"]`)
 - Dispatch `new Event('input')` after setting `input.value` to trigger Angular form bindings
 - Dispatch `new Event('submit')` on the form element rather than clicking a submit button
@@ -395,7 +396,18 @@ TestBed.configureTestingModule({
   ],
 }).overrideComponent(PizzaOrderFormDialog, {
   set: {
-    imports: [DecimalPipe, NgOptimizedImage, CatalogImageUrlPipe, Modal, Spinner, Button, Input, SizeOptionField, FormRoot, FormField],
+    imports: [
+      DecimalPipe,
+      NgOptimizedImage,
+      CatalogImageUrlPipe,
+      Modal,
+      Spinner,
+      Button,
+      Input,
+      SizeOptionField,
+      FormRoot,
+      FormField,
+    ],
   },
 });
 ```
@@ -403,9 +415,7 @@ TestBed.configureTestingModule({
 Form value changes in child components are set directly on the debug element's component instance:
 
 ```ts
-const sizeDe = fixture.debugElement.query(
-  (de) => de.componentInstance instanceof SizeOptionField,
-);
+const sizeDe = fixture.debugElement.query((de) => de.componentInstance instanceof SizeOptionField);
 sizeDe.componentInstance.value.set({ id: 's1', label: 'Medium', price: 1 });
 TestBed.flushEffects();
 ```
@@ -486,16 +496,16 @@ The `environment` import is used directly — the test runs against the default 
 
 The following test types are **not present** in this codebase:
 
-| Gap                      | Status              | Notes |
-| ------------------------ | ------------------- | ----- |
-| **E2E tests**            | Missing             | No Cypress, Playwright, or Selenium setup. Full user flows (browse → add to cart → checkout → track order) are not tested end-to-end. |
-| **Integration tests**    | Missing             | All HTTP calls are mocked with `HttpTestingController`. No tests hit the real API at `api.realworldangular.org`. |
-| **Visual regression**    | Missing             | No screenshot comparison tools (Percy, Chromatic, etc.). |
-| **Performance tests**    | Missing             | No Lighthouse CI, bundle size budgets for tests, or benchmark tests. |
-| **Accessibility tests**  | Missing             | No `axe-core`, `pa11y`, or Angular CDK a11y test helpers. |
-| **Route integration**    | Partial             | Guide now documents `RouterTestingHarness` pattern in `README-TEST-GUIDE.md`. Guards tested with `runInInjectionContext()` cover logic but not full integration. |
-| **Component harnesses**  | Missing             | No harness usage in 34+ component specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization. |
-| **Test coverage reports**| Not configured      | No coverage thresholds or reporting scripts defined. |
+| Gap                       | Status         | Notes                                                                                                                                                            |
+| ------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E2E tests**             | Missing        | No Cypress, Playwright, or Selenium setup. Full user flows (browse → add to cart → checkout → track order) are not tested end-to-end.                            |
+| **Integration tests**     | Missing        | All HTTP calls are mocked with `HttpTestingController`. No tests hit the real API at `api.realworldangular.org`.                                                 |
+| **Visual regression**     | Missing        | No screenshot comparison tools (Percy, Chromatic, etc.).                                                                                                         |
+| **Performance tests**     | Missing        | No Lighthouse CI, bundle size budgets for tests, or benchmark tests.                                                                                             |
+| **Accessibility tests**   | Missing        | No `axe-core`, `pa11y`, or Angular CDK a11y test helpers.                                                                                                        |
+| **Route integration**     | Partial        | Guide now documents `RouterTestingHarness` pattern in `README-TEST-GUIDE.md`. Guards tested with `runInInjectionContext()` cover logic but not full integration. |
+| **Component harnesses**   | Missing        | No harness usage in 34+ component specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization.                              |
+| **Test coverage reports** | Not configured | No coverage thresholds or reporting scripts defined.                                                                                                             |
 
 ### Recommendations
 

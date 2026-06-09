@@ -12,17 +12,18 @@
 
 ## File Map
 
-| File | Action | Expected Lines |
-|------|--------|---------------|
-| `README-TEST-GUIDE.md` | Major rewrite | ~600 → ~750 |
-| `README-TEST-INSIGHTS.md` | Restructure + new section | ~200 → ~350 |
-| `README-TESTING.md` | Refinements | ~480 → ~510 |
+| File                      | Action                    | Expected Lines |
+| ------------------------- | ------------------------- | -------------- |
+| `README-TEST-GUIDE.md`    | Major rewrite             | ~600 → ~750    |
+| `README-TEST-INSIGHTS.md` | Restructure + new section | ~200 → ~350    |
+| `README-TESTING.md`       | Refinements               | ~480 → ~510    |
 
 ---
 
 ### Task 1: Reorder GUIDE — move pipes to section 2
 
 **Files:**
+
 - Rename: `README-TEST-GUIDE.md` (read existing, rewrite entirely in subsequent tasks)
 
 - [ ] **Step 1: Read current GUIDE for baseline**
@@ -41,6 +42,7 @@ A practical walkthrough of what to test and how to write it, based on the
 test suite and Angular's official testing documentation.
 
 > **Testing Docs Index:**
+>
 > - **README-TEST-GUIDE.md** — This file: how to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists (60 specs, categories, patterns)
@@ -78,11 +80,11 @@ new tests or maintaining existing ones.
 
 ```markdown
 ## Decision Flow: What Do I Test?
-
 ```
+
 Does the file have runtime behavior (methods, logic, state mutations)?
 ├── YES → Write a .spec.ts for it. Choose the type below.
-└── NO  → Skip it. (models/*.model.ts, *.routes.ts, app.config.ts)
+└── NO → Skip it. (models/_.model.ts, _.routes.ts, app.config.ts)
 
 What kind of behavior?
 ├── HTTP calls, data fetching, business logic → Service test
@@ -97,6 +99,7 @@ What kind of behavior?
 Which approach?
 ├── Writing new tests? → Use Angular Recommended patterns (harnesses, RouterTestingHarness)
 └── Maintaining existing tests? → Use Project Patterns (querySelector, runInInjectionContext)
+
 ```
 
 For every unit you test, **cover these states**:
@@ -110,7 +113,7 @@ For every unit you test, **cover these states**:
 
 Replace the old Pipes section (currently section 8) with this content, placed immediately after Decision Flow:
 
-```markdown
+````markdown
 ## Pipes
 
 ### What to test
@@ -147,6 +150,7 @@ describe('CatalogImageUrlPipe', () => {
   });
 });
 ```
+````
 
 ### Key rules
 
@@ -157,27 +161,29 @@ describe('CatalogImageUrlPipe', () => {
 - **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ### Angular docs reference: [angular.dev/guide/testing/pipes](https://angular.dev/guide/testing/pipes)
-```
+
+````
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add README-TEST-GUIDE.md
 git commit -m "docs: reorder guide and add cross-reference header, move pipes to section 2"
-```
+````
 
 ---
 
 ### Task 2: Rewrite Services and Interceptors sections
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md`
 
 - [ ] **Step 1: Update Services section with dual-pattern structure**
 
 Replace the existing Services section:
 
-```markdown
+````markdown
 ## Services
 
 ### What to test
@@ -220,7 +226,7 @@ describe('Auth', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();   // catches leaked requests
+    httpTesting.verify(); // catches leaked requests
   });
 
   // Initial state
@@ -234,7 +240,7 @@ describe('Auth', () => {
     const req = httpTesting.expectOne('/api/auth/login');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email: 'user@example.com', password: 'password' });
-    req.flush(mockUser);                          // respond with success
+    req.flush(mockUser); // respond with success
     expect(service.user()).toEqual(mockUser);
   });
 
@@ -247,6 +253,7 @@ describe('Auth', () => {
   });
 });
 ```
+````
 
 ### Key rules
 
@@ -258,7 +265,8 @@ describe('Auth', () => {
 - **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ### Angular docs reference: [angular.dev/guide/testing/services](https://angular.dev/guide/testing/services)
-```
+
+````
 
 - [ ] **Step 2: Update Interceptors section with dual-pattern structure**
 
@@ -322,7 +330,7 @@ describe('credentialsInterceptor', () => {
     req.flush({});
   });
 });
-```
+````
 
 ### Key rules
 
@@ -331,27 +339,29 @@ describe('credentialsInterceptor', () => {
 - Test the request's **side effects** — modified headers, URL, `withCredentials`, etc.
 - Test both "should modify" and "should not modify" branches.
 - **Alignment:** ✓ No gap between Angular recommended and project pattern.
-```
+
+````
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add README-TEST-GUIDE.md
 git commit -m "docs: add dual-pattern structure to services and interceptors sections"
-```
+````
 
 ---
 
 ### Task 3: Rewrite Stores and Components sections
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md`
 
 - [ ] **Step 1: Update Stores section**
 
 Replace the existing Stores section with:
 
-```markdown
+````markdown
 ## Stores / State
 
 ### What to test
@@ -456,6 +466,7 @@ describe('CartStore', () => {
   });
 });
 ```
+````
 
 ### Key rules
 
@@ -465,7 +476,8 @@ describe('CartStore', () => {
 - Test **domain constraints** (same pizzeria, quantity merges) — these are the business rules.
 - **Alignment:** ✓ Mostly aligned. The project's `httpTesting.match()` pattern is a useful
   innovation not directly covered by Angular docs.
-```
+
+````
 
 - [ ] **Step 2: Rewrite Components section with harnesses**
 
@@ -527,7 +539,7 @@ describe('Button (with harness)', () => {
     expect(await harness.getAriaAttribute('aria-busy')).toBe('true');
   });
 });
-```
+````
 
 A custom harness for Button might look like:
 
@@ -550,7 +562,9 @@ export class ButtonHarness extends ComponentHarness {
 
   async isLoading(): Promise<boolean> {
     const host = await this.host();
-    return (await host.hasClass('btn--loading')) || (await host.getAttribute('aria-busy')) === 'true';
+    return (
+      (await host.hasClass('btn--loading')) || (await host.getAttribute('aria-busy')) === 'true'
+    );
   }
 
   async getAriaAttribute(name: string): Promise<string | null> {
@@ -618,12 +632,12 @@ describe('Button', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
-| Shared component library (Button, Input, Modal) | **Harnesses** — consumed by many tests, template changes cascade |
-| One-off page component | **querySelector** — harness overhead not justified for a single consumer |
-| Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))` |
-| New project or new feature | **Harnesses** — start with the modern approach |
+| Situation                                             | Use                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| Shared component library (Button, Input, Modal)       | **Harnesses** — consumed by many tests, template changes cascade         |
+| One-off page component                                | **querySelector** — harness overhead not justified for a single consumer |
+| Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))`     |
+| New project or new feature                            | **Harnesses** — start with the modern approach                           |
 
 ### NO_ERRORS_SCHEMA Guidance
 
@@ -641,27 +655,29 @@ describe('Button', () => {
   See `README-TEST-INSIGHTS.md` for the improvement roadmap.
 
 ### Angular docs reference: [angular.dev/guide/testing/components-basics](https://angular.dev/guide/testing/components-basics)
-```
+
+````
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add README-TEST-GUIDE.md
 git commit -m "docs: add dual-pattern components section with harnesses and rewrite stores"
-```
+````
 
 ---
 
 ### Task 4: Rewrite Page Components and Guards sections
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md`
 
 - [ ] **Step 1: Rewrite Page Components with RouterTestingHarness**
 
 Replace the Page Components section:
 
-```markdown
+````markdown
 ## Page Components (Smart / Container)
 
 ### What to test
@@ -693,8 +709,12 @@ import { PizzeriaDetailPage } from '../pizzeria-details-page/pizzeria-details-pa
 import { Page } from '../../../../core/models/pagination.model';
 import { PizzeriaSummary } from '../../models/pizzeria.models';
 
-const mockPizzeria: PizzeriaSummary = { /* ... */ };
-function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> { /* ... */ }
+const mockPizzeria: PizzeriaSummary = {
+  /* ... */
+};
+function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> {
+  /* ... */
+}
 
 describe('PizzeriaListPage (RouterTestingHarness)', () => {
   let harness: RouterTestingHarness;
@@ -721,14 +741,13 @@ describe('PizzeriaListPage (RouterTestingHarness)', () => {
   });
 
   it('should render pizzerias after a successful response', async () => {
-    httpTesting
-      .expectOne((r) => r.url.includes('/api/pizzerias'))
-      .flush(makePage([mockPizzeria]));
+    httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([mockPizzeria]));
     await harness.fixture.whenStable();
     expect(harness.fixture.nativeElement.textContent).toContain('Pizza Roma');
   });
 });
 ```
+````
 
 ### Project Pattern — provideRouter + NO_ERRORS_SCHEMA
 
@@ -756,7 +775,7 @@ describe('PizzeriaListPage', () => {
     fixture = TestBed.createComponent(PizzeriaListPage);
     el = fixture.nativeElement;
     httpTesting = TestBed.inject(HttpTestingController);
-    TestBed.flushEffects();      // trigger effect-driven httpResource calls
+    TestBed.flushEffects(); // trigger effect-driven httpResource calls
   });
 
   afterEach(() => {
@@ -813,11 +832,11 @@ describe('PizzeriaListPage', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
-| Testing page in its routing context | **RouterTestingHarness** — verifies guards, resolvers, component activation |
-| Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution |
-| New code or shared page component | **RouterTestingHarness** — starts with modern approach |
+| Situation                              | Use                                                                         |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| Testing page in its routing context    | **RouterTestingHarness** — verifies guards, resolvers, component activation |
+| Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution      |
+| New code or shared page component      | **RouterTestingHarness** — starts with modern approach                      |
 
 ### Key rules
 
@@ -834,7 +853,8 @@ describe('PizzeriaListPage', () => {
   See `README-TEST-INSIGHTS.md` for the improvement roadmap.
 
 ### Angular docs reference: [angular.dev/guide/testing/components-basics](https://angular.dev/guide/testing/components-basics)
-```
+
+````
 
 - [ ] **Step 2: Rewrite Guards section with RouterTestingHarness**
 
@@ -897,7 +917,7 @@ describe('authGuard (RouterTestingHarness)', () => {
     expect(harness.router.url).toBe('/login');
   });
 });
-```
+````
 
 ### Project Pattern — runInInjectionContext + vi.fn()
 
@@ -1014,7 +1034,8 @@ describe('noPizzeriaGuard', () => {
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush('Not found', {
-      status: 404, statusText: 'Not Found',
+      status: 404,
+      statusText: 'Not Found',
     });
     expect(result).toBe(true);
   });
@@ -1023,12 +1044,12 @@ describe('noPizzeriaGuard', () => {
 
 ### Decision Rule
 
-| Situation | Use |
-|-----------|-----|
+| Situation                              | Use                                                              |
+| -------------------------------------- | ---------------------------------------------------------------- |
 | Testing guard integration with routing | **RouterTestingHarness** — verifies guard + redirect + component |
-| Testing guard logic in isolation | **runInInjectionContext** — faster, simpler setup |
-| Multi-step guards (checkout) | **runInInjectionContext** with `provideRouter(testRoutes)` |
-| Guard with async logic (HTTP) | Either — both patterns support async guards |
+| Testing guard logic in isolation       | **runInInjectionContext** — faster, simpler setup                |
+| Multi-step guards (checkout)           | **runInInjectionContext** with `provideRouter(testRoutes)`       |
+| Guard with async logic (HTTP)          | Either — both patterns support async guards                      |
 
 ### Key rules
 
@@ -1040,27 +1061,29 @@ describe('noPizzeriaGuard', () => {
 - **Alignment:** ⚠ Project uses `runInInjectionContext` where Angular recommends `RouterTestingHarness` for integration tests. Guard specs also need the Angular 22 3-argument signature update (see `README-TEST-INSIGHTS.md`).
 
 ### Angular docs reference: [angular.dev/guide/routing/testing](https://angular.dev/guide/routing/testing)
-```
+
+````
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add README-TEST-GUIDE.md
 git commit -m "docs: rewrite page components and guards with RouterTestingHarness and Angular 22 signatures"
-```
+````
 
 ---
 
 ### Task 5: Rewrite Directives, Forms, Route Config, Quick Reference sections
 
 **Files:**
+
 - Modify: `README-TEST-GUIDE.md`
 
 - [ ] **Step 1: Rewrite Directives section (unchanged structure)**
 
 Keep existing content but add alignment badge:
 
-```markdown
+````markdown
 ## Directives
 
 ### What to test
@@ -1141,6 +1164,7 @@ describe('RoleDirective', () => {
   });
 });
 ```
+````
 
 ### Key rules
 
@@ -1152,7 +1176,8 @@ describe('RoleDirective', () => {
 - **Alignment:** ✓ No gap between Angular recommended and project pattern.
 
 ### Angular docs reference: [angular.dev/guide/testing/attribute-directives](https://angular.dev/guide/testing/attribute-directives)
-```
+
+````
 
 - [ ] **Step 2: Rewrite Forms section with signal-forms reference**
 
@@ -1260,7 +1285,7 @@ describe('CheckoutWizard', () => {
     });
   });
 });
-```
+````
 
 ### Key rules
 
@@ -1271,7 +1296,8 @@ describe('CheckoutWizard', () => {
 - Test **cross-field effects** — changing one field should clear/update another.
 - **Alignment:** ✓ Mostly aligned. The project uses signal forms internally. New code should
   reference the Angular skill's `signal-forms.md` for the latest signal-form testing patterns.
-```
+
+````
 
 - [ ] **Step 3: Rewrite Route Config (unchanged) + Quick Reference (dual-column)**
 
@@ -1315,9 +1341,10 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 const testProviders = [provideHttpClientTesting()];
 export default testProviders;
-```
+````
 
 Then reference it in `angular.json`:
+
 ```json
 {
   "projects": {
@@ -1343,31 +1370,33 @@ approaches are valid.
 
 ## One-Sentence Summary Per Unit
 
-| Unit | The test should answer this question |
-|------|--------------------------------------|
-| Service | "Did it call the right endpoint with the right data and update state correctly?" |
-| Component | "Given these inputs, does it render the right DOM with the right attributes?" |
-| Page | "For each logical state (loading/empty/error/data), does it show the correct UI?" |
-| Guard | "Does it allow or redirect, and redirect exactly where?" |
-| Interceptor | "Did it modify (or not modify) the outgoing request as expected?" |
-| Pipe | "Given this input, does it produce this output?" |
-| Directive | "Does it manipulate the DOM correctly and react to state changes?" |
-| Store | "Do mutations produce correct state and trigger correct side effects?" |
-| Wizard | "Do the form rules, computed values, and validation logic work correctly?" |
-```
+| Unit        | The test should answer this question                                              |
+| ----------- | --------------------------------------------------------------------------------- |
+| Service     | "Did it call the right endpoint with the right data and update state correctly?"  |
+| Component   | "Given these inputs, does it render the right DOM with the right attributes?"     |
+| Page        | "For each logical state (loading/empty/error/data), does it show the correct UI?" |
+| Guard       | "Does it allow or redirect, and redirect exactly where?"                          |
+| Interceptor | "Did it modify (or not modify) the outgoing request as expected?"                 |
+| Pipe        | "Given this input, does it produce this output?"                                  |
+| Directive   | "Does it manipulate the DOM correctly and react to state changes?"                |
+| Store       | "Do mutations produce correct state and trigger correct side effects?"            |
+| Wizard      | "Do the form rules, computed values, and validation logic work correctly?"        |
+
+````
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add README-TEST-GUIDE.md
 git commit -m "docs: finalize guide with directives, forms, and dual-column quick reference"
-```
+````
 
 ---
 
 ### Task 6: Update README-TEST-INSIGHTS.md
 
 **Files:**
+
 - Modify: `README-TEST-INSIGHTS.md`
 
 - [ ] **Step 1: Read current INSIGHTS**
@@ -1387,15 +1416,15 @@ Replace the entire file with:
 
 ## TL;DR
 
-| Question | Answer |
-| --- | --- |
-| How many test files? | **60 `*.spec.ts`** co-located with source. |
-| How much test code? | **~5,188 lines** of test code vs. **~3,743 lines** of source. |
-| Is the suite green? | **No** — `pnpm run test` fails at the TypeScript build step with **18 errors across 5 guard spec files**. |
-| Angular Skill/MCP Cross-Check | **7/10 categories aligned** with official recommendations. 2 categories have actionable gaps (components, guards), 1 category blocked (guard signatures outdated). |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, but **failing** in Angular version compatibility and alignment with modern practices. |
-| Is coverage measured? | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`. |
-| Are there other test types? | **None** — no e2e, no integration, no a11y, no visual regression. |
+| Question                                   | Answer                                                                                                                                                             |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| How many test files?                       | **60 `*.spec.ts`** co-located with source.                                                                                                                         |
+| How much test code?                        | **~5,188 lines** of test code vs. **~3,743 lines** of source.                                                                                                      |
+| Is the suite green?                        | **No** — `pnpm run test` fails at the TypeScript build step with **18 errors across 5 guard spec files**.                                                          |
+| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 2 categories have actionable gaps (components, guards), 1 category blocked (guard signatures outdated). |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, but **failing** in Angular version compatibility and alignment with modern practices.                                |
+| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                                         |
+| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                                  |
 
 ---
 
@@ -1403,7 +1432,7 @@ Replace the entire file with:
 
 The project is a **learning / reference implementation** of a RealWorld Angular SPA (Angular 22, standalone components, signals, lazy routes, SSE). It targets a deployed API at `api.realworldangular.org` and is **explicitly a playground, not a real marketplace**.
 
-That framing matters for the conclusions below: this is reference code whose purpose is partly to *demonstrate* testing patterns, so the quality of the *patterns* themselves matters as much as the percentage coverage.
+That framing matters for the conclusions below: this is reference code whose purpose is partly to _demonstrate_ testing patterns, so the quality of the _patterns_ themselves matters as much as the percentage coverage.
 
 ---
 
@@ -1411,13 +1440,13 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 `pnpm run test` (i.e. `ng test --watch=false`) currently **fails to compile**. 18 TypeScript errors, all `TS2554` ("Expected 3 arguments, but got 2"):
 
-| File | Errors | Root cause |
-| --- | --- | --- |
-| `core/guards/auth/auth.guard.spec.ts` | 4 | Angular 22.0 changed `CanActivateFn` / `CanMatchFn` to require a 3rd argument (`currentSnapshot: PartialMatchRouteSnapshot`). Guard specs call guards with only 2 args (`route`, `segments`). |
-| `core/guards/role/role.guard.spec.ts` | 4 | Same — `roleGuard([...])(route, segments)` missing `currentSnapshot`. |
-| `features/checkout/guards/cart-not-empty.guard.spec.ts` | 2 | Same — `cartNotEmptyGuard(route, segments)` missing `currentSnapshot`. |
-| `features/checkout/guards/checkout-step.guard.spec.ts` | 5 | Same — `checkoutStepGuard(step)(route, segments)` missing `currentSnapshot`. |
-| `features/pizzerias/guards/no-pizzeria.guard.spec.ts` | 3 | Same — `noPizzeriaGuard(route, segments)` missing `currentSnapshot`. |
+| File                                                    | Errors | Root cause                                                                                                                                                                                    |
+| ------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/guards/auth/auth.guard.spec.ts`                   | 4      | Angular 22.0 changed `CanActivateFn` / `CanMatchFn` to require a 3rd argument (`currentSnapshot: PartialMatchRouteSnapshot`). Guard specs call guards with only 2 args (`route`, `segments`). |
+| `core/guards/role/role.guard.spec.ts`                   | 4      | Same — `roleGuard([...])(route, segments)` missing `currentSnapshot`.                                                                                                                         |
+| `features/checkout/guards/cart-not-empty.guard.spec.ts` | 2      | Same — `cartNotEmptyGuard(route, segments)` missing `currentSnapshot`.                                                                                                                        |
+| `features/checkout/guards/checkout-step.guard.spec.ts`  | 5      | Same — `checkoutStepGuard(step)(route, segments)` missing `currentSnapshot`.                                                                                                                  |
+| `features/pizzerias/guards/no-pizzeria.guard.spec.ts`   | 3      | Same — `noPizzeriaGuard(route, segments)` missing `currentSnapshot`.                                                                                                                          |
 
 **Pattern:** Angular 22.0 introduced a breaking change to the functional guard signature. The production guards compile fine (they match the new signature), but the test invocations pass only 2 arguments — the old Angular 21 signature. All 18 errors are in 5 guard spec files; no other test files are affected.
 
@@ -1434,18 +1463,18 @@ That framing matters for the conclusions below: this is reference code whose pur
 The following table compares each test category against Angular official recommendations
 (sourced from `angular-developer` skill references and `search_documentation` MCP tool).
 
-| Category | Project Pattern | Angular Recommendation | Alignment | Priority |
-|----------|----------------|----------------------|-----------|----------|
-| Services | `HttpTestingController` + `provideHttpClientTesting()` | `HttpTestingController` | ✓ Aligned | — |
-| Interceptors | `provideHttpClient(withInterceptors([...]))` + real `HttpClient` | Same | ✓ Aligned | — |
-| Pipes | `new Pipe()` no TestBed | `new Pipe()` no TestBed | ✓ Aligned | — |
-| Directives | Host component with `signal()` stub | Host component | ✓ Aligned | — |
-| Stores | `TestBed.flushEffects()` + `httpTesting.match()` | `httpResource` testing | ✓ Mostly aligned | Low |
-| Forms | Real service + plain stubs | Signal forms + real service | ✓ Mostly aligned | Low |
-| Components | `querySelector` + `NO_ERRORS_SCHEMA` | Component Harnesses | ⚠ Misaligned | Medium |
-| Pages | `provideRouter([])` + `NO_ERRORS_SCHEMA` | `RouterTestingHarness` + real imports | ⚠ Misaligned | Medium |
-| Guards | `runInInjectionContext()` with 2 args (outdated) | `RouterTestingHarness` with 3 args (Angular 22) | ✗ Blocked | High |
-| Route Config | No tests | No tests | ✓ Aligned | — |
+| Category     | Project Pattern                                                  | Angular Recommendation                          | Alignment        | Priority |
+| ------------ | ---------------------------------------------------------------- | ----------------------------------------------- | ---------------- | -------- |
+| Services     | `HttpTestingController` + `provideHttpClientTesting()`           | `HttpTestingController`                         | ✓ Aligned        | —        |
+| Interceptors | `provideHttpClient(withInterceptors([...]))` + real `HttpClient` | Same                                            | ✓ Aligned        | —        |
+| Pipes        | `new Pipe()` no TestBed                                          | `new Pipe()` no TestBed                         | ✓ Aligned        | —        |
+| Directives   | Host component with `signal()` stub                              | Host component                                  | ✓ Aligned        | —        |
+| Stores       | `TestBed.flushEffects()` + `httpTesting.match()`                 | `httpResource` testing                          | ✓ Mostly aligned | Low      |
+| Forms        | Real service + plain stubs                                       | Signal forms + real service                     | ✓ Mostly aligned | Low      |
+| Components   | `querySelector` + `NO_ERRORS_SCHEMA`                             | Component Harnesses                             | ⚠ Misaligned     | Medium   |
+| Pages        | `provideRouter([])` + `NO_ERRORS_SCHEMA`                         | `RouterTestingHarness` + real imports           | ⚠ Misaligned     | Medium   |
+| Guards       | `runInInjectionContext()` with 2 args (outdated)                 | `RouterTestingHarness` with 3 args (Angular 22) | ✗ Blocked        | High     |
+| Route Config | No tests                                                         | No tests                                        | ✓ Aligned        | —        |
 
 **Score: 7/10 categories aligned, 2 with actionable gaps, 1 blocked.**
 
@@ -1461,12 +1490,12 @@ The following table compares each test category against Angular official recomme
 
 ## 4. Unit-Test Quality — Strengths
 
-What the spec files *do* well (sampled across `cart.store.spec.ts`, `auth.spec.ts`, `auth.guard.spec.ts`, `modal.spec.ts`):
+What the spec files _do_ well (sampled across `cart.store.spec.ts`, `auth.spec.ts`, `auth.guard.spec.ts`, `modal.spec.ts`):
 
 ### 4.1 Patterns are consistent and idiomatic
 
 - **HTTP services** uniformly use `HttpTestingController` + `provideHttpClientTesting()`, with `httpTesting.verify()` in `afterEach` to catch leaked requests. This is the right pattern and it's used everywhere.
-- **Guards** are tested as functional units via `TestBed.runInInjectionContext()` with `vi.fn()`-stubbed dependencies. They assert both the truthy and `UrlTree` branches and even assert the *serialized* URL (e.g. `/auth/login`), which catches routing regressions.
+- **Guards** are tested as functional units via `TestBed.runInInjectionContext()` with `vi.fn()`-stubbed dependencies. They assert both the truthy and `UrlTree` branches and even assert the _serialized_ URL (e.g. `/auth/login`), which catches routing regressions.
 - **Stores** use `TestBed.flushEffects()` to deterministically trigger signal effects, and `httpTesting.match()` with a predicate to handle the multi-request cases that arise from reactive cart sync.
 - **Components** default to `NO_ERRORS_SCHEMA` for shallow rendering, with selective override of `imports` when a test needs the real child tree (e.g. `PizzaOrderFormDialog`).
 - **Directives** use the classic host-component pattern with a stubbed `Auth` signal, so reactivity to `signal.set()` is exercised.
@@ -1485,9 +1514,10 @@ What the spec files *do* well (sampled across `cart.store.spec.ts`, `auth.spec.t
 ### 4.4 Error paths are not forgotten
 
 Examples worth calling out:
+
 - `auth.spec.ts` flushes a 401 on `/api/auth/me` and asserts the user signal stays null.
 - `cart.store.spec.ts` asserts `httpTesting.expectNone(...)` when the cart is empty — a non-trivial "no request" assertion.
-- `credentials.interceptor.spec.ts` covers the negative case (Photon API requests should *not* receive `withCredentials`).
+- `credentials.interceptor.spec.ts` covers the negative case (Photon API requests should _not_ receive `withCredentials`).
 
 ### 4.5 Reactive primitives are well exercised
 
@@ -1521,7 +1551,7 @@ Guard and page tests don't use `RouterTestingHarness`, which Angular recommends 
 There is no `vitest.config.ts`, no coverage script in `package.json`, no `coverage/` directory, no thresholds. For a reference project, this is a real gap — readers can't see the actual numbers.
 
 **5.6 Heavy reliance on `NO_ERRORS_SCHEMA`**
-For shared / leaf components, this is fine — they really do have stub children. But for **page components** (e.g. `login-page.spec.ts`, `cart-page.spec.ts`) it means the test is verifying the page's own template renders the right *structural shape* (form, inputs, submit) but not that the child components actually integrate correctly.
+For shared / leaf components, this is fine — they really do have stub children. But for **page components** (e.g. `login-page.spec.ts`, `cart-page.spec.ts`) it means the test is verifying the page's own template renders the right _structural shape_ (form, inputs, submit) but not that the child components actually integrate correctly.
 
 **5.7 Coverage gaps beyond unit tests**
 `README-TESTING.md` already calls these out, but they bear repeating: no e2e, no integration tests against real API, no accessibility tests, no visual regression, no route-integration tests.
@@ -1530,7 +1560,7 @@ For shared / leaf components, this is fine — they really do have stub children
 `catalog-image-url.pipe.spec.ts` imports `'../../../environments/environment'` and uses `environment.apiBaseUrl`. The test runs against the default `environment.ts` (not `.development.ts`). If those two diverge, the test will silently exercise the wrong base URL.
 
 **5.9 The test count is the metric, not the coverage**
-With 60 specs at ~86 lines each on average, this *looks* thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
+With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
 
 ---
 
@@ -1551,7 +1581,7 @@ With 60 specs at ~86 lines each on average, this *looks* thorough. But without a
 
 6. **Add coverage.** Install `@vitest/coverage-v8`, add a `test:coverage` script, and generate a report. Even a single run committed to the repo as an artifact answers "how well is this tested?" with data instead of vibes.
 7. **Add a CI guard.** A minimal GitHub Actions job (or equivalent) that runs `pnpm install && pnpm run test` on every PR would have caught both the Angular 22 signature change and the original fixture drift.
-8. **Add 1–2 smoke e2e tests** with Playwright for the *browse → add-to-cart* flow. The project is integrated against a real API, so this is high-value and low-effort.
+8. **Add 1–2 smoke e2e tests** with Playwright for the _browse → add-to-cart_ flow. The project is integrated against a real API, so this is high-value and low-effort.
 9. **Consider a shared test-fixture library** in `src/app/core/testing/` so model additions don't require touching every spec.
 10. **Add a single accessibility assertion** (`axe.run()`) to one page spec to establish the pattern; expand from there.
 
@@ -1559,7 +1589,7 @@ With 60 specs at ~86 lines each on average, this *looks* thorough. But without a
 
 ## 7. One-line verdict
 
-The unit-test *discipline* here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **red from an Angular 22 guard-signature change (18 errors), has a hidden layer of fixture-drift errors underneath, has no coverage measurement, and is the only layer of testing**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 2 categories (components, pages) having actionable gaps and 1 (guards) blocked. Fix the guard specs, then the fixtures, add coverage, and the story changes from "looks committed" to "actually trustworthy."
+The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **red from an Angular 22 guard-signature change (18 errors), has a hidden layer of fixture-drift errors underneath, has no coverage measurement, and is the only layer of testing**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 2 categories (components, pages) having actionable gaps and 1 (guards) blocked. Fix the guard specs, then the fixtures, add coverage, and the story changes from "looks committed" to "actually trustworthy."
 
 ---
 
@@ -1591,6 +1621,7 @@ git commit -m "docs: restructure insights with MCP/skill cross-check and tiered 
 ### Task 7: Update README-TESTING.md
 
 **Files:**
+
 - Modify: `README-TESTING.md`
 
 - [ ] **Step 1: Add cross-reference header**
@@ -1599,6 +1630,7 @@ Insert after the title/description paragraph, before the Table of Contents:
 
 ```markdown
 > **Testing Docs Index:**
+>
 > - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — This file: factual inventory of what exists (60 specs, categories, patterns)
@@ -1610,41 +1642,49 @@ Insert after the title/description paragraph, before the Table of Contents:
 For each pattern subsection in the Testing Patterns section, add an alignment badge line after the subsection title:
 
 **Services & APIs** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned with official recommendations
 ```
 
 **Stores** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned. The `httpTesting.match()` pattern is a project innovation not directly covered by Angular docs but functionally correct.
 ```
 
 **Interceptors** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned with official recommendations
 ```
 
 **Functional Guards** — add after the title, plus Angular 22 note:
+
 ```
 > **Angular Alignment:** ⚠ Works but has a better alternative. The `runInInjectionContext()` approach tests guard logic in isolation but Angular recommends `RouterTestingHarness` for integration testing guards with their routes. Also, the current specs use the Angular 21 2-argument signature — Angular 22 requires a 3rd `currentSnapshot` argument. See `README-TEST-GUIDE.md` for both patterns.
 ```
 
 **Components** — add after the title:
+
 ```
 > **Angular Alignment:** ⚠ Works but has a better alternative. Angular recommends Component Harnesses (`TestbedHarnessEnvironment`) as the standard way to interact with components in tests. The project uses `querySelector` which is simpler but more brittle against template refactors. See `README-TEST-GUIDE.md` for both patterns.
 ```
 
 **Dialogs & Overlays** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned. The `DIALOG_DATA` + `DialogRef` pattern is the standard approach.
 ```
 
 **Directives** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned. The host component pattern is the canonical approach for testing structural directives.
 ```
 
 **Pipes** — add after the title:
+
 ```
 > **Angular Alignment:** ✓ Fully aligned. Instantiate directly with `new Pipe()` — no TestBed needed.
 ```
@@ -1654,11 +1694,13 @@ For each pattern subsection in the Testing Patterns section, add an alignment ba
 Add to the coverage gap table entries:
 
 Under "Route integration" row, change status from "Partial" to:
+
 ```
 | **Route integration**    | Partial             | Guide now documents `RouterTestingHarness` pattern in `README-TEST-GUIDE.md`. Guards tested with `runInInjectionContext()` cover logic but not full integration. |
 ```
 
 Add a new row:
+
 ```
 | **Component harnesses**  | Missing             | No harness usage in 34+ component specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization. |
 ```
@@ -1693,6 +1735,7 @@ git commit -m "docs: add alignment badges, cross-references, and update coverage
 ### Task 8: Cross-link all three documents
 
 **Files:**
+
 - Verify: `README-TEST-GUIDE.md`, `README-TEST-INSIGHTS.md`, `README-TESTING.md`
 
 - [ ] **Step 1: Verify the cross-reference header exists in all three files**

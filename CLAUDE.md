@@ -10,7 +10,7 @@ mechanically; its state is not versioned in this repo.
 
 **For all commit history of the app source**, refer to
 [https://github.com/realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular).
-The local `git log` of this repo only records the *sandbox* history
+The local `git log` of this repo only records the _sandbox_ history
 (sync commits, sandbox tooling, sandbox docs), not the app's history.
 
 For the currently-pinned upstream tip, see `SYNC-NOTES.md`. For deep

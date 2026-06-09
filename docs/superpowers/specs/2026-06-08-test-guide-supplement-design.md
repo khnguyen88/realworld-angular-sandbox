@@ -11,12 +11,12 @@ Add 4 new sections to `README-TEST-GUIDE.md` covering test patterns not currentl
 
 4 new sections inserted into the existing TOC at logical grouping points:
 
-| # | Section | Placement | Has Project Backing? | Pattern Style |
-|---|---------|-----------|----------------------|---------------|
-| 1 | Dialogs & Overlays | After Components | Yes (modal, confirm-dialog, pizza-order-form-dialog) | Dual (Recommended + Project) |
-| 2 | `[Illustrative]` @defer Blocks | After Dialogs | No | Angular Recommended only |
-| 3 | `[Illustrative]` Data Resolvers | After Guards | No | Angular Recommended only |
-| 4 | `[Illustrative]` Custom Form Controls | After Forms & Wizard Services | No | Angular Recommended only |
+| #   | Section                               | Placement                     | Has Project Backing?                                 | Pattern Style                |
+| --- | ------------------------------------- | ----------------------------- | ---------------------------------------------------- | ---------------------------- |
+| 1   | Dialogs & Overlays                    | After Components              | Yes (modal, confirm-dialog, pizza-order-form-dialog) | Dual (Recommended + Project) |
+| 2   | `[Illustrative]` @defer Blocks        | After Dialogs                 | No                                                   | Angular Recommended only     |
+| 3   | `[Illustrative]` Data Resolvers       | After Guards                  | No                                                   | Angular Recommended only     |
+| 4   | `[Illustrative]` Custom Form Controls | After Forms & Wizard Services | No                                                   | Angular Recommended only     |
 
 Each `[Illustrative]` section opens with a callout:
 
@@ -37,6 +37,7 @@ Each `[Illustrative]` section opens with a callout:
 ### Angular Recommended
 
 Use CDK testing harnesses or direct `DialogRef`/`DIALOG_DATA` injection stubbing. For custom dialogs (like realworld-angular's), the recommended approach is:
+
 - Provide a stubbed `DialogRef` with a `vi.fn()` close method
 - Provide test data via the `DIALOG_DATA` injection token
 - Assert on close calls with correct result payloads
@@ -46,6 +47,7 @@ Reference: `angular-developer` skill `testing-fundamentals.md`
 ### Project Pattern
 
 The realworld-angular `modal.spec.ts` and `confirm-dialog.spec.ts` use:
+
 - `DialogRef` stub with `vi.fn()` close
 - `DIALOG_DATA` token with test data object
 - `NO_ERRORS_SCHEMA` for dialog chrome (title, close button, content projection)
@@ -101,6 +103,7 @@ Reference: `angular-developer` skill `testing-fundamentals.md`, MCP `search_docu
 ### Angular Recommended
 
 Use `RouterTestingHarness` with `provideRouter` and a route config that includes `resolve: { key: resolverFn }`. Flush the HTTP request, then assert:
+
 - The component renders with the resolved data
 - Error states propagate correctly
 
@@ -147,12 +150,12 @@ Reference: `angular-developer` skill `signal-forms.md`, MCP `search_documentatio
 
 Add 4 rows to the existing table:
 
-| Unit | Angular Recommended | Project Pattern | Key Difference |
-|------|-------------------|-----------------|----------------|
-| Dialog | DialogRef stub + DIALOG_DATA | DialogRef stub + DIALOG_DATA + NO_ERRORS_SCHEMA | ✓ Same (project pattern is already correct) |
-| @defer | fixture.whenStable() + signal trigger | — | Illustrative only |
-| Data Resolver | RouterTestingHarness + resolve config | — | Illustrative only |
-| Custom Form Control | TestHostComponent + signal forms | — | Illustrative only |
+| Unit                | Angular Recommended                   | Project Pattern                                 | Key Difference                              |
+| ------------------- | ------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| Dialog              | DialogRef stub + DIALOG_DATA          | DialogRef stub + DIALOG_DATA + NO_ERRORS_SCHEMA | ✓ Same (project pattern is already correct) |
+| @defer              | fixture.whenStable() + signal trigger | —                                               | Illustrative only                           |
+| Data Resolver       | RouterTestingHarness + resolve config | —                                               | Illustrative only                           |
+| Custom Form Control | TestHostComponent + signal forms      | —                                               | Illustrative only                           |
 
 ---
 
