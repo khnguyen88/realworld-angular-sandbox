@@ -65,7 +65,7 @@ Open `package.json`. Look for `"vitest"` in `devDependencies` and verify `jsdom`
 
 ### 1.3 Confirm the Angular version
 
-Open `package.json` and check the `@angular/core` version. The patterns in this guide target **Angular 20+** (signals, `httpResource`, signal-based inputs/outputs are the default). For Angular 19 or earlier, some APIs differ (`inject(TestBed)` patterns, decorator-based inputs, etc.) — flag this to the user before proceeding.
+Open `package.json` and check the `@angular/core` version. The patterns in this guide target **Angular 20+** (signals, `httpResource`, signal-based inputs/outputs are the default). For Angular 19 or earlier, some APIs differ (field-initializer `inject()` patterns, decorator-based inputs, etc.) — flag this to the user before proceeding.
 
 ### 1.4 Confirm no Jasmine globals
 
