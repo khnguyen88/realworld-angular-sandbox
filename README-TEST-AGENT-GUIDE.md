@@ -451,3 +451,87 @@ describe('<DialogComponent>', () => {
 - **Forgetting `TestBed.resetTestingModule()`** — `DIALOG_DATA` is a single value per `configureTestingModule` call. Reusing a configured module for a test that needs different data silently uses the old data.
 - **Not asserting the close result** — `closeFn` should be called with the form value (or whatever the dialog returns). `expect(closeFn).toHaveBeenCalledWith(...)` is the test.
 - **Hanging on `await dialogRef.closed`** — if the test awaits the closed promise, it will hang forever because the stubbed `close` is a `vi.fn()` that doesn't return an observable. Stub the close, don't await the closed promise.
+
+### 3.6 Stores / State
+
+#### What to test
+
+- Initial state (empty items, null values, `isEmpty = true`)
+- Adding / removing items
+- Cross-entity constraints (e.g., can't add items from different parent entities)
+- Side effects (HTTP triggered by state changes)
+- Negative: no HTTP when state is empty or no-op
+
+#### Pre-flight
+
+- List every public method and what state it mutates.
+- Identify which methods trigger HTTP (directly or via `effect()`/`linkedSignal()`).
+- Identify which computed signals derive from the state.
+- Note any cross-entity constraints (e.g., "if the new item's parent ID differs, reset").
+
+#### Recipe template (httpResource-based store)
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { <StoreName> } from '<relative-path>';
+
+const <mockDataName> = <shape-of-store-data>;
+
+describe('<StoreName>', () => {
+  let store: <StoreName>;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    store = TestBed.inject(<StoreName>);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  describe('initial state', () => {
+    it('should have <state-field> in initial state', () => {
+      expect(store.<state-field>()).toEqual(<initial-value>);
+    });
+
+    it('should not make an HTTP request when empty', () => {
+      TestBed.flushEffects();
+      httpTesting.expectNone(() => true);
+    });
+  });
+
+  describe('<methodName>()', () => {
+    it('should <behavior> and <state-mutation>', () => {
+      store.<methodName>(<args>);
+      expect(store.<state-field>()).toEqual(<expected-state>);
+    });
+
+    it('should trigger an HTTP request on <condition>', () => {
+      store.<methodName>(<args>);
+      TestBed.flushEffects();
+      const reqs = httpTesting.match((r) => r.url.includes('<url-fragment>'));
+      reqs.forEach((r) => r.flush(<mockDataName>));
+    });
+  });
+});
+```
+
+#### Common variants
+
+- **Store with `httpResource` only** — `TestBed.flushEffects()` after `TestBed.inject()` to fire the initial request, then `expectOne`/`match` and `flush`.
+- **Store with `effect()`-driven HTTP** — flush after every mutation. If a mutation triggers two requests (e.g., the action + a side effect), `match()` returns both, flush each.
+- **Store with cross-entity constraint** — add an `it()` that performs the violating action and asserts the state was reset.
+- **Store with `linkedSignal` reset** — add an `it()` that changes the source signal, then asserts the linked signal reset to the new derived value.
+
+#### Pitfalls
+
+- **Forgetting `TestBed.flushEffects()`** — `httpResource` is effect-driven. Without `flushEffects()`, the test runs zero HTTP and `expectOne` fails with "no matching request."
+- **Using `expectOne` when the action triggers multiple requests** — switch to `match()` (returns array) and flush each.
+- **Asserting on `value()` of an unresolved resource** — the resource is loading; `value()` is `undefined`. Flush the request first.
+- **Not testing the "no HTTP when empty" case** — the negative assertion (`expectNone`) is one of the most useful tests for a store. Don't skip it.
