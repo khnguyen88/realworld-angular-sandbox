@@ -157,3 +157,82 @@ describe('<PipeName>', () => {
 - **Wrapping in TestBed for no reason** — pure pipes don't need it. If the recipe template doesn't show `TestBed`, don't add it.
 - **Forgetting `null`/`undefined`** — pure pipes are commonly called with nullable values from templates. Test those cases.
 - **URL encoding** — if the pipe builds a URL, the assertion should check the encoded form, not the raw form. `expect(result).toContain(encodeURIComponent('value with spaces'))`.
+
+### 3.2 Services
+
+#### What to test
+
+- Initial state (every signal is at its declared default)
+- Every public method: the URL, HTTP method, body, and post-response state
+- Both success and error paths for every HTTP call
+- `httpResource` (if used): assert `value()`, `isLoading()`, `status()`
+- `effect()`-driven HTTP (if the service uses `linkedSignal` or `effect` to trigger calls): flush with `TestBed.flushEffects()`
+
+#### Pre-flight
+
+- List every public method on the class.
+- For each method, note the HTTP verb, URL pattern, request body shape, and response shape.
+- List signals and computed signals — these are the post-call state to assert on.
+- Identify any methods that use `httpResource` or trigger HTTP via effects.
+
+#### Recipe template (HTTP service)
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { <ServiceName> } from '<relative-path-to-service>';
+
+const <mockResponseName> = <shape-of-success-response>;
+
+describe('<ServiceName>', () => {
+  let service: <ServiceName>;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    service = TestBed.inject(<ServiceName>);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify(); // catches leaked requests
+  });
+
+  it('should have <signal-name> in its initial state', () => {
+    expect(service.<signal-name>()).toBe(<initial-value>);
+  });
+
+  it('should <behavior> on success', () => {
+    service.<methodName>(<args>).subscribe();
+    const req = httpTesting.expectOne('<url-pattern>');
+    expect(req.request.method).toBe('<VERB>');
+    expect(req.request.body).toEqual(<body-shape>);
+    req.flush(<mockResponseName>);
+    expect(service.<signal-name>()).toEqual(<expected-post-state>);
+  });
+
+  it('should <behavior> on error', () => {
+    service.<methodName>(<args>).subscribe();
+    const req = httpTesting.expectOne('<url-pattern>');
+    req.flush('<error-message>', { status: <code>, statusText: '<text>' });
+    expect(service.<signal-name>()).toBe(<error-state-value>);
+  });
+});
+```
+
+#### Common variants
+
+- **httpResource-based service** — the resource fires automatically; use `TestBed.flushEffects()` to drive it, then `httpTesting.expectOne(...).flush(...)`, then assert `service.<resourceName>.value()`.
+- **Service with `effect()` calling another method** — flush twice: once to trigger the resource, once after the effect-driven call.
+- **Service with no HTTP** — drop `provideHttpClientTesting()`; `TestBed.inject(<ServiceName>)` alone is enough.
+- **Async service returning `Promise<T>`** — use `await service.method()`; `expectOne()` still works because `HttpTestingController` intercepts before the promise resolves.
+
+#### Pitfalls
+
+- **Forgetting `httpTesting.verify()`** — un-flushed requests fail the test, but a missing afterEach hook means the suite still passes while leaking requests. Always include it.
+- **Asserting only on the request, not the state** — the _interesting_ assertion is what the signal looks like after the response. Always assert both.
+- **`new <ServiceName>(...)` instead of `TestBed.inject`** — DI wiring (interceptors, multi-providers) doesn't apply to direct construction. Always inject.
+- **Wrong URL matcher** — `expectOne` matches by URL and method. If the test fails with "no matching request", check that the URL string matches exactly, including query params.
