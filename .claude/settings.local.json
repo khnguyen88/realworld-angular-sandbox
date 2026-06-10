@@ -22,7 +22,11 @@
       "PowerShell(git clone *)",
       "Bash(pnpm run *)",
       "Bash(pnpm exec *)",
-      "mcp__angular-cli__search_documentation"
+      "mcp__angular-cli__search_documentation",
+      "WebSearch",
+      "WebFetch(domain:vitest.dev)",
+      "Bash(git *)",
+      "Bash(powershell *)"
     ]
   },
   "hooks": {

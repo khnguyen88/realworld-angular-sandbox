@@ -35,6 +35,7 @@ new tests or maintaining existing ones.
 - [Interceptors](#interceptors)
 - [Stores / State](#stores--state)
 - [[Illustrative] Reactive Primitives](#illustrative-reactive-primitives)
+- [[Illustrative] httpResource (with real API hit)](#illustrative-httpresource-with-real-api-hit)
 - [Components](#components)
 - [Dialogs & Overlays](#dialogs--overlays)
 - [[Illustrative] @defer Blocks](#illustrative-defer-blocks)
@@ -400,6 +401,168 @@ describe('CartStore', () => {
 - Test **domain constraints** (same pizzeria, quantity merges) — these are the business rules.
 - **Alignment:** ✓ Mostly aligned. The project's `httpTesting.match()` pattern is a useful
   innovation not directly covered by Angular docs.
+
+---
+
+## [Illustrative] httpResource (with real API hit)
+
+> **Not based on realworld-angular** — illustrative example generated from Angular official documentation.
+
+`httpResource` is Angular's reactive wrapper around `HttpClient`: you give it a function
+that returns a URL, and it exposes `value()`, `hasValue()`, `isLoading()`, and `error()`
+as signals. It's eager (fires on creation, not on subscription) and cancels in-flight
+requests when its source signals change. Because it builds on `HttpClient`, it supports
+all the same features (interceptors, headers, params) — and tests use the same
+`HttpTestingController` as the [Services](#services) section.
+
+### What to test
+
+- Initial state — `isLoading()` is true, `hasValue()` is false before the response
+- Success path — response lands, `value()` matches the payload, `isLoading()` is false
+- Reactive reload — when the source signal changes, a new request fires with the new URL
+- Error path — `error()` is set when the request fails, `hasValue()` stays false
+
+### Project Pattern
+
+The pattern matches the project's existing `HttpTestingController` usage exactly. The
+only thing that differs from a plain service test is the `injector` option, which binds
+the resource to the test's `TestBed` injector so it sees the mock backend.
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { ApplicationRef, Injector, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { TodoComponent } from './todo.component';
+
+describe('TodoComponent (httpResource)', () => {
+  let httpTesting: HttpTestingController;
+  let injector: Injector;
+  let appRef: ApplicationRef;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    httpTesting = TestBed.inject(HttpTestingController);
+    injector = TestBed.inject(Injector);
+    appRef = TestBed.inject(ApplicationRef);
+  });
+
+  afterEach(() => {
+    httpTesting.verify(); // catches leaked requests
+  });
+
+  it('should fetch a todo and expose it on the resource', async () => {
+    // Reproduce the component's resource binding inside the test injector
+    const id = signal(1);
+    const todo = httpResource(() => `https://jsonplaceholder.typicode.com/todos/${id()}`, {
+      injector,
+    });
+
+    TestBed.tick(); // fire the initial effect
+    const req = httpTesting.expectOne('https://jsonplaceholder.typicode.com/todos/1');
+    expect(req.request.method).toBe('GET');
+
+    req.flush({ id: 1, title: 'delectus aut autem', completed: false });
+    await appRef.whenStable(); // let values propagate to the resource
+
+    expect(todo.hasValue()).toBe(true);
+    expect(todo.isLoading()).toBe(false);
+    expect(todo.value()).toEqual({ id: 1, title: 'delectus aut autem', completed: false });
+  });
+
+  it('should reload when the source signal changes', async () => {
+    const id = signal(1);
+    const todo = httpResource(() => `https://jsonplaceholder.typicode.com/todos/${id()}`, {
+      injector,
+    });
+
+    TestBed.tick();
+    httpTesting.expectOne('/todos/1').flush({ id: 1, title: 'first', completed: true });
+    await appRef.whenStable();
+
+    id.set(2);
+    TestBed.tick();
+    httpTesting.expectOne('/todos/2').flush({ id: 2, title: 'second', completed: false });
+    await appRef.whenStable();
+
+    expect(todo.value()).toEqual({ id: 2, title: 'second', completed: false });
+  });
+
+  it('should surface server errors via the error() signal', async () => {
+    const id = signal(1);
+    const todo = httpResource(() => `https://jsonplaceholder.typicode.com/todos/${id()}`, {
+      injector,
+    });
+
+    TestBed.tick();
+    httpTesting.expectOne('/todos/1').flush('boom', { status: 500, statusText: 'Server Error' });
+    await appRef.whenStable();
+
+    expect(todo.error()).toBeTruthy();
+    expect(todo.hasValue()).toBe(false);
+  });
+});
+```
+
+When the resource lives inside a real component fixture, the pattern is the same but
+you trigger the request through the component rather than reconstructing the resource
+in the test:
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { TodoComponent } from './todo.component';
+
+describe('TodoComponent (full fixture)', () => {
+  let fixture: ComponentFixture<TodoComponent>;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    fixture = TestBed.createComponent(TodoComponent);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should render the todo title after loading', async () => {
+    httpTesting
+      .expectOne('https://jsonplaceholder.typicode.com/todos/1')
+      .flush({ id: 1, title: 'delectus aut autem', completed: false });
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('delectus aut autem');
+  });
+});
+```
+
+### Key rules
+
+- **Always pass the test injector:** `httpResource(url, { injector })` — without it the
+  resource binds to the wrong injector and won't see `HttpTestingController`.
+- **Trigger and stabilize:** call `TestBed.tick()` to fire the initial effect, then
+  `await appRef.whenStable()` (or `await fixture.whenStable()` for a fixture-based test)
+  before reading `value()` / `error()` — values propagate through change detection.
+- **Read `value()` only when `hasValue()` is true** — Angular throws at runtime if you
+  read `value()` while in an error state.
+- **Assert on `isLoading()`, `hasValue()`, `error()`, and `value()`** — these are the four
+  signals `httpResource` exposes. Pick whichever is most relevant to the test.
+- **Reactive reload is implicit** — when the URL function's source signals change,
+  `httpResource` cancels the in-flight request and fires a new one. Use `TestBed.tick()`
+  after a signal change to flush the new request.
+- **Alignment:** ✓ Project pattern matches Angular recommended. `httpResource` is a wrapper
+  around `HttpClient`, so it uses the exact same test APIs.
+
+### Angular docs reference: [angular.dev/guide/http/http-resource#testing-an-httpresource](https://angular.dev/guide/http/http-resource#testing-an-httpresource)
 
 ---
 
@@ -2245,26 +2408,27 @@ What you test instead:
 
 ## Quick Reference Table
 
-| Unit                | Angular Recommended                          | Project Pattern                    | Key Difference           |
-| ------------------- | -------------------------------------------- | ---------------------------------- | ------------------------ |
-| Service             | HttpTestingController                        | HttpTestingController              | ✓ Same                   |
-| Component           | Component Harnesses                          | querySelector + NO_ERRORS_SCHEMA   | Harness vs raw DOM       |
-| Dialog              | DialogRef stub + DIALOG_DATA                 | DialogRef stub + DIALOG_DATA       | ✓ Same                   |
-| @defer              | DeferBlockBehavior.Manual + render()         | —                                  | Illustrative only        |
-| Page                | RouterTestingHarness + real imports          | provideRouter + NO_ERRORS_SCHEMA   | Integration vs isolation |
-| Guard               | RouterTestingHarness                         | runInInjectionContext + vi.fn()    | Full pipeline vs unit    |
-| Data Resolver       | RouterTestingHarness + HttpTestingController | - (illustrative)                   | -                        |
-| Interceptor         | withInterceptors + real HttpClient           | withInterceptors + real HttpClient | ✓ Same                   |
-| Pipe                | new Pipe()                                   | new Pipe()                         | ✓ Same                   |
-| Directive           | Host component                               | Host component                     | ✓ Same                   |
-| Store               | httpResource patterns                        | httpTesting.match()                | ✓ Mostly same            |
-| Wizard              | Real service + stubs                         | Real service + stubs               | ✓ Same                   |
-| Custom Form Control | TestHostComponent + signal forms             | —                                  | Illustrative only        |
-| linkedSignal        | `new` + `TestBed.flushEffects()`             | —                                  | Illustrative only        |
-| resource            | `runInInjectionContext` + mock loader        | —                                  | Illustrative only        |
-| effect              | `runInInjectionContext` + `flushEffects()`   | —                                  | Illustrative only        |
-| Signal Output       | `.subscribe()` on `output()` emitter         | —                                  | Illustrative only        |
-| Host Bindings       | `nativeElement` attribute/class/style checks | —                                  | Illustrative only        |
+| Unit                | Angular Recommended                          | Project Pattern                          | Key Difference           |
+| ------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------ |
+| Service             | HttpTestingController                        | HttpTestingController                    | ✓ Same                   |
+| Component           | Component Harnesses                          | querySelector + NO_ERRORS_SCHEMA         | Harness vs raw DOM       |
+| Dialog              | DialogRef stub + DIALOG_DATA                 | DialogRef stub + DIALOG_DATA             | ✓ Same                   |
+| @defer              | DeferBlockBehavior.Manual + render()         | —                                        | Illustrative only        |
+| Page                | RouterTestingHarness + real imports          | provideRouter + NO_ERRORS_SCHEMA         | Integration vs isolation |
+| Guard               | RouterTestingHarness                         | runInInjectionContext + vi.fn()          | Full pipeline vs unit    |
+| Data Resolver       | RouterTestingHarness + HttpTestingController | - (illustrative)                         | -                        |
+| Interceptor         | withInterceptors + real HttpClient           | withInterceptors + real HttpClient       | ✓ Same                   |
+| Pipe                | new Pipe()                                   | new Pipe()                               | ✓ Same                   |
+| Directive           | Host component                               | Host component                           | ✓ Same                   |
+| Store               | httpResource patterns                        | httpTesting.match()                      | ✓ Mostly same            |
+| Wizard              | Real service + stubs                         | Real service + stubs                     | ✓ Same                   |
+| Custom Form Control | TestHostComponent + signal forms             | —                                        | Illustrative only        |
+| linkedSignal        | `new` + `TestBed.flushEffects()`             | —                                        | Illustrative only        |
+| httpResource        | `HttpTestingController` + `{ injector }`     | `HttpTestingController` + `{ injector }` | ✓ Same                   |
+| resource            | `runInInjectionContext` + mock loader        | —                                        | Illustrative only        |
+| effect              | `runInInjectionContext` + `flushEffects()`   | —                                        | Illustrative only        |
+| Signal Output       | `.subscribe()` on `output()` emitter         | —                                        | Illustrative only        |
+| Host Bindings       | `nativeElement` attribute/class/style checks | —                                        | Illustrative only        |
 
 ---
 
@@ -2313,22 +2477,23 @@ approaches are valid.
 
 ## One-Sentence Summary Per Unit
 
-| Unit                | The test should answer this question                                                 |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| Service             | "Did it call the right endpoint with the right data and update state correctly?"     |
-| Component           | "Given these inputs, does it render the right DOM with the right attributes?"        |
-| Dialog              | "Given injected data, does it render correctly and close with the right result?"     |
-| @defer              | "Does each state (placeholder/loading/complete/error) render the correct content?"   |
-| Page                | "For each logical state (loading/empty/error/data), does it show the correct UI?"    |
-| Guard               | "Does it allow or redirect, and redirect exactly where?"                             |
-| Data Resolver       | "Does it fetch data and provide it to the component, and handle errors gracefully?"  |
-| Interceptor         | "Did it modify (or not modify) the outgoing request as expected?"                    |
-| Pipe                | "Given this input, does it produce this output?"                                     |
-| Directive           | "Does it manipulate the DOM correctly and react to state changes?"                   |
-| Store               | "Do mutations produce correct state and trigger correct side effects?"               |
-| Wizard              | "Do the form rules, computed values, and validation logic work correctly?"           |
-| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?"    |
-| linkedSignal        | "Does it default correctly, allow overrides, and reset when its source changes?"     |
-| effect              | "Does it run when tracked signals change, and clean up correctly between runs?"      |
-| Signal Output       | "Does the component emit the correct value when an event occurs?"                    |
-| Host Bindings       | "Do the root element's attributes, classes, and styles reflect the component state?" |
+| Unit                | The test should answer this question                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| Service             | "Did it call the right endpoint with the right data and update state correctly?"            |
+| Component           | "Given these inputs, does it render the right DOM with the right attributes?"               |
+| Dialog              | "Given injected data, does it render correctly and close with the right result?"            |
+| @defer              | "Does each state (placeholder/loading/complete/error) render the correct content?"          |
+| Page                | "For each logical state (loading/empty/error/data), does it show the correct UI?"           |
+| Guard               | "Does it allow or redirect, and redirect exactly where?"                                    |
+| Data Resolver       | "Does it fetch data and provide it to the component, and handle errors gracefully?"         |
+| Interceptor         | "Did it modify (or not modify) the outgoing request as expected?"                           |
+| Pipe                | "Given this input, does it produce this output?"                                            |
+| Directive           | "Does it manipulate the DOM correctly and react to state changes?"                          |
+| Store               | "Do mutations produce correct state and trigger correct side effects?"                      |
+| Wizard              | "Do the form rules, computed values, and validation logic work correctly?"                  |
+| Custom Form Control | "Does it integrate with the form API: write value, report changes, and validate?"           |
+| linkedSignal        | "Does it default correctly, allow overrides, and reset when its source changes?"            |
+| httpResource        | "Does it fetch data, expose the response on value()/error(), and reload on source changes?" |
+| effect              | "Does it run when tracked signals change, and clean up correctly between runs?"             |
+| Signal Output       | "Does the component emit the correct value when an event occurs?"                           |
+| Host Bindings       | "Do the root element's attributes, classes, and styles reflect the component state?"        |
