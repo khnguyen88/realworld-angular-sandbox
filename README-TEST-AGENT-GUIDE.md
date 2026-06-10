@@ -308,3 +308,76 @@ describe('<interceptorName>', () => {
 - **Forgetting `withInterceptors([...])` in the test providers** — the interceptor is registered through the providers list, not by direct injection. Forgetting it means the request goes through unmodified.
 - **Asserting on the `HttpClient` call, not the captured request** — the side effect of the interceptor is visible on `req.request`, not on the `http.get(...)` call. Capture the request first.
 - **One test, two requests** — if a single test issues multiple requests, use `match()` (returns array) instead of `expectOne()` (returns single).
+
+### 3.4 Components
+
+#### What to test
+
+- The component renders the correct DOM given its inputs
+- CSS classes / styles reflect input values
+- The component shows / hides elements based on state
+- `output()` emissions fire on user interaction (button click, form submit, etc.)
+- ARIA attributes for accessibility (`role`, `aria-*`, `aria-busy` on loading elements)
+- Disabled, loading, and active states
+
+#### Pre-flight
+
+- List every `input()` (signal-based) and `@Input()` (decorator-based). These drive the test inputs.
+- List every `output()` signal. These drive the test subscriptions.
+- Read the template to identify the key DOM queries you'll need (CSS class names, ARIA attributes, structural directives).
+- Identify the host element's `host:` bindings if any (these are tested on `fixture.nativeElement`).
+
+#### Recipe template (querySelector + NO_ERRORS_SCHEMA — pragmatic)
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { <ComponentName> } from '<relative-path>';
+
+describe('<ComponentName>', () => {
+  let fixture: ComponentFixture<<ComponentName>>;
+  let el: HTMLElement;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({}).overrideComponent(<ComponentName>, {
+      set: { schemas: [NO_ERRORS_SCHEMA] },
+    });
+    fixture = TestBed.createComponent(<ComponentName>);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should <expected-render-behavior>', async () => {
+    fixture.componentRef.setInput('<input-name>', <value>);
+    await fixture.whenStable();
+    expect(el.querySelector('<selector>')).not.toBeNull();
+  });
+
+  it('should emit <output-name> on <user-action>', async () => {
+    const emitted: <output-type>[] = [];
+    const sub = fixture.componentInstance.<outputName>.subscribe((v) => emitted.push(v));
+    el.querySelector<HTMLElement>('<selector>')!.click();
+    expect(emitted).toEqual(<expected-emissions>);
+    sub.unsubscribe();
+  });
+});
+```
+
+`NO_ERRORS_SCHEMA` lets the test ignore child component selectors. Each child has its own tests. Use it when the test is about _this_ component, not the integration with its children.
+
+#### Common variants
+
+- **Component with harness (recommended for shared components)** — replace the `el.querySelector(...)` block with `loader.getHarness(<HarnessClass>)`. Use harnesses when the component is shared (Button, Input, Modal) because template refactors cascade.
+- **Component with form** — see §3.10 Forms.
+- **Component with router outlet** — see §3.13 Page Components.
+- **Component that uses `output()`** — subscribe to `componentInstance.<outputName>` and assert the captured emissions. Unsubscribe in cleanup or use a `takeUntil(destroyed)` pattern.
+- **Component with host bindings** — assert on `fixture.nativeElement` directly (`el.getAttribute('role')`, `el.classList.contains(...)`, `el.style.<property>`).
+
+#### Pitfalls
+
+- **Forgetting `await fixture.whenStable()` after `setInput`** — signal inputs propagate asynchronously in some test setups. The set-and-assert path will silently fail.
+- **Asserting on child component internals** — if a child is `NO_ERRORS_SCHEMA`'d away, `el.querySelector('.child-class')` will return null. Use real imports if the test needs to assert on child DOM.
+- **Subscribing without unsubscribing** — signal outputs hold the subscription until the component is destroyed. The test will pass, but the listener leaks. Unsubscribe or use the test teardown.
+- **Clicking the wrong element** — if the test selector matches multiple elements (`querySelectorAll`), `.click()` on the first one might not be the one you meant. Use a more specific selector.
+- **Hardcoding child element structure** — `NO_ERRORS_SCHEMA` is appropriate only when child internals are not the test's concern. If they are, override with real imports.
