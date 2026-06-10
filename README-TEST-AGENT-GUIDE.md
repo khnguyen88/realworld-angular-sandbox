@@ -80,3 +80,29 @@ Some projects have a `src/test-providers.ts` or similar global providers file re
 - **No vitest**: tell the user. Don't try to write tests; the project isn't set up for them.
 - **Wrong Angular version**: ask the user. The guide's recipes need translation for v19 and earlier.
 - **Mixed Jasmine/Vitest**: ask the user which runner to target, then proceed.
+
+## 2. Decision Tree
+
+Match the file you are testing to its recipe. Do **not** read the recipes top-to-bottom — pick the right one and jump.
+
+| File ends in / pattern                                                                | Recipe section                    |
+| ------------------------------------------------------------------------------------- | --------------------------------- |
+| `*.pipe.ts`                                                                           | §3.1 Pipes                        |
+| `*.service.ts`, `*.api.ts` (not `*-api.service.ts` paths in a guards/services folder) | §3.2 Services                     |
+| `*.interceptor.ts`                                                                    | §3.3 Interceptors                 |
+| `*.component.ts` (not a routed page — see heuristic)                                  | §3.4 Components                   |
+| `*.dialog.ts` or imports from `@angular/cdk/dialog`                                   | §3.5 Dialogs & Overlays           |
+| `*.store.ts` or class exposes signals + httpResource                                  | §3.6 Stores / State               |
+| `*.guard.ts`                                                                          | §3.7 Guards                       |
+| `*.resolver.ts`                                                                       | §3.8 Resolvers                    |
+| `*.directive.ts`                                                                      | §3.9 Directives                   |
+| `*.form.ts` (form definition file) or service with form                               | §3.10 Forms                       |
+| Signal primitives used: `linkedSignal`, `effect`, etc.                                | §3.11 Signal Primitives           |
+| Component template uses `@defer`                                                      | §3.12 @defer Blocks               |
+| Routed page (has a route entry, top-level for a feature)                              | §3.13 Page Components             |
+| Component uses `p-*` tags or `primeng/*` imports                                      | §5 PrimeNG Components (companion) |
+| `*.routes.ts` (route config files)                                                    | **Do not write tests**            |
+
+**Page vs component heuristic**: a _page_ is the component referenced directly by a route's `component:` field (or loaded by a lazy route). A _component_ is everything else — dialogs, cards, list items, form fields, layout pieces. If you're not sure, check `*.routes.ts` files for the path-to-component mapping.
+
+**When in doubt**: read the source file's constructor and template. The constructor tells you what dependencies to mock; the template tells you what DOM to assert on. Both are required to write a useful test.
