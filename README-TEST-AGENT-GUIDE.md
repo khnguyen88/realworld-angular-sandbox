@@ -381,3 +381,73 @@ describe('<ComponentName>', () => {
 - **Subscribing without unsubscribing** — signal outputs hold the subscription until the component is destroyed. The test will pass, but the listener leaks. Unsubscribe or use the test teardown.
 - **Clicking the wrong element** — if the test selector matches multiple elements (`querySelectorAll`), `.click()` on the first one might not be the one you meant. Use a more specific selector.
 - **Hardcoding child element structure** — `NO_ERRORS_SCHEMA` is appropriate only when child internals are not the test's concern. If they are, override with real imports.
+
+### 3.5 Dialogs & Overlays
+
+#### What to test
+
+- The dialog renders content from `DIALOG_DATA`
+- The close button calls `DialogRef.close()` (with or without a result)
+- ARIA attributes on the panel (`role="document"` or `role="dialog"`, `aria-label` on the close button)
+- Conditional rendering when optional `DIALOG_DATA` fields are missing
+- Form submission inside a dialog: HTTP fires, dialog closes
+
+#### Pre-flight
+
+- Read the constructor to confirm `DialogRef` and `DIALOG_DATA` are injected.
+- Identify the result type (`R` in `DialogRef<R>`) — the test will stub the close method to assert the result.
+- List the dialog's `input()` / `@Input()` and any conditional rendering on data fields.
+
+#### Recipe template (CDK dialog with data)
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { <DialogComponent>, <DialogData>, <DialogResult> } from '<relative-path>';
+
+describe('<DialogComponent>', () => {
+  let fixture: ComponentFixture<<DialogComponent>>;
+  let el: HTMLElement;
+  let closeFn: ReturnType<typeof vi.fn>;
+
+  const <defaultDataVar>: <DialogData> = <default-data-shape>;
+
+  beforeEach(async () => {
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<<DialogResult>>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: <defaultDataVar> },
+      ],
+    }).overrideComponent(<DialogComponent>, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(<DialogComponent>);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should render <data-field> from data', () => {
+    expect(el.textContent).toContain(<expected-text>);
+  });
+
+  it('should close the dialog when <close-button> is clicked', () => {
+    el.querySelector<HTMLButtonElement>('<close-button-selector>')!.click();
+    expect(closeFn).toHaveBeenCalledWith(<expected-result>);
+  });
+});
+```
+
+#### Common variants
+
+- **Dialog with form + HTTP** — add `provideHttpClientTesting()`, use `TestBed.resetTestingModule()` to reconfigure per test if the form data changes, and use `TestBed.flushEffects()` after form mutations.
+- **Dialog opened by `DialogService.open()`** — the parent component test stubs `DialogService` with `{ open: vi.fn().mockReturnValue(<ref>) }` and asserts `open` was called with the right config.
+- **Reconfiguring `DIALOG_DATA` mid-suite** — use `TestBed.resetTestingModule()` followed by a fresh `TestBed.configureTestingModule(...)` in a new `it()` block.
+- **Dialog with `inject(DialogRef)` (newer pattern)** — same stub, but the component doesn't take it via constructor; the test provides it through `providers:` and DI resolves it.
+
+#### Pitfalls
+
+- **Stubbing `DialogRef` as a class** — the simplest stub is `{ close: vi.fn() }` as a `useValue`. Don't use `useClass` or a real instance.
+- **Forgetting `TestBed.resetTestingModule()`** — `DIALOG_DATA` is a single value per `configureTestingModule` call. Reusing a configured module for a test that needs different data silently uses the old data.
+- **Not asserting the close result** — `closeFn` should be called with the form value (or whatever the dialog returns). `expect(closeFn).toHaveBeenCalledWith(...)` is the test.
+- **Hanging on `await dialogRef.closed`** — if the test awaits the closed promise, it will hang forever because the stubbed `close` is a `vi.fn()` that doesn't return an observable. Stub the close, don't await the closed promise.
