@@ -42,3 +42,41 @@ Every test in this guide assumes these conventions:
 - [§5. PrimeNG Components](#5-primeng-components)
 - [§6. Common Mistakes Appendix](#6-common-mistakes-appendix)
 - [§7. Quick Reference Table](#7-quick-reference-table)
+
+## 1. Pre-flight Checks
+
+Before writing a single test, confirm the following about the codebase. If any of these don't hold, stop and tell the user.
+
+### 1.1 Confirm the test runner
+
+Open `angular.json` and find the `test` target. The `builder` should be `@angular/build:unit-test` (Vitest). If it's `@angular-devkit/build-angular:karma`, the project uses Jasmine and this guide does **not** apply.
+
+Example healthy target:
+
+```json
+"test": {
+  "builder": "@angular/build:unit-test"
+}
+```
+
+### 1.2 Confirm Vitest is installed
+
+Open `package.json`. Look for `"vitest"` in `devDependencies` and verify `jsdom` (or `happy-dom`) is also present. If vitest is absent, the project is not configured for unit testing as the Angular CLI ships it.
+
+### 1.3 Confirm the Angular version
+
+Open `package.json` and check the `@angular/core` version. The patterns in this guide target **Angular 20+** (signals, `httpResource`, signal-based inputs/outputs are the default). For Angular 19 or earlier, some APIs differ (`inject(TestBed)` patterns, decorator-based inputs, etc.) — flag this to the user before proceeding.
+
+### 1.4 Confirm no Jasmine globals
+
+Search the test config and a sample spec for `jasmine.`, `fit(`, `fdescribe(`, or any `tsconfig.spec.json` `types: ["jasmine"]`. If found, this is a mixed or migrating project. Most recipes still work, but `vi.fn()` should be used instead of `jasmine.createSpy()`.
+
+### 1.5 Identify the project's testing utility conventions
+
+Some projects have a `src/test-providers.ts` or similar global providers file referenced from `angular.json`. If present, the `beforeEach` blocks in the recipes below can drop providers that the global file already supplies. If absent (the default), every spec is self-contained — apply the recipe verbatim.
+
+### 1.6 What to do if pre-flight fails
+
+- **No vitest**: tell the user. Don't try to write tests; the project isn't set up for them.
+- **Wrong Angular version**: ask the user. The guide's recipes need translation for v19 and earlier.
+- **Mixed Jasmine/Vitest**: ask the user which runner to target, then proceed.
