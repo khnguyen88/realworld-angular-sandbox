@@ -535,3 +535,74 @@ describe('<StoreName>', () => {
 - **Using `expectOne` when the action triggers multiple requests** — switch to `match()` (returns array) and flush each.
 - **Asserting on `value()` of an unresolved resource** — the resource is loading; `value()` is `undefined`. Flush the request first.
 - **Not testing the "no HTTP when empty" case** — the negative assertion (`expectNone`) is one of the most useful tests for a store. Don't skip it.
+
+### 3.7 Guards
+
+#### What to test
+
+- Returns `true` when the condition is met
+- Returns a `UrlTree` (redirect) when the condition is not met — and assert the **specific** redirect path, not just the type
+- Async guards (returning `Observable<boolean | UrlTree>`): subscribe, flush the HTTP request, assert the captured result
+
+#### Pre-flight
+
+- Identify the guard's type: `CanMatchFn`, `CanActivateFn`, or class-based.
+- Note the redirect target (`router.createUrlTree(['/path'])`) — this is what the test asserts.
+- For async guards, identify which HTTP call the guard makes.
+
+#### Recipe template (functional CanMatchFn, sync)
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter, UrlTree, PartialMatchRouteSnapshot } from '@angular/router';
+import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
+import { <guardName> } from '<relative-path>';
+import { <AuthService> } from '<path-to-auth-service>';
+
+const <stubName>: Mocked<Pick<<AuthService>, '<method-name>'>> = {
+  <method-name>: vi.fn(),
+};
+
+describe('<guardName>', () => {
+  let router: Router;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: <AuthService>, useValue: <stubName> }],
+    });
+    router = TestBed.inject(Router);
+  });
+
+  it('should return true when <condition-met>', () => {
+    <stubName>.<method-name>.mockReturnValue(<condition-met-value>);
+    const result = TestBed.runInInjectionContext(() =>
+      <guardName>({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should redirect to <expected-path> when <condition-failed>', () => {
+    <stubName>.<method-name>.mockReturnValue(<condition-failed-value>);
+    const result = TestBed.runInInjectionContext(() =>
+      <guardName>({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('<expected-path>');
+  });
+});
+```
+
+#### Common variants
+
+- **Async guard (Observable return)** — wrap the guard call in `(TestBed.runInInjectionContext(() => <guardName>(...)) as Observable<...>).subscribe(r => result = r)`, then `httpTesting.expectOne(<url>).flush(<response>)`, then assert on `result`.
+- **Multi-step guard** (e.g., checkout wizard) — use `provideRouter(testRoutes)` so the guard can find prerequisite step URLs.
+- **Class-based guard** (legacy) — `TestBed.inject(<GuardClass>)`, then call `guard.canMatch(...)` or `guard.canActivate(...)` directly.
+- **Zero-arg guard** (`CanMatchFn = () => ...`) — the project pattern. Call as `<guardName>()` with no args. The 3-arg form above still works (TypeScript tolerates extra args), but a zero-arg call is cleaner.
+
+#### Pitfalls
+
+- **Asserting only `expect(result).toBeInstanceOf(UrlTree)`** — that's a type check, not a behavior check. Always serialize and compare: `expect(router.serializeUrl(result as UrlTree)).toBe('/expected/path')`.
+- **Missing `runInInjectionContext`** — functional guards use `inject()` internally. Without the injection context, the test fails with "no provider for X."
+- **Wrong 3rd argument type** — `PartialMatchRouteSnapshot` is the correct type. Casting to `Route` for the first arg with `as Route` is fine.
+- **Async guard test doesn't flush HTTP** — the guard returns an Observable that emits when HTTP completes. The test must flush the request before asserting.
+- **Missing `provideRouter([])`** — `UrlTree` serialization requires a real `Router`. Even with empty routes, the provider is needed.
