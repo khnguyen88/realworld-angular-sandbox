@@ -146,8 +146,6 @@ describe('<PipeName>', () => {
 });
 ```
 
-No `TestBed` is needed — pure pipes are stateless functions. Instantiate with `new <PipeName>(...)` directly.
-
 #### Common variants
 
 - **Pipe with one input arg** — direct call: `pipe.transform(input, arg1)`.
