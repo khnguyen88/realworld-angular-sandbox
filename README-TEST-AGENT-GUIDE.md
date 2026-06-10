@@ -236,3 +236,75 @@ describe('<ServiceName>', () => {
 - **Asserting only on the request, not the state** — the _interesting_ assertion is what the signal looks like after the response. Always assert both.
 - **`new <ServiceName>(...)` instead of `TestBed.inject`** — DI wiring (interceptors, multi-providers) doesn't apply to direct construction. Always inject.
 - **Wrong URL matcher** — `expectOne` matches by URL and method. If the test fails with "no matching request", check that the URL string matches exactly, including query params.
+
+### 3.3 Interceptors
+
+#### What to test
+
+- The interceptor **modifies** the outgoing request as expected (adds header, sets `withCredentials`, rewrites URL)
+- The interceptor does **not** modify requests it should skip
+- Response transformation (if the interceptor does post-response work) is correct
+
+#### Pre-flight
+
+- Identify the _trigger_ — what request characteristic causes the interceptor to act (URL pattern, header presence, method, etc.)
+- Identify the _action_ — what does the interceptor do? Header? URL rewrite? `withCredentials`?
+- Identify the _negative case_ — what requests should be left alone?
+
+#### Recipe template
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { HttpClient } from '@angular/common/http';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { <interceptorName> } from '<relative-path>';
+
+describe('<interceptorName>', () => {
+  let http: HttpClient;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([<interceptorName>])),
+        provideHttpClientTesting(),
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should <action> on <trigger-condition>', () => {
+    http.<method>(<url>).subscribe();
+    const req = httpTesting.expectOne(<url>);
+    expect(req.request.<property>).toBe(<expected-value>);
+    req.flush(<response-body>);
+  });
+
+  it('should NOT <action> on <negative-case>', () => {
+    http.<method>(<negative-url>).subscribe();
+    const req = httpTesting.expectOne(<negative-url>);
+    expect(req.request.<property>).toBe(<negative-expected-value>);
+    req.flush(<response-body>);
+  });
+});
+```
+
+#### Common variants
+
+- **Header-adding interceptor** — assert `req.request.headers.get('X-Foo')`.
+- **withCredentials toggle** — assert `req.request.withCredentials` boolean.
+- **URL-rewriting interceptor** — assert the URL on `req.request.url` matches the rewritten form, not the original.
+- **Response mapper** — subscribe to the response, assert the transformed value, not the raw body.
+
+#### Pitfalls
+
+- **Forgetting `withInterceptors([...])` in the test providers** — the interceptor is registered through the providers list, not by direct injection. Forgetting it means the request goes through unmodified.
+- **Asserting on the `HttpClient` call, not the captured request** — the side effect of the interceptor is visible on `req.request`, not on the `http.get(...)` call. Capture the request first.
+- **One test, two requests** — if a single test issues multiple requests, use `match()` (returns array) instead of `expectOne()` (returns single).
