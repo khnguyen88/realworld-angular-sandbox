@@ -8,7 +8,7 @@ test suite and Angular's official testing documentation.
 >
 > - **README-TEST-GUIDE.md** — This file: how to write tests (Angular recommended + project patterns)
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (60 specs, categories, patterns)
+> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 Angular CLI projects now default to **Vitest** with **jsdom**. Run tests with
@@ -18,6 +18,12 @@ Each section below shows two approaches: the **Angular Recommended** way
 (per official docs and the Angular skill references) and the **Project Pattern**
 (how realworld-angular currently tests). Choose based on whether you're writing
 new tests or maintaining existing ones.
+
+> **Note on "Project Pattern" examples:** the code excerpts under each section are
+> representative of how the real `.spec.ts` files in this project are written, not
+> always verbatim copies. Use them as a template for the patterns, then refer to the
+> actual spec file (linked throughout) for the full test list, including edge cases
+> the excerpts omit.
 
 ---
 
@@ -1527,6 +1533,14 @@ This isolates the guard's allow/deny logic but doesn't test the routing integrat
 **IMPORTANT: Angular 22 requires a 3rd argument.** Guards now take `(route, segments, currentSnapshot)`.
 All guard invocations in tests must include `{} as PartialMatchRouteSnapshot`.
 
+> **Note on the project's guard signature:** the realworld-angular guards are written as
+> zero-argument functions (`CanMatchFn = () => { ... }`). The spec files call them with
+> three arguments — TypeScript silently tolerates this because JavaScript ignores extra
+> positional arguments. The 3-arg invocation shown below is the canonical Angular 22
+> `CanMatchFn` shape and matches the type system, but in practice the project's guards
+> don't read any of those arguments; the call is "tolerated over-arg passing" rather than
+> an exercise of Angular's full `CanMatchFn` contract.
+
 ```typescript
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, UrlTree, PartialMatchRouteSnapshot } from '@angular/router';
@@ -1890,7 +1904,7 @@ describe('RoleDirective', () => {
 
 ### Angular Recommended
 
-For Angular v21+, use **signal forms** for new form implementations. Signal forms integrate
+For Angular v22+, use **signal forms** for new form implementations. Signal forms integrate
 natively with Angular's reactivity system and can be tested by directly manipulating form
 control values and asserting on computed derivations.
 
@@ -1993,7 +2007,7 @@ describe('CheckoutWizard', () => {
 - `TestBed.flushEffects()` after every form mutation to let computed signals and effects run.
 - Test **derived values** (computed signals that depend on form state), not just setters.
 - Test **cross-field effects** — changing one field should clear/update another.
-- **Alignment:** ✓ Mostly aligned. Angular v21+ signal forms are the recommended approach for new code. The project's real-service-with-stubs pattern is valid for the current form implementation.
+- **Alignment:** ✓ Mostly aligned. Angular v22+ signal forms are the recommended approach for new code. The project's real-service-with-stubs pattern is valid for the current form implementation.
 
 ---
 
@@ -2200,7 +2214,7 @@ describe('RatingControl (reactive forms)', () => {
 
 ### Key rules
 
-- Create a `TestHostComponent` that wraps the custom control in a real form (signal forms for Angular v21+, reactive forms for v20-).
+- Create a `TestHostComponent` that wraps the custom control in a real form (signal forms for Angular v22+, reactive forms for v21 and earlier).
 - Signal forms: use `FormField` + `FormRoot`, call `TestBed.flushEffects()` after mutations.
 - Reactive forms: use `ReactiveFormsModule`, call `fixture.detectChanges()` after mutations.
 - Test `writeValue` by setting the form control's value and asserting DOM output.
@@ -2255,6 +2269,11 @@ What you test instead:
 ---
 
 ## Global Setup (Optional)
+
+> **Unverified for `@angular/build:unit-test`:** the `providersFile` option below is shown as
+> a possible configuration for the project's test builder, but it has not been validated
+> against the builder's actual schema. Treat the `angular.json` snippet as illustrative —
+> consult the builder's schema (`@angular/build:unit-test`) before relying on it.
 
 To avoid repeating `provideHttpClientTesting()` in every spec, create a global
 providers file:
