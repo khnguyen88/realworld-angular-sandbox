@@ -107,3 +107,55 @@ Match the file you are testing to its recipe. Do **not** read the recipes top-to
 **Page vs component heuristic**: a _page_ is the component referenced directly by a route's `component:` field (or loaded by a lazy route). A _component_ is everything else — dialogs, cards, list items, form fields, layout pieces. If you're not sure, check `*.routes.ts` files for the path-to-component mapping.
 
 **When in doubt**: read the source file's constructor and template. The constructor tells you what dependencies to mock; the template tells you what DOM to assert on. Both are required to write a useful test.
+
+## 3. Per-Unit Recipes
+
+### 3.1 Pipes
+
+#### What to test
+
+- Valid input → expected output
+- Edge cases: empty string, `null`, `undefined`
+- Encoding/escaping if the pipe builds URLs or HTML
+- The "every regex branch" rule — if the pipe uses a regex, every branch of the regex must be tested
+
+#### Pre-flight
+
+- Read the pipe's `transform()` signature — note parameter types and return type.
+- Note any constructor dependencies (rare for pure pipes, common for stateful ones).
+- Read the source for any regex patterns and list every branch.
+
+#### Recipe template
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { <PipeName> } from '<relative-path-to-pipe>';
+
+describe('<PipeName>', () => {
+  const pipe = new <PipeName>(/* <constructor-args> */);
+
+  it('should <expected-behavior-on-valid-input>', () => {
+    const result = pipe.transform(<valid-input>);
+    expect(result).toBe(<expected-output>);
+  });
+
+  it('should handle <edge-case>', () => {
+    const result = pipe.transform(<edge-input>);
+    expect(result).toBe(<expected-edge-output>);
+  });
+});
+```
+
+No `TestBed` is needed — pure pipes are stateless functions. Instantiate with `new <PipeName>(...)` directly.
+
+#### Common variants
+
+- **Pipe with one input arg** — direct call: `pipe.transform(input, arg1)`.
+- **Pipe with regex** — write one `it()` per regex branch, naming the branch explicitly.
+- **Stateful pipe** (rare) — if the pipe has internal state, use `TestBed.configureTestingModule` and `TestBed.createComponent` with a host component that exercises it through a template binding.
+
+#### Pitfalls
+
+- **Wrapping in TestBed for no reason** — pure pipes don't need it. If the recipe template doesn't show `TestBed`, don't add it.
+- **Forgetting `null`/`undefined`** — pure pipes are commonly called with nullable values from templates. Test those cases.
+- **URL encoding** — if the pipe builds a URL, the assertion should check the encoded form, not the raw form. `expect(result).toContain(encodeURIComponent('value with spaces'))`.
