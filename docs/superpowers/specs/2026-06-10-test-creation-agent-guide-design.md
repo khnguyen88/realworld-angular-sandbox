@@ -67,7 +67,7 @@ Add the new file(s) to the index block in all four existing testing docs:
 
 ## 5. Recipe template (the load-bearing design decision)
 
-Every per-unit recipe in the main guide, and every per-component recipe in the PrimeNG companion, follows the **same four-block template**:
+Every per-unit recipe in the main guide, and every per-component recipe in the PrimeNG companion, follows the **same five-block template**:
 
 ### Block 1: What to test
 
