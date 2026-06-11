@@ -606,3 +606,474 @@ describe('<guardName>', () => {
 - **Wrong 3rd argument type** — `PartialMatchRouteSnapshot` is the correct type. Casting to `Route` for the first arg with `as Route` is fine.
 - **Async guard test doesn't flush HTTP** — the guard returns an Observable that emits when HTTP completes. The test must flush the request before asserting.
 - **Missing `provideRouter([])`** — `UrlTree` serialization requires a real `Router`. Even with empty routes, the provider is needed.
+
+### 3.8 Resolvers
+
+#### What to test
+
+- Resolver fetches data and returns it to the route
+- Resolver handles 404 (returns `EMPTY`, `null`, or redirects)
+- Resolver handles 500 / network error
+- Resolved data is available to the routed component via `input()` signals (when `withComponentInputBinding()` is used)
+
+#### Pre-flight
+
+- Identify the resolver's `ResolveFn<T>` return type.
+- Note the HTTP call (URL, method, response shape).
+- Identify the routed component and the `input()` signal that receives the resolved data.
+
+#### Recipe template (RouterTestingHarness + withComponentInputBinding)
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { <resolverName> } from '<relative-path>';
+import { <RoutedComponent> } from '<relative-path>';
+
+const <mockData> = <response-shape>;
+
+describe('<resolverName>', () => {
+  let harness: RouterTestingHarness;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClientTesting(),
+        provideRouter(
+          [{ path: '<path>', component: <RoutedComponent>, resolve: { <key>: <resolverName> } }],
+          withComponentInputBinding(),
+        ),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should resolve data and pass it to the component', async () => {
+    const component = await harness.navigateByUrl('<url>', <RoutedComponent>);
+    const req = httpTesting.expectOne('<url>');
+    req.flush(<mockData>);
+    harness.detectChanges();
+    expect(component.<inputName>()).toEqual(<mockData>);
+  });
+
+  it('should cancel navigation on 404', async () => {
+    await harness.navigateByUrl('<url>');
+    httpTesting.expectOne('<url>').flush('Not found', { status: 404, statusText: 'Not Found' });
+    expect(harness.router.url).toBe('/');
+  });
+});
+```
+
+#### Common variants
+
+- **Resolver returning `EMPTY` on error** — assert the route didn't activate.
+- **Resolver that redirects on error** — assert the URL is the redirect target.
+- **Class-based resolver** — `TestBed.inject(<ResolverClass>)`, call `.resolve(...)` directly.
+
+#### Pitfalls
+
+- **Forgetting `withComponentInputBinding()`** — without it, the resolved data isn't mapped to the component's `input()` signals. The assertion on `component.<input>()` will return `undefined`.
+- **Not calling `harness.detectChanges()`** — after flushing HTTP, the binding to the input signal needs a change detection cycle.
+- **Asserting against the harness root element** — `harness.routeNativeElement` is the _outlet's_ rendered element, not the routed component's. Use the returned component instance from `navigateByUrl` for typed assertions.
+
+### 3.9 Directives
+
+#### What to test
+
+- DOM manipulation effect (added/removed elements, style changes)
+- Reactivity to input changes (signal updates, value changes)
+- Every branch: different roles, `else` template, null state
+- Negative cases: elements WITHOUT the directive are unaffected
+
+#### Pre-flight
+
+- Read the directive's selector and the inputs it accepts.
+- Identify every template branch the directive can render (default, else, role-based).
+- Note the directive's host element — the `TestHostComponent` template must place the directive on a real element.
+
+#### Recipe template (host component pattern)
+
+```typescript
+import { Component } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { <DirectiveName> } from '<relative-path>';
+
+@Component({
+  imports: [<DirectiveName>],
+  template: `
+    <span *<directiveSelector>="<value1>" id="<id-1>"><content-1></span>
+    <span *<directiveSelector>="<value2>" id="<id-2>"><content-2></span>
+    <ng-template #<elseTpl>><span id="<else-id>"><else-content></span></ng-template>
+  `,
+})
+class TestHostComponent {}
+
+describe('<DirectiveName>', () => {
+  let fixture: ComponentFixture<TestHostComponent>;
+  let el: HTMLElement;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(TestHostComponent);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should <positive-case>', () => {
+    expect(el.querySelector('#<id>')).not.toBeNull();
+  });
+
+  it('should <negative-case>', () => {
+    expect(el.querySelector('#<id>')).toBeNull();
+  });
+});
+```
+
+#### Common variants
+
+- **Directive with input signal** — `fixture.componentRef.setInput('<input-name>', <value>)` and re-create the host component, or use a host component that exposes a signal.
+- **Directive with reactive input** — the host component has a signal; the directive reads it. Mutate the signal, `await fixture.whenStable()`, assert DOM updated.
+- **Attribute directive (no structural `*` syntax)** — the test host uses `[<directiveSelector>]="<value>"` instead of `*<directiveSelector>`.
+
+#### Pitfalls
+
+- **Forgetting `imports: [<DirectiveName>]`** — directives in standalone components must be explicitly imported.
+- **Asserting against a removed element** — when the directive hides content, the test should assert `expect(el.querySelector('#id')).toBeNull()`, not just check the inner text.
+- **Not testing reactivity** — at least one test must change a signal/value and assert the DOM updated after `whenStable()`. Static-state-only tests miss half the directive's behavior.
+
+### 3.10 Forms
+
+#### What to test
+
+- Initial values (every field's default)
+- Computed values derived from form state (totals, validations)
+- Field-level validation (required, format, min/max)
+- Cross-field effects (e.g., "use same as billing" clears billing fields)
+- Form submission: HTTP fires, success state, error state
+
+#### Pre-flight
+
+- Identify the form library: **signal forms** (Angular v20+), **reactive forms** (`@angular/forms`), or **template-driven forms**.
+- List every form control and its initial value.
+- Identify computed signals that derive from form state — these are the _interesting_ assertions.
+- Note any `effect()` that watches form state and triggers side effects.
+
+#### Recipe template (signal forms)
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { <ServiceName> } from '<relative-path>';
+
+describe('<ServiceName>', () => {
+  let service: <ServiceName>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      // <providers-needed-by-the-service>
+    });
+    service = TestBed.inject(<ServiceName>);
+  });
+
+  it('should have <field-name> in initial state', () => {
+    expect(service.<form>.<field>().value()).toBe(<initial-value>);
+  });
+
+  it('should compute <derived-signal> from form state', () => {
+    service.<form>.<field>().value.set(<new-value>);
+    TestBed.flushEffects();
+    expect(service.<derivedSignal>()).toBe(<expected-derived-value>);
+  });
+
+  it('should <cross-field-effect> when <trigger-field> changes', () => {
+    service.<form>.<field1>().value.set(<value-1>);
+    service.<form>.<field2>().value.set(<value-2>);
+    TestBed.flushEffects();
+    expect(service.<form>.<field3>().value()).toBe(<expected-cleared-value>);
+  });
+});
+```
+
+#### Common variants
+
+- **Reactive forms** — use `ReactiveFormsModule` in the host component's `imports:`, manipulate `fixture.componentInstance.form.controls.<name>`, and call `fixture.detectChanges()` (no `flushEffects`).
+- **Form with HTTP submission** — add `provideHttpClientTesting()` to providers, assert on the request body and post-submit state.
+- **Form with wizard steps** — each step is its own `describe` block; step transitions are tested via the service's `next()`/`previous()` methods.
+
+#### Pitfalls
+
+- **Mutating the wrong control** — signal forms use `service.<form>.<field>().value.set(...)`, not `service.<form>.controls.<field>.setValue(...)`. The pattern is depth-first through the form tree.
+- **Forgetting `TestBed.flushEffects()` after a mutation** — derived signals and effects need the reactive cycle to fire.
+- **Asserting on the underlying control's `.value` property (not the signal)** — `service.<form>.<field>()` (call it) returns the signal value; `service.<form>.<field>.value` (no call) is the writable signal.
+
+### 3.11 Signal Primitives (`linkedSignal`, `effect`, `afterRenderEffect`)
+
+#### What to test
+
+- `linkedSignal`: default value derived from source, manual override, reset on source change, override preserved when still valid
+- `effect`: runs at least once, re-runs when tracked signals change, cleanup runs before next run, never propagates state
+- `afterRenderEffect`: phase ordering (`earlyRead` → `write` → `mixedReadWrite` → `read`), write phase receives prior read data, never runs during SSR
+
+#### Pre-flight
+
+- Identify which signal primitive(s) the unit uses.
+- For `effect`, identify the tracked signals (read inside the effect body) and any cleanup logic (`onCleanup`).
+- For `afterRenderEffect`, identify the phase callbacks the unit uses.
+
+#### Recipe template (linkedSignal in a component)
+
+```typescript
+import { Component, signal, linkedSignal } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-<name>',
+  template: `<!-- minimal template -->`,
+  standalone: true,
+})
+class <TestComponent> {
+  readonly <sourceName> = signal(<initial-source-value>);
+  readonly <derivedName> = linkedSignal(() => this.<sourceName>()[0]);
+}
+
+describe('<linkedSignal-name>', () => {
+  let fixture: ComponentFixture<<TestComponent>>;
+  let component: <TestComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    fixture = TestBed.createComponent(<TestComponent>);
+    component = fixture.componentInstance;
+  });
+
+  it('should default to the first <source-item>', () => {
+    expect(component.<derivedName>()).toBe(<first-source-item>);
+  });
+
+  it('should allow manual override', () => {
+    component.<derivedName>.set(<override-value>);
+    expect(component.<derivedName>()).toBe(<override-value>);
+  });
+
+  it('should reset when <source> changes', () => {
+    component.<derivedName>.set(<override-value>);
+    component.<sourceName>.set(<new-source-values>);
+    TestBed.flushEffects();
+    expect(component.<derivedName>()).toBe(<new-first-item>);
+  });
+});
+```
+
+#### Common variants
+
+- **`effect` outside a component** — wrap in `TestBed.runInInjectionContext(() => effect(() => { ... }))`, then `TestBed.flushEffects()` to drive it.
+- **`effect` with cleanup** — pass `(onCleanup) => { ... }` to `effect`; capture cleanup calls in an array; assert the array after a `counter.set(1)` and `flushEffects()`.
+- **`afterRenderEffect`** — use `await fixture.whenStable()` to let the render cycle complete. Phase callback receives prior phase's return value as a signal.
+
+#### Pitfalls
+
+- **Creating `effect` outside an injection context** — must be in a constructor or `TestBed.runInInjectionContext()`. Otherwise, `inject()` calls inside fail.
+- **Asserting on the linkedSignal after a source change without `flushEffects`** — the reset is effect-driven; without flushing, the assertion sees the stale override.
+- **Using `effect` to propagate state** — that's `computed` or `linkedSignal`'s job. `effect` is for side effects (logging, persistence, canvas). If the test asserts the effect's body mutates a signal, that's an anti-pattern.
+
+### 3.12 @defer Blocks
+
+#### What to test
+
+- Placeholder content renders before the trigger condition is met
+- Loading content renders while the deferred content is fetching
+- Deferred content renders after the trigger activates
+- Error content renders if the deferred load fails
+
+#### Pre-flight
+
+- Identify the `@defer` trigger (`(on viewport)`, `(on interaction)`, `(when <condition>)`).
+- Identify each block: `@placeholder`, `@loading`, `@error`, and the main deferred content.
+
+#### Recipe template (Manual behavior)
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { Component } from '@angular/core';
+import { DeferBlockBehavior, DeferBlockState } from '@angular/core/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+@Component({
+  selector: 'app-heavy',
+  template: '<p>Heavy component loaded!</p>',
+  standalone: true,
+})
+class HeavyComponent {}
+
+@Component({
+  imports: [HeavyComponent],
+  template: `
+    @defer (when <condition-name>) {
+      <app-heavy />
+    } @placeholder {
+      <p>Placeholder content</p>
+    } @loading {
+      <p>Loading...</p>
+    } @error {
+      <p>Failed to load</p>
+    }
+  `,
+  standalone: true,
+})
+class TestDeferComponent {
+  <condition-name> = false;
+}
+
+describe('@defer blocks', () => {
+  let fixture: ComponentFixture<TestDeferComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      deferBlockBehavior: DeferBlockBehavior.Manual,
+    });
+    fixture = TestBed.createComponent(TestDeferComponent);
+  });
+
+  it('should render placeholder by default', async () => {
+    expect(fixture.nativeElement.innerHTML).toContain('Placeholder content');
+  });
+
+  it('should render loading state', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Loading);
+    expect(fixture.nativeElement.innerHTML).toContain('Loading...');
+  });
+
+  it('should render deferred content in complete state', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Complete);
+    expect(fixture.nativeElement.innerHTML).toContain('Heavy component loaded!');
+  });
+
+  it('should render error state when deferred load fails', async () => {
+    const deferBlockFixture = (await fixture.getDeferBlocks())[0];
+    await deferBlockFixture.render(DeferBlockState.Error);
+    expect(fixture.nativeElement.innerHTML).toContain('Failed to load');
+  });
+});
+```
+
+#### Common variants
+
+- **`PlayThrough` behavior (default)** — drop `deferBlockBehavior` from the TestBed config. The block goes through states naturally.
+- **Multiple `@defer` blocks in one component** — `(await fixture.getDeferBlocks())[0]` vs `[1]` etc.
+- **`@defer (on viewport)`** — switching to `PlayThrough` is simpler; `Manual` requires simulating the viewport trigger.
+
+#### Pitfalls
+
+- **Forgetting `await` on `getDeferBlocks()`** — it returns a `Promise<DeferBlockFixture[]>`.
+- **Asserting on placeholder content after `render(Loading)`** — once you advance the state, the placeholder is gone. Assert before `render()` for placeholder, after for everything else.
+- **Forgetting `DeferBlockBehavior.Manual`** — without it, the block plays through states before you can assert, and the placeholder test fails.
+
+### 3.13 Page Components (Smart / Container)
+
+#### What to test
+
+- Renders the correct UI for each logical state: loading, empty, error, populated
+- Makes the correct HTTP requests with the right params
+- Reacts to child component events (pagination clicks, search input)
+- Composes child components correctly
+
+#### Pre-flight
+
+- Identify the page's route — the path that loads it. Use `provideRouter` with the route config in tests.
+- List every HTTP call the page makes (initial load, search, pagination).
+- Identify the logical states (loading, empty, error, populated) and the DOM that signals each.
+
+#### Recipe template (RouterTestingHarness + real imports)
+
+```typescript
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { <PageComponent> } from '<relative-path>';
+import { <ChildA>, <ChildB> } from '<relative-paths>';
+
+const <mockData> = <response-shape>;
+
+describe('<PageComponent>', () => {
+  let harness: RouterTestingHarness;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClientTesting(),
+        provideRouter([{ path: '<path>', component: <PageComponent> }]),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('<url>');
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should show <loading-indicator> before response', () => {
+    expect(harness.routeNativeElement?.querySelector('<loading-selector>')).not.toBeNull();
+    httpTesting.expectOne((r) => r.url.includes('<url-fragment>')).flush(<empty-mock-data>);
+  });
+
+  it('should render <content> after success', async () => {
+    httpTesting.expectOne((r) => r.url.includes('<url-fragment>')).flush(<mockData>);
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('<expected-text>');
+  });
+
+  it('should show <error-callout> on HTTP error', async () => {
+    httpTesting
+      .expectOne((r) => r.url.includes('<url-fragment>'))
+      .flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.querySelector('<error-selector>')).not.toBeNull();
+  });
+
+  it('should <behavior> when <child-event> fires', async () => {
+    httpTesting.expectOne((r) => r.url.includes('<url-fragment>')).flush(<mockData>);
+    await harness.fixture.whenStable();
+
+    // Trigger the child event
+    const child = harness.fixture.debugElement.query(/* By.directive(<ChildA>) */);
+    child.triggerEventHandler('<event-name>', <event-payload>);
+    TestBed.flushEffects();
+
+    const req2 = httpTesting.expectOne((r) => r.url.includes('<url-fragment>'));
+    expect(req2.request.params.get('<param>')).toBe('<expected-value>');
+    req2.flush(<mockData>);
+    await harness.fixture.whenStable();
+  });
+});
+```
+
+#### Common variants
+
+- **Page with `httpResource`** — drop `TestBed.createComponent`; the resource fires on route activation. Flush effects, then expect.
+- **Page with guards** — the harness navigates; the guard runs; assert on the final URL.
+- **Page with multiple child components** — test each child interaction in its own `it()`.
+
+#### Pitfalls
+
+- **Using `NO_ERRORS_SCHEMA` for the whole page** — this hides the child's DOM. For page tests, prefer real imports of children so child-event assertions can fire.
+- **Asserting on `harness.fixture.nativeElement` instead of `harness.routeNativeElement`** — the harness's fixture is the _root component containing the outlet_. The routed page renders inside `routeNativeElement`.
+- **Not testing the empty state** — most pages have an "empty list" state. The mock data with an empty array is the easiest test to write and one of the most useful.
+- **Not flushing effects between event and assertion** — the event handler may trigger a reactive update; without `flushEffects()`, the second `expectOne` fails.
