@@ -1177,3 +1177,30 @@ TestBed.configureTestingModule({}).overrideComponent(<ComponentName>, {
 ```
 
 `NO_ERRORS_SCHEMA` is the escape hatch when you don't want to enumerate children. Use it when the test doesn't depend on child internals; use real imports when it does.
+
+## 5. PrimeNG Components
+
+When a component uses **PrimeNG** (`p-*` tags in its template, `import { ... } from 'primeng/<module>'` in its source), the test setup requires more than the standard `TestBed.configureTestingModule` block. The full pattern cookbook is in the companion file:
+
+> **[README-TEST-PRIMENG-AGENT-GUIDE.md](README-TEST-PRIMENG-AGENT-GUIDE.md)** — universal setup, service stubs, top 8-10 components, v20 renames table, pitfalls.
+
+**TL;DR for PrimeNG tests:**
+
+- Add `provideAnimationsAsync()` to the providers — PrimeNG v20+ depends on Angular's async animations engine. `NoopAnimationsModule` is the wrong choice.
+- Stub the PrimeNG services the component injects:
+  - `MessageService` → `{ add: vi.fn() }`
+  - `ConfirmationService` → `{ confirm: vi.fn() }`
+  - `DialogService` → `{ open: vi.fn().mockReturnValue(<ref>) }`
+- For the **current API** of any PrimeNG component, query `https://primeng.org/mcp` at write time. The MCP returns the live selector, events, and template syntax; the companion file gives the testing pattern.
+
+**Renames to watch for in older codebases** (PrimeNG v17/v18 → v20+):
+
+| v17/v18        | v20+         |
+| -------------- | ------------ |
+| `Dropdown`     | `Select`     |
+| `Calendar`     | `DatePicker` |
+| `TabView`      | `Tabs`       |
+| `OverlayPanel` | `Popover`    |
+| `Sidebar`      | `Drawer`     |
+
+If the codebase uses one of the v17/v18 names, the v20+ import is the renamed module — but the import path may still resolve to the old name during a migration.
