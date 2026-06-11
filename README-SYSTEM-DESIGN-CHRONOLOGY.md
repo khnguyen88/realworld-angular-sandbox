@@ -9,20 +9,31 @@ routes, guards, and tests evolved, and what modifications happened across the
 91 commits. It's the narrative companion to the file-inventory documents
 (`README-SYSTEM-DESIGN-DETAILS.md`, `README-SYSTEM-DESIGN-DETAILS-COMMITS.md`).
 
+## Testing Status Today
+
+As of 2026-06-11, the synced upstream clone has **59 spec files** and **350
+individual test blocks**. The suite still compiles and starts, but the current
+Vitest run is **red**: **32/59 specs pass, 27 specs fail**, with **230 passing
+tests and 120 failing tests**. The dominant failures are request-isolation drift
+around unhandled `/api/options/sizes`, `/api/options/toppings`, and
+`/api/pizzerias/images` calls, followed by `TestBed` reconfiguration cascades and
+checkout fixture/provider expectation drift.
+
 ---
 
 ## 1. Overall Timeline
 
-| Date      | Phase      | Commits | What Happened                                                                                                                                                                                                                                                                                                                       |
-| --------- | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| May 14    | P1 (early) | 4       | **Everything created.** Init commit (`a1eb73e`) lays down 217 files — all features, all 16 shared components, all guards, all services, all routes, all models. **Not a stub: full working app** with signal-based forms, lazy loading, computed cart state, full checkout flow with deactivation guard.                            |
-| May 15    | P1 (late)  | 11      | **Polish and refinement.** Checkout enhanced (`1ecf2a3`), cart refactored (`c281624`), auth password toggle polished (`cf005d0`, `8f7148f`), README updated (4 commits), CSP experimentation (`b08df5c`, `95ffec9`).                                                                                                                |
-| May 17    | P2 (start) | 10      | **Small fixes, admin route consistency.** Image format update, asset cleanup, footer link, admin routes refactored (`1f623fe`), orders tab removed (`fd7f4dd`).                                                                                                                                                                     |
-| May 18    | P2 (main)  | 26      | **Massive refactoring day.** Base URL interceptor added (`43a4c77`), shared components consolidated (Badge→StatusBadge at `4e53703`, Callout, EmptyState, form components), `httpResource` adopted, `DestroyRef`/`takeUntilDestroyed` integrated, route titles across all features (`bca0306`), obsolete specs deleted (`cdbf77a`). |
-| May 19    | P3         | 18      | **Testing blitz + ship prep.** 54 spec files added in one commit (`70dae9c`) covering every component, guard, service, page. README finalized (5 commits). CI, husky, prettier, pnpm workspace configured.                                                                                                                          |
-| May 20–22 | P4         | 7       | **Test quality refinement.** Mock components replaced with real implementations (`0d66ee7`), type safety improved (`26e0388`), formatting standardized (`6cdda60`), standalone flags removed (`ca63022`). Zero new files — pure quality work.                                                                                       |
-| May 22–26 | P5 (early) | 4       | **Feature expansion.** Pizzeria details pagination + load-more component (`bd72c32`). Checkout completely rebuilt as multi-step wizard (`b7f434b`). Email validation (`77c09fc`). Linting pass (`2c91bea`).                                                                                                                         |
-| Jun 1–5   | P5 (late)  | 11      | **Coupon codes + polish.** Coupon functionality across 3 commits (`7d23826`, `ecd87f8`, `d5a7229`, `3322c2d`). Angular 22 upgrade (`f3f1700`). Error handling improved (`059e7fc`). Footer defer loading (`8fa08a5`).                                                                                                               |
+| Date      | Phase       | Commits | What Happened                                                                                                                                                                                                                                                                                                                       |
+| --------- | ----------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| May 14    | P1 (early)  | 4       | **Everything created.** Init commit (`a1eb73e`) lays down 217 files — all features, all 16 shared components, all guards, all services, all routes, all models. **Not a stub: full working app** with signal-based forms, lazy loading, computed cart state, full checkout flow with deactivation guard.                            |
+| May 15    | P1 (late)   | 11      | **Polish and refinement.** Checkout enhanced (`1ecf2a3`), cart refactored (`c281624`), auth password toggle polished (`cf005d0`, `8f7148f`), README updated (4 commits), CSP experimentation (`b08df5c`, `95ffec9`).                                                                                                                |
+| May 17    | P2 (start)  | 10      | **Small fixes, admin route consistency.** Image format update, asset cleanup, footer link, admin routes refactored (`1f623fe`), orders tab removed (`fd7f4dd`).                                                                                                                                                                     |
+| May 18    | P2 (main)   | 26      | **Massive refactoring day.** Base URL interceptor added (`43a4c77`), shared components consolidated (Badge→StatusBadge at `4e53703`, Callout, EmptyState, form components), `httpResource` adopted, `DestroyRef`/`takeUntilDestroyed` integrated, route titles across all features (`bca0306`), obsolete specs deleted (`cdbf77a`). |
+| May 19    | P3          | 18      | **Testing blitz + ship prep.** 54 spec files added in one commit (`70dae9c`) covering every component, guard, service, page. README finalized (5 commits). CI, husky, prettier, pnpm workspace configured.                                                                                                                          |
+| May 20–22 | P4          | 7       | **Test quality refinement.** Mock components replaced with real implementations (`0d66ee7`), type safety improved (`26e0388`), formatting standardized (`6cdda60`), standalone flags removed (`ca63022`). Zero new files — pure quality work.                                                                                       |
+| May 22–26 | P5 (early)  | 4       | **Feature expansion.** Pizzeria details pagination + load-more component (`bd72c32`). Checkout completely rebuilt as multi-step wizard (`b7f434b`). Email validation (`77c09fc`). Linting pass (`2c91bea`).                                                                                                                         |
+| Jun 1–5   | P5 (late)   | 11      | **Coupon codes + polish.** Coupon functionality across 3 commits (`7d23826`, `ecd87f8`, `d5a7229`, `3322c2d`). Angular 22 upgrade (`f3f1700`). Error handling improved (`059e7fc`). Footer defer loading (`8fa08a5`).                                                                                                               |
+| Jun 11    | P6 (health) | 1       | **Testing health snapshot.** Upstream sync to GitHub HEAD (`420001d`) leaves 59 specs / 350 tests; suite runs but is red with 32 passing specs, 27 failing specs, 230 passing tests, and 120 failing tests. No source/test changes were made in this snapshot.                                                                      |
 
 ---
 
@@ -522,15 +533,16 @@ Four features had minimal evolution after creation. Each was a **fully-implement
 
 The pattern is striking: **7 initial guards, 6 had their specs thrown away, 5 were re-created, 1 was permanently deleted, 1 was newly created.** The guard spec lifecycle (create → delete → re-create → refine → some deleted) maps exactly to the developer's "build → refactor → test → refine → enhance" rhythm.
 
-### 10.2 Test Suite: From Zero to 60
+### 10.2 Test Suite: From Zero to 60 to 59
 
-| Phase  | Spec Files | Net Change | Key Event                                                                                                                                                                                                                                                                                             |
-| ------ | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **P1** | 10         | +10        | Initial auto-generated specs (auth.guard, checkout-deactivate, role.guard, credentials.interceptor, auth, photon-api, pizzeria-api, cart.store, app)                                                                                                                                                  |
-| **P2** | 0          | −10        | All 10 specs deleted (`cdbf77a`)                                                                                                                                                                                                                                                                      |
-| **P3** | 54         | +54        | Complete test suite written (`70dae9c`) — 45 new + 9 re-created                                                                                                                                                                                                                                       |
-| **P4** | 54         | 0          | ~40 specs refactored for quality                                                                                                                                                                                                                                                                      |
-| **P5** | 60         | +6         | New specs for checkout wizard components, checkout-step guard, checkout-wizard, load-more. (Also: checkout-deactivate spec permanently removed, net +4 to 58, plus app.spec never re-created = 57... but the suite is at 60 because some features had specs that never went through the delete cycle) |
+| Phase  | Spec Files | Net Change | Key Event                                                                                                                                                                                                                                                                                                            |
+| ------ | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P1** | 10         | +10        | Initial auto-generated specs (auth.guard, checkout-deactivate, role.guard, credentials.interceptor, auth, photon-api, pizzeria-api, cart.store, app)                                                                                                                                                                 |
+| **P2** | 0          | −10        | All 10 specs deleted (`cdbf77a`)                                                                                                                                                                                                                                                                                     |
+| **P3** | 54         | +54        | Complete test suite written (`70dae9c`) — 45 new + 9 re-created                                                                                                                                                                                                                                                      |
+| **P4** | 54         | 0          | ~40 specs refactored for quality                                                                                                                                                                                                                                                                                     |
+| **P5** | 60         | +6         | New specs for checkout wizard components, checkout-step guard, checkout-wizard, load-more. (Also: checkout-deactivate spec permanently removed, net +4 to 58, plus app.spec never re-created = 57... but the suite is at 60 because some features had specs that never went through the delete cycle)                |
+| **P6** | 59         | −1         | Upstream sync snapshot (`420001d`, Jun 11) records 59 spec files and 350 test blocks. The suite compiles and runs but is red: 32 specs / 230 tests pass, 27 specs / 120 tests fail. Failure clusters are request isolation drift, TestBed reconfiguration cascades, and checkout fixture/provider expectation drift. |
 
 ### 10.3 Routes: Progressive Refinement
 
@@ -585,6 +597,24 @@ The `baseUrlInterceptor` is the only architectural component that was **not pres
 **Build everything fast (2 days) → Refactor architecture (2 days) → Write all tests + docs + CI (1 day) → Refine test quality (2 days) → Add new features incrementally (spread over 2 weeks).**
 
 ## This is a disciplined solo-developer workflow: get it working, make it right, prove it works, then extend. The 48-hour "build everything" burst at the start is particularly notable — the developer had a clear vision of the full architecture from the beginning and executed it rapidly, then spent the remaining 3 weeks hardening and extending.
+
+## 11.5 Current Testing Health
+
+The Jun 11 snapshot records the current health of the synced upstream suite:
+
+| Metric                   | Current Result                                                                |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| Spec files               | **59**                                                                        |
+| Individual test blocks   | **350**                                                                       |
+| Suite execution          | Compiles and starts                                                           |
+| Overall status           | **Red**                                                                       |
+| Passing specs / tests    | **32 specs**, **230 tests**                                                   |
+| Failing specs / tests    | **27 specs**, **120 tests**                                                   |
+| Primary failure clusters | Request-isolation drift, `TestBed` reconfiguration cascades, checkout drift   |
+| Notable missing coverage | No coverage report, no e2e, no integration tests, no a11y checks              |
+| Recommended next triage  | Stabilize HTTP expectations and fixture/provider drift before adding coverage |
+
+The important distinction is that this is **not a new local regression**. It is a health baseline for the freshly synced upstream clone. The suite is broad and structurally disciplined, but it is not yet trustworthy until the remaining isolation and fixture drift failures are resolved.
 
 ## 12. Unified Project Timeline (All Features)
 
