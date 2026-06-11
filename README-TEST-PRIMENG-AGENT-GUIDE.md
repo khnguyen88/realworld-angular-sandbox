@@ -22,8 +22,13 @@ You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeN
 
 > **primeng.org MCP:** before writing assertions for any component in §4-§13, query `https://primeng.org/mcp` for the current `<ComponentName>` API. The patterns below are version-stable; the API details are not.
 
+## Current Suite Relevance
+
+The realworld-angular suite is currently red, so this cookbook is a pattern guide, not proof that every PrimeNG test in the suite passes. Use it to write clearer PrimeNG tests, then validate against the current test run and fix request isolation or fixture drift in the affected specs separately.
+
 ## Table of Contents
 
+- [Current Suite Relevance](#current-suite-relevance)
 - [§1. Pre-flight: Confirm PrimeNG Version](#1-pre-flight-confirm-primeng-version)
 - [§2. Universal Test Setup](#2-universal-test-setup)
 - [§3. Service Stubs](#3-service-stubs)
@@ -57,7 +62,7 @@ Every PrimeNG test starts from this base. Customize per-component below.
 ```typescript
 TestBed.configureTestingModule({
   providers: [
-    provideAnimationsAsync(),
+    // provideAnimationsAsync() when the component path depends on animation events
     // ... per-component providers
   ],
 }).overrideComponent(<ComponentUnderTest>, {
@@ -65,11 +70,13 @@ TestBed.configureTestingModule({
 });
 ```
 
-`provideAnimationsAsync()` is **mandatory** for PrimeNG v20+. PrimeNG components subscribe to animation events; without the provider, you get cryptic `NG0201` errors or silent failures.
+Use `provideAnimationsAsync()` when the PrimeNG component or interaction path depends on animation events. Start without extra animation setup for simple components, then add `provideAnimationsAsync()` if PrimeNG throws animation-related errors or interactions fail.
 
-`NoopAnimationsModule` is the **wrong choice** — it suppresses the animation events PrimeNG components depend on for transitions and open/close state.
+Avoid `NoopAnimationsModule` when testing components that rely on animation events for transitions, open/close state, or portal behavior. It is not automatically wrong for every PrimeNG test, but it can suppress the events a component depends on.
 
 ### 2.2 Theme CSS in jsdom
+
+jsdom has no real CSS layout engine. Theme CSS is needed when tests assert PrimeNG classes, themed DOM, or style-dependent template output. Do not rely on layout-dependent behavior such as measured size, scroll position, or visual placement in jsdom.
 
 PrimeNG components render with theme-dependent CSS classes. In `angular.json`, the test target's `options.styles` should include the theme:
 
@@ -262,7 +269,7 @@ it('should request page 2 when paginator advances', async () => {
 });
 ```
 
-> **Note on the next-page click:** the exact selector depends on the PrimeNG theme. `.p-paginator-next` is the v17/v18/v20 default. If the project's theme overrides it, query the rendered DOM (`el.querySelectorAll('.p-paginator button')`) to find the next button.
+> **Note on the next-page click:** paginator selectors are version/theme-dependent. Prefer stable attributes or roles when available. If the theme changes `.p-paginator-next`, query the rendered paginator after the table is open, then click the button by role/text or the closest stable wrapper.
 
 ### 4.5 Common variants
 
@@ -345,7 +352,7 @@ describe('<DialogHostComponent>', () => {
 
 - **Dialog opened via `DialogService.open()`** — the parent component test stubs `DialogService` with `{ open: vi.fn().mockReturnValue(<ref>) }`. Assert on the stub's `open` call args and the ref's `close` method.
 - **Dialog with form** — combine the dialog recipe with §3.10 Forms from the main guide.
-- **Dialog without header (no close button)** — test ESC keypress or backdrop click instead.
+- **Dialog without header (no close button)** — test ESC keypress or backdrop click instead. Do not assume `.p-dialog-header-close` exists; query the rendered dialog after opening and choose the closest stable close trigger.
 
 ### 5.5 Pitfalls
 
@@ -741,7 +748,7 @@ describe('<FileUploadHostComponent>', () => {
 
 - **`Object.defineProperty` for the `files` property** — `<input type="file">` doesn't accept programmatic file assignment via `.files =`. Use `Object.defineProperty` to bypass the read-only protection.
 - **Missing `dispatchEvent(new Event('change'))`** — setting `files` alone doesn't trigger PrimeNG's change handler. Dispatch the event manually.
-- **Wrong button selector** — `.p-fileupload-upload` is the v17+ default. The cancel button is `.p-fileupload-cancel`.
+- **Wrong button selector** — upload/cancel selectors are version/theme-dependent. Query the rendered file upload after it is initialized and prefer stable labels/roles when available.
 
 ## 12. Renames from v17/v18
 
@@ -766,6 +773,7 @@ A consolidated list of mistakes when testing PrimeNG components.
 - **Missing `provideAnimationsAsync()`** — the most common error. PrimeNG v20+ components subscribe to animation events; without the provider, you get `NG0201` errors or silent test failures.
 - **Using `NoopAnimationsModule`** — the wrong choice. It suppresses the events PrimeNG depends on. Use `provideAnimationsAsync()` instead.
 - **Forgetting `MessageService` for `p-confirmpopup` and `p-toast`** — these components inject `MessageService` directly. Stub it in the providers list.
+- **Using brittle PrimeNG class selectors everywhere** — component classes vary by PrimeNG version and theme. Query the rendered DOM after opening/triggering the component, then prefer stable attributes, roles, labels, or the closest stable wrapper.
 - **Asserting on portal-rendered DOM inside the component** — toasts, dialogs opened via `DialogService`, and overlays render in portals at `document.body`. Use `document.body.querySelector(...)` for those.
 - **Importing the wrong module** — `primeng/dropdown` is v17/v18; `primeng/select` is v20+. The codebase's PrimeNG version determines which import path to use.
 - **Setting `files` on an `<input type="file">` without `Object.defineProperty`** — the `files` property is read-only; the assignment silently fails.
