@@ -640,7 +640,7 @@ it('should reflect the bound value', async () => {
 });
 ```
 
-`p-inputtext` is a CSS-only component; the actual `<input>` is rendered by the host's template. Assert on the `<input>` element directly.
+`pInputText` is a directive applied to a native `<input>` (`<input pInputText />`); in some themes it is also reachable as a CSS class. The test always asserts on the rendered `<input>` element.
 
 ### 10.2 p-button
 
