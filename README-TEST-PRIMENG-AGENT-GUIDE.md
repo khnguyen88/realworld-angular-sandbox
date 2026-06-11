@@ -488,12 +488,288 @@ describe('<DatePickerHostComponent>', () => {
 
 ## 8. p-confirmpopup
 
+> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `ConfirmPopup` API — selector, the `accept`/`reject` event payload, and the `ConfirmationService` integration.
+
+### 8.1 What to test
+
+- Triggering `ConfirmationService.confirm(...)` causes the popup to appear
+- Clicking the accept button calls the accept callback
+- Clicking the reject button calls the reject callback
+
+### 8.2 Pre-flight
+
+- Identify the component that calls `ConfirmationService.confirm(...)`.
+- Note the accept/reject callbacks in the confirm options.
+
+### 8.3 Recipe template
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { <TriggerComponent> } from '<relative-path>';
+
+describe('<TriggerComponent> confirm flow', () => {
+  let fixture: ComponentFixture<<TriggerComponent>>;
+  let el: HTMLElement;
+  let confirmationService: ConfirmationService;
+  let acceptFn: ReturnType<typeof vi.fn>;
+  let rejectFn: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    acceptFn = vi.fn();
+    rejectFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        provideAnimationsAsync(),
+        { provide: ConfirmationService, useValue: { confirm: vi.fn() } },
+        { provide: MessageService, useValue: { add: vi.fn() } },
+      ],
+    }).overrideComponent(<TriggerComponent>, {
+      set: { imports: [ConfirmPopupModule] },
+    });
+    fixture = TestBed.createComponent(<TriggerComponent>);
+    el = fixture.nativeElement;
+    confirmationService = TestBed.inject(ConfirmationService);
+    await fixture.whenStable();
+  });
+
+  it('should call ConfirmationService.confirm when <trigger-action>', () => {
+    el.querySelector<HTMLButtonElement>('<trigger-selector>')!.click();
+    expect(confirmationService.confirm).toHaveBeenCalled();
+  });
+
+  it('should run <accept-side-effect> when accept callback fires', () => {
+    el.querySelector<HTMLButtonElement>('<trigger-selector>')!.click();
+    const confirmCall = (confirmationService.confirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    confirmCall.accept();
+    expect(<accept-side-effect>).toBe(<expected>);
+  });
+});
+```
+
+### 8.4 Pitfalls
+
+- **Not providing both `ConfirmationService` AND `MessageService`** — `ConfirmPopup` itself uses `MessageService` for accessibility announcements. Forgetting it gives an `NG0201` error.
+- **Asserting on the popup DOM before the confirm is called** — the popup only appears when `ConfirmationService.confirm` runs.
+
 ## 9. p-toast
+
+> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `Toast` API — the `key` for matching toasts, the `MessageService.add` payload shape (`severity`, `summary`, `detail`, `key`).
+
+### 9.1 What to test
+
+- `MessageService.add({ severity: 'success', ... })` causes a toast to render
+- Multiple toasts stack
+- Toast auto-dismisses after the configured lifetime
+
+### 9.2 Recipe template
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { <ToastHostComponent> } from '<relative-path>';
+
+describe('<ToastHostComponent>', () => {
+  let fixture: ComponentFixture<<ToastHostComponent>>;
+  let el: HTMLElement;
+  let messageService: MessageService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideAnimationsAsync(),
+        { provide: MessageService, useValue: { add: vi.fn() } },
+      ],
+    }).overrideComponent(<ToastHostComponent>, {
+      set: { imports: [ToastModule] },
+    });
+    fixture = TestBed.createComponent(<ToastHostComponent>);
+    el = fixture.nativeElement;
+    messageService = TestBed.inject(MessageService);
+    await fixture.whenStable();
+  });
+
+  it('should not render any toast by default', () => {
+    expect(el.querySelector('.p-toast')).toBeNull();
+  });
+
+  it('should render a toast when MessageService.add is called', () => {
+    (messageService.add as ReturnType<typeof vi.fn>).mock.calls.length; // ensure add is spied
+    // Trigger the action that calls messageService.add
+    fixture.componentInstance.<triggerMethod>();
+    expect(messageService.add).toHaveBeenCalledWith(expect.objectContaining({ severity: '<expected-severity>' }));
+  });
+});
+```
+
+> **Note on the toasts' DOM:** `p-toast` renders toasts into a portal at the document body level, not inside the component's host. If asserting on toast DOM directly, query `document.body.querySelector('.p-toast-message')` instead of `fixture.nativeElement.querySelector(...)`.
+
+### 9.3 Pitfalls
+
+- **Asserting on the toast inside the component** — toasts render in a portal. Use `document.body` queries.
+- **Not providing `MessageService`** — the toast component injects it directly; without the provider, the test fails on construction.
 
 ## 10. p-inputtext, p-button, p-checkbox
 
+These three are simple enough that the recipes are short. Combine them in one test if the component uses all three.
+
+> **primeng.org MCP:** query `https://primeng.org/mcp` for the current API of each component before writing tests. The patterns below are version-stable.
+
+### 10.1 p-inputtext
+
+```typescript
+import { InputTextModule } from 'primeng/inputtext';
+
+TestBed.configureTestingModule({
+  providers: [provideAnimationsAsync()],
+}).overrideComponent(<HostComponent>, {
+  set: { imports: [InputTextModule, ReactiveFormsModule] },
+});
+
+it('should reflect the bound value', async () => {
+  fixture.componentRef.setInput('value', 'hello');
+  await fixture.whenStable();
+  const input = el.querySelector<HTMLInputElement>('input.p-inputtext')!;
+  expect(input.value).toBe('hello');
+});
+```
+
+`p-inputtext` is a CSS-only component; the actual `<input>` is rendered by the host's template. Assert on the `<input>` element directly.
+
+### 10.2 p-button
+
+```typescript
+import { ButtonModule } from 'primeng/button';
+
+it('should fire click handler when clicked', () => {
+  el.querySelector<HTMLButtonElement>('button.p-button')!.click();
+  expect(<handler-stub>).toHaveBeenCalled();
+});
+```
+
+`p-button` renders a `<button>` with the `.p-button` class. The click event bubbles naturally.
+
+### 10.3 p-checkbox
+
+```typescript
+import { CheckboxModule } from 'primeng/checkbox';
+import { FormsModule } from '@angular/forms';
+
+it('should toggle checked state', async () => {
+  fixture.componentRef.setInput('checked', false);
+  await fixture.whenStable();
+  el.querySelector<HTMLDivElement>('.p-checkbox')!.click();
+  await fixture.whenStable();
+  expect(fixture.componentInstance.checked()).toBe(true);
+});
+```
+
+The checkbox's clickable element is the wrapper `.p-checkbox` div, not the hidden `<input>`. Use the wrapper for the click target.
+
+### 10.4 Common pitfalls
+
+- **Asserting on a hidden `<input>` for the checkbox** — the actual input is `display: none`. Click the wrapper.
+- **Missing `FormsModule` for the checkbox** — `p-checkbox` uses `[(ngModel)]` or signal-form integration; the test needs the right form module imported.
+- **Missing `ReactiveFormsModule` for input with formControl** — same reason.
+
 ## 11. p-fileupload
+
+> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `FileUpload` API — the upload mode (`auto` vs `manual`), the `onUpload` event payload, and the `choose` / `upload` / `cancel` button selectors.
+
+### 11.1 What to test
+
+- The file input accepts files via `choose` event
+- Clicking upload triggers the upload callback with the selected file
+- Cancel button clears the selection
+
+### 11.2 Pre-flight
+
+- Identify the upload mode: `[mode]="'basic'"` (single button) vs `[mode]="'advanced'"` (table with progress).
+- Note the upload handler — what does the component do with the file? Send to a service? Store locally?
+
+### 11.3 Recipe template
+
+```typescript
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { FileUploadModule } from 'primeng/fileupload';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { <FileUploadHostComponent> } from '<relative-path>';
+
+const <mockFile> = new File(['<contents>'], 'test.txt', { type: 'text/plain' });
+
+describe('<FileUploadHostComponent>', () => {
+  let fixture: ComponentFixture<<FileUploadHostComponent>>;
+  let el: HTMLElement;
+  let uploadHandler: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    uploadHandler = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [provideAnimationsAsync()],
+    }).overrideComponent(<FileUploadHostComponent>, {
+      set: { imports: [FileUploadModule] },
+    });
+    fixture = TestBed.createComponent(<FileUploadHostComponent>);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+  });
+
+  it('should trigger <upload-handler> when upload button is clicked', async () => {
+    const fileInput = el.querySelector<HTMLInputElement>('input[type="file"]')!;
+    // Simulate file selection
+    Object.defineProperty(fileInput, 'files', { value: [<mockFile>] });
+    fileInput.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    // Click the upload button
+    el.querySelector<HTMLButtonElement>('.p-fileupload-upload')!.click();
+    await fixture.whenStable();
+
+    expect(uploadHandler).toHaveBeenCalledWith(<mockFile>);
+  });
+});
+```
+
+### 11.4 Pitfalls
+
+- **`Object.defineProperty` for the `files` property** — `<input type="file">` doesn't accept programmatic file assignment via `.files =`. Use `Object.defineProperty` to bypass the read-only protection.
+- **Missing `dispatchEvent(new Event('change'))`** — setting `files` alone doesn't trigger PrimeNG's change handler. Dispatch the event manually.
+- **Wrong button selector** — `.p-fileupload-upload` is the v17+ default. The cancel button is `.p-fileupload-cancel`.
 
 ## 12. Renames from v17/v18
 
+If the codebase predates PrimeNG v20, you'll see the old names. The pattern recipes still apply; only the import path and selector change.
+
+| v17/v18        | v20+         | Notes                                                  |
+| -------------- | ------------ | ------------------------------------------------------ |
+| `Dropdown`     | `Select`     | Same `options` shape; `onChange` payload unchanged.    |
+| `Calendar`     | `DatePicker` | `dateFormat` → still works, plus new `datePickerType`. |
+| `TabView`      | `Tabs`       | `<p-tabView>` → `<p-tabs>`; `<p-tabPanel>` unchanged.  |
+| `OverlayPanel` | `Popover`    | `show`/`hide` events; `appendTo` still works.          |
+| `Sidebar`      | `Drawer`     | Same `(visible)` binding; new `position` input.        |
+
+**How to detect:** open `package.json` and check the `primeng` version. If `^17.x` or `^18.x`, the codebase uses the old names.
+
+**Migration in tests:** when the project upgrades, the recipes in this file work as-is; the writer only needs to update the import path and selector in `overrideComponent`. The patterns (animations, service stubs, query selectors via `.p-<component>`) are the same.
+
 ## 13. Common Pitfalls
+
+A consolidated list of mistakes when testing PrimeNG components.
+
+- **Missing `provideAnimationsAsync()`** — the most common error. PrimeNG v20+ components subscribe to animation events; without the provider, you get `NG0201` errors or silent test failures.
+- **Using `NoopAnimationsModule`** — the wrong choice. It suppresses the events PrimeNG depends on. Use `provideAnimationsAsync()` instead.
+- **Forgetting `MessageService` for `p-confirmpopup` and `p-toast`** — these components inject `MessageService` directly. Stub it in the providers list.
+- **Asserting on portal-rendered DOM inside the component** — toasts, dialogs opened via `DialogService`, and overlays render in portals at `document.body`. Use `document.body.querySelector(...)` for those.
+- **Importing the wrong module** — `primeng/dropdown` is v17/v18; `primeng/select` is v20+. The codebase's PrimeNG version determines which import path to use.
+- **Setting `files` on an `<input type="file">` without `Object.defineProperty`** — the `files` property is read-only; the assignment silently fails.
+- **Asserting on a closed dialog** — PrimeNG only inserts the dialog DOM when `visible` is true. Open it first, then query.
+- **Asserting on a hidden checkbox `<input>`** — the actual clickable element is the `.p-checkbox` wrapper.
+- **Not providing theme CSS in `angular.json`** — components render with `undefined` styles. Add the theme import to `test.options.styles`.
+- **Stubbing services with `useClass` instead of `useValue`** — for `MessageService`, `ConfirmationService`, etc., `useValue: { add: vi.fn() }` is the right pattern. `useClass` requires implementing the full service.
