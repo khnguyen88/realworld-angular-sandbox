@@ -16,18 +16,20 @@
 
 ## Quick Reference
 
-| Phase  | Date          | Time (Local) | Commit                                   | Action                                                       | Specs |
-| ------ | ------------- | ------------ | ---------------------------------------- | ------------------------------------------------------------ | ----- |
-| **1**  | 2026-05-14    | 23:12 CEST   | `a1eb73e` — init                         | Created 9 skeleton specs                                     | +9    |
-| **2**  | 2026-05-18    | 00:57 CEST   | `43a4c77` — base URL interceptor         | Added 1 interceptor spec amid implementation work            | +1    |
-| **3a** | 2026-05-19    | 01:52 CEST   | `cdbf77a` — remove obsolete specs        | **Deleted all 10** Phase 1+2 specs                           | −10   |
-| **3b** | 2026-05-19    | 12:14 CEST   | `70dae9c` — add unit tests               | **Replaced with 54** comprehensive specs                     | +54   |
-| **4**  | 2026-05-23    | 00:19 CEST   | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component            | +1    |
-| **5**  | 2026-05-26    | 12:41 CEST   | `b7f434b` — checkout flow enhancement    | Added 6 checkout specs, deleted `checkout-deactivate` guard  | +6 −1 |
-| **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code           | 0 net |
-| **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net |
+| Phase  | Date          | Time (Local) | Commit                                   | Action                                                       | Specs    |
+| ------ | ------------- | ------------ | ---------------------------------------- | ------------------------------------------------------------ | -------- |
+| **1**  | 2026-05-14    | 23:12 CEST   | `a1eb73e` — init                         | Created 9 skeleton specs                                     | +9       |
+| **2**  | 2026-05-18    | 00:57 CEST   | `43a4c77` — base URL interceptor         | Added 1 interceptor spec amid implementation work            | +1       |
+| **3a** | 2026-05-19    | 01:52 CEST   | `cdbf77a` — remove obsolete specs        | **Deleted all 10** Phase 1+2 specs                           | −10      |
+| **3b** | 2026-05-19    | 12:14 CEST   | `70dae9c` — add unit tests               | **Replaced with 54** comprehensive specs                     | +54      |
+| **4**  | 2026-05-23    | 00:19 CEST   | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component            | +1       |
+| **5**  | 2026-05-26    | 12:41 CEST   | `b7f434b` — checkout flow enhancement    | Added 6 checkout specs, deleted `checkout-deactivate` guard  | +6 −1    |
+| **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code           | 0 net    |
+| **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net    |
+| **8**  | 2026-06-11    | 10:27 Local  | `420001d` — upstream sync to GitHub HEAD | Ran full test suite after sync; documented current failures  | 59 specs |
 
-**Final count:** 60 spec files with ~344 individual `it()` test blocks.
+**Historical final count:** 60 spec files with ~344 individual `it()` test blocks.  
+**Current observed count:** 59 spec files with 350 individual `it()` test blocks, as reported by the 2026-06-11 test run.
 
 ---
 
@@ -587,6 +589,63 @@ These refactoring commits demonstrate a **test-as-first-class-citizen** mindset:
 | **Not Found**         | —                                    | not-found-page                        | —         | —       | 1           |
 | **Unauthorized**      | —                                    | unauthorized-page                     | —         | —       | 1           |
 | **App Root**          | app.spec                             | —                                     | —         | —       | 0 (deleted) |
+
+---
+
+## Phase 8: Upstream Sync Test Run — 2026-06-11 10:27 Local
+
+**Commit context:** `420001d` — upstream sync to GitHub HEAD `420001df2cf83e6e0b46335330f31308b9e5688a`  
+**Command:** `pnpm --dir realworld-angular run test`  
+**Result:** failed with exit code `1`; full output saved to `/tmp/realworld-angular-test.log`  
+**Observed totals:** 27 failed spec files, 32 passed spec files; 120 failed tests, 230 passed tests across 350 tests.
+
+This run was not an application-code change. It captured the current state of the synced upstream clone and should be treated as a baseline for triage.
+
+### Failure Distribution
+
+| Area                         | Spec File(s)                                                                                                   | Failed / Total |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------- |
+| Orders — Admin row           | `src/app/features/orders/pages/admin-order-list-page/admin-order-row/admin-order-row.spec.ts`                  | 9 / 9          |
+| Orders — Admin list page     | `src/app/features/orders/pages/admin-order-list-page/admin-order-list-page.spec.ts`                            | 6 / 6          |
+| Orders — Details page        | `src/app/features/orders/pages/order-details-page/order-details-page.spec.ts`                                  | 7 / 7          |
+| Orders — List page           | `src/app/features/orders/pages/order-list-page/order-list-page.spec.ts`                                        | 7 / 7          |
+| Pizzerias — Admin pizza row  | `src/app/features/pizzerias/components/admin-pizza-row/admin-pizza-row.spec.ts`                                | 9 / 9          |
+| Pizzerias — List page        | `src/app/features/pizzerias/pages/pizzeria-list-page/pizzeria-list-page.spec.ts`                               | 8 / 8          |
+| Pizzerias — Details page     | `src/app/features/pizzerias/pages/pizzeria-details-page/pizzeria-details-page.spec.ts`                         | 16 / 16        |
+| Pizzerias — Admin pizza list | `src/app/features/pizzerias/pages/admin-pizza-list-page/admin-pizza-list-page.spec.ts`                         | 6 / 6          |
+| Pizzerias — API              | `src/app/features/pizzerias/services/pizzeria-api.spec.ts`                                                     | 4 / 4          |
+| Pizzerias — Admin details    | `src/app/features/pizzerias/pages/admin-pizzeria-details-page/admin-pizzeria-details-page.spec.ts`             | 3 / 3          |
+| Pizzerias — Admin config     | `src/app/features/pizzerias/pages/admin-pizzeria-configuration-page/admin-pizzeria-configuration-page.spec.ts` | 6 / 6          |
+| Pizzerias — Admin form       | `src/app/features/pizzerias/pages/admin-pizzeria-form-page/admin-pizzeria-form-page.spec.ts`                   | 2 / 2          |
+| Pizzerias — Photon field     | `src/app/shared/components/photon-location-field/photon-location-field.spec.ts`                                | 7 / 7          |
+| Checkout — Page              | `src/app/features/checkout/pages/checkout-page/checkout-page.spec.ts`                                          | 6 / 6          |
+| Checkout — Step guard        | `src/app/features/checkout/guards/checkout-step.guard.spec.ts`                                                 | 2 / 7          |
+| Checkout — Review step       | `src/app/features/checkout/components/checkout-review-step/checkout-review-step.spec.ts`                       | 1 / 9          |
+| Auth — Login page            | `src/app/features/auth/pages/login-page/login-page.spec.ts`                                                    | 3 / 3          |
+| Auth — Register page         | `src/app/features/auth/pages/register-page/register-page.spec.ts`                                              | 4 / 4          |
+| Cart — Cart page             | `src/app/features/cart/pages/cart-page/cart-page.spec.ts`                                                      | 4 / 4          |
+| Core — Base URL interceptor  | `src/app/core/interceptors/base-url.interceptor.spec.ts`                                                       | 3 / 3          |
+| Core — Role guard            | `src/app/core/guards/role/role.guard.spec.ts`                                                                  | 1 / 4          |
+| Core — Footer                | `src/app/core/components/footer/footer.spec.ts`                                                                | 1 / 2          |
+| Shared — Input               | `src/app/shared/components/input/input.spec.ts`                                                                | 1 / 7          |
+| Shared — Textarea            | `src/app/shared/components/textarea/textarea.spec.ts`                                                          | 1 / 7          |
+| Shared — Confirm dialog      | `src/app/shared/components/confirm-dialog/confirm-dialog.spec.ts`                                              | 1 / 4          |
+| Shared — Pizza logo          | `src/app/shared/components/pizza-logo/pizza-logo.spec.ts`                                                      | 1 / 6          |
+| Orders — Pizza size field    | `src/app/features/orders/components/pizza-size-option-field/pizza-size-option-field.spec.ts`                   | 1 / 8          |
+
+### Current State Notes
+
+The failures are concentrated in two broad patterns:
+
+1. **Repeated TestBed instantiation errors.** Many specs fail before assertions with `Cannot configure the test module when the test module has already been instantiated`, often followed by `Cannot read properties of undefined (reading 'verify')` in `afterEach`. This affected files such as `base-url.interceptor.spec.ts`, `pizzeria-api.spec.ts`, `photon-location-field.spec.ts`, `admin-order-row.spec.ts`, `input.spec.ts`, `textarea.spec.ts`, and `confirm-dialog.spec.ts`.
+
+2. **Behavioral assertion failures after the test harness initialized.** Notable examples include `checkout-step.guard.spec.ts`, where one guard expectation received `true` instead of a `UrlTree` and another direct navigation expected `/checkout/review` but received `/checkout/delivery`; `checkout-review-step.spec.ts`, where the coupon code input was not found; and `admin-order-row.spec.ts`, where all row rendering/action/API tests failed.
+
+The user-reported visible summary also highlighted failures in `admin-pizza-row.spec.ts` (9 failed), `order-list-page.spec.ts` (7 failed), `admin-order-list-page.spec.ts` (6 failed), checkout-step guard expectations, and pizza-api assertions. The saved log confirms those failures and shows the broader suite-wide instability after the sync.
+
+### Evaluation
+
+This phase documents the post-sync health of the upstream clone, not a regression introduced by local edits. The current state is: the synced app builds its application bundle and starts the Vitest run, but the suite is not green. The next useful step is triage, starting with the repeated TestBed instantiation pattern because it appears to cascade into many otherwise unrelated specs.
 
 ---
 

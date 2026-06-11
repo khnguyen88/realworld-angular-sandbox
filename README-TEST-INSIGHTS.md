@@ -9,21 +9,21 @@
 > - **README-TESTING.md** — Factual inventory of what exists (60 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
-> **Status snapshot (2026-06-09):** The 18 guard-signature compile errors have been fixed upstream. The suite now compiles and runs: **56/59 specs pass, 3 specs fail (10 test failures)**. The remaining failures are fixture-drift and missing-provider issues in checkout specs — not signature errors. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
+> **Status snapshot (2026-06-11):** Upstream realworld-angular was synced to GitHub HEAD `420001df2cf83e6e0b46335330f31308b9e5688a`. The suite still compiles and runs, but the fresh upstream run is **red**: **32/59 specs pass, 27 specs fail (120 test failures)**. The dominant fresh failures are test isolation/fixture drift around unflushed option/image HTTP requests and `TestBed` reconfiguration after a failed test, plus checkout guard expectation drift and a few fixture/provider mismatches. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
 
 ---
 
 ## TL;DR
 
-| Question                                   | Answer                                                                                                                                                                        |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| How many test files?                       | **60 `*.spec.ts`** co-located with source.                                                                                                                                    |
-| How much test code?                        | **~5,188 lines** of test code vs. **~3,743 lines** of source.                                                                                                                 |
-| Is the suite green?                        | **Mostly** — `pnpm run test` compiles and runs: **56/59 specs pass, 3 fail** (checkout-step.guard, checkout-review-step, checkout-page). Guard signature errors are resolved. |
-| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have actionable gaps (components, pages, guards).                                                     |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with **known gaps** in component harness adoption and route integration testing.                                                |
-| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                                                    |
-| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                                             |
+| Question                                   | Answer                                                                                                                                                                   |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| How many test files?                       | **59 `*.spec.ts`** co-located with source.                                                                                                                               |
+| How much test code?                        | **~5,175 lines** of test code vs. **~3,820 lines** of source.                                                                                                            |
+| Is the suite green?                        | **No** — `pnpm --dir realworld-angular run test` compiles and runs but exits red: **32/59 specs pass, 27 fail (120 failed tests)**. Guard signature errors are resolved. |
+| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have actionable gaps (components, pages, guards).                                                |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with **known gaps** in component harness adoption and route integration testing.                                           |
+| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                                               |
+| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                                        |
 
 ---
 
@@ -35,30 +35,53 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 ---
 
-## 2. Current Run Status — YELLOW
+## 2. Current Run Status — RED
 
-`pnpm run test` (i.e. `ng test --watch=false`) now **compiles and runs**. The 18 guard-signature errors were fixed upstream (commit `8684732`). Results:
+`pnpm --dir realworld-angular run test` (i.e. `ng test --watch=false`) still **compiles and runs**, but exits red. The 18 guard-signature errors were fixed upstream (commit `8684732`), and the current failures are no longer signature blockers. Results from the fresh 2026-06-11 upstream HEAD run:
 
 | Metric     | Value                                                                      |
 | ---------- | -------------------------------------------------------------------------- |
 | Spec files | **59** (1 removed: `photon-api.spec.ts` was deleted in upstream `264c697`) |
-| Passed     | **56 specs, 341 tests**                                                    |
-| Failed     | **3 specs, 10 tests**                                                      |
+| Passed     | **32 specs, 230 tests**                                                    |
+| Failed     | **27 specs, 120 tests**                                                    |
 
-**Failing specs:**
+**Fresh failing specs:**
 
-| File                                                                             | Failures | Error type                                         |
-| -------------------------------------------------------------------------------- | -------- | -------------------------------------------------- |
-| `features/checkout/pages/checkout-page/checkout-page.spec.ts`                    | 6        | `NG0201`: No provider for `_CheckoutWizard`        |
-| `features/checkout/guards/checkout-step.guard.spec.ts`                           | 2        | `NG0201`: No provider for `_CheckoutWizard`        |
-| `features/checkout/components/checkout-review-step/checkout-review-step.spec.ts` | 1        | Missing provider / fixture drift                   |
-| `shared/components/photon-location-field/photon-location-field.spec.ts`          | 1        | Component refactor broke spec (upstream `264c697`) |
+| File                                                                                                   | Failures | Error type / primary symptom                                                                 |
+| ------------------------------------------------------------------------------------------------------ | -------- | -------------------------------------------------------------------------------------------- |
+| `features/orders/pages/admin-order-list-page/admin-order-row/admin-order-row.spec.ts`                  | 9        | Unhandled `GET /api/options/sizes`; subsequent `TestBed` already instantiated errors         |
+| `features/orders/pages/admin-order-list-page/admin-order-list-page.spec.ts`                            | 6        | Unhandled `GET /api/options/sizes`; subsequent `TestBed` already instantiated errors         |
+| `features/orders/pages/order-details-page/order-details-page.spec.ts`                                  | 7        | Unhandled `GET /api/options/sizes`; subsequent `TestBed` already instantiated errors         |
+| `features/orders/pages/order-list-page/order-list-page.spec.ts`                                        | 7        | Unhandled `GET /api/options/sizes`; subsequent `TestBed` already instantiated errors         |
+| `features/pizzerias/components/admin-pizza-row/admin-pizza-row.spec.ts`                                | 9        | Unhandled `GET /api/options/toppings`; subsequent `TestBed` already instantiated errors      |
+| `features/pizzerias/pages/pizzeria-list-page/pizzeria-list-page.spec.ts`                               | 8        | `expectOne` finds 2 matching `/api/pizzerias` requests, then verification failures           |
+| `features/pizzerias/services/pizzeria-api.spec.ts`                                                     | 4        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `shared/components/photon-location-field/photon-location-field.spec.ts`                                | 7        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `features/pizzerias/pages/admin-pizzeria-details-page/admin-pizzeria-details-page.spec.ts`             | 3        | `TestBed` already instantiated / fixture isolation failure                                   |
+| `core/guards/role/role.guard.spec.ts`                                                                  | 1        | `TestBed` already instantiated                                                               |
+| `features/pizzerias/pages/admin-pizzeria-configuration-page/admin-pizzeria-configuration-page.spec.ts` | 6        | Unhandled `GET /api/pizzerias/images`; subsequent `TestBed` already instantiated errors      |
+| `features/auth/pages/login-page/login-page.spec.ts`                                                    | 3        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `features/checkout/pages/checkout-page/checkout-page.spec.ts`                                          | 6        | `NG0201`: No provider for `_CheckoutWizard`                                                  |
+| `features/pizzerias/pages/pizzeria-details-page/pizzeria-details-page.spec.ts`                         | 16       | Fixture isolation / request handling failure; repeated per-test failures                     |
+| `features/pizzerias/pages/admin-pizza-list-page/admin-pizza-list-page.spec.ts`                         | 6        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `core/interceptors/base-url.interceptor.spec.ts`                                                       | 3        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `features/checkout/guards/checkout-step.guard.spec.ts`                                                 | 2        | Guard expectation drift: result is not a `UrlTree`; navigation stays at `/checkout/delivery` |
+| `features/cart/pages/cart-page/cart-page.spec.ts`                                                      | 4        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `shared/components/textarea/textarea.spec.ts`                                                          | 1        | `TestBed` already instantiated                                                               |
+| `shared/components/input/input.spec.ts`                                                                | 1        | `TestBed` already instantiated                                                               |
+| `features/pizzerias/pages/admin-pizzeria-form-page/admin-pizzeria-form-page.spec.ts`                   | 2        | `TestBed` already instantiated / fixture isolation failure                                   |
+| `shared/components/confirm-dialog/confirm-dialog.spec.ts`                                              | 1        | `TestBed` already instantiated                                                               |
+| `features/auth/pages/register-page/register-page.spec.ts`                                              | 4        | `TestBed` already instantiated; `httpTesting` undefined in `afterEach`                       |
+| `features/checkout/components/checkout-review-step/checkout-review-step.spec.ts`                       | 1        | Fixture drift / checkout wizard expectation failure                                          |
+| `shared/components/pizza-logo/pizza-logo.spec.ts`                                                      | 1        | `TestBed` already instantiated                                                               |
+| `features/orders/components/pizza-size-option-field/pizza-size-option-field.spec.ts`                   | 1        | `TestBed` already instantiated                                                               |
+| `core/components/footer/footer.spec.ts`                                                                | 1        | `TestBed` already instantiated                                                               |
 
-**Root cause:** The upstream refactor in `264c697` simplified `PhotonLocationField` (removed `PhotonApi` service, moved logic inline) but the corresponding spec wasn't fully updated. Additionally, `checkout-page.spec.ts` has a pre-existing missing-provider issue (`_CheckoutWizard`) unrelated to the guard signature fix.
+**Root cause:** The fresh upstream run is no longer blocked by Angular 22 guard-signature compile errors. It is red because many specs leave requests unhandled (commonly `/api/options/sizes`, `/api/options/toppings`, and `/api/pizzerias/images`), then continue into `afterEach` / next `beforeEach` with a poisoned or already-instantiated `TestBed`. Checkout specs still have fixture/provider drift: `checkout-page.spec.ts` needs `_CheckoutWizard`, `checkout-step.guard.spec.ts` has two expectation failures, and `checkout-review-step.spec.ts` has one fixture drift failure.
 
 **Lint status (unchanged):** `pnpm run lint` produces 19 errors (19 errors, 0 warnings) across 8 files — 14 `@typescript-eslint/no-explicit-any`, 1 `no-unused-vars`, 6 `no-empty-function` (IntersectionObserver stubs). These are pre-existing upstream issues.
 
-> **Bottom line:** The guard-signature blocker is resolved. The suite runs and 95% of specs pass. The remaining 3 failing specs are fixture-integration issues in checkout + photon-location-field, not signature errors.
+> **Bottom line:** The guard-signature blocker is resolved, but the fresh upstream suite is red: **32/59 specs pass, 27 fail**. The urgent cleanup is request isolation and `TestBed` hygiene across order/pizzeria/checkout specs, plus the explicit checkout fixture/provider drift.
 
 ---
 
@@ -135,10 +158,10 @@ Cross-checked all 10 test categories against `angular-developer` skill reference
 
 ## 5. Unit-Test Quality — Weaknesses
 
-### Blocking (must fix to run tests)
+### Blocking (must fix to make the suite green)
 
-**5.1 Fixture-drift in checkout specs**
-`checkout-page.spec.ts` has a missing `_CheckoutWizard` provider (6 test failures). `checkout-step.guard.spec.ts` has 2 similar missing-provider failures. `checkout-review-step.spec.ts` and `photon-location-field.spec.ts` each have 1 fixture-drift failure from upstream refactors. These 10 test failures are the only remaining blockers.
+**5.1 Test isolation and fixture drift across the suite**
+The fresh upstream run is blocked by **120 failures across 27 specs**. The largest cluster is request-isolation drift: tests leave requests such as `/api/options/sizes`, `/api/options/toppings`, and `/api/pizzerias/images` unhandled, so `httpTesting.verify()` fails and later tests hit `TestBed` already-instantiated errors. Checkout still has explicit fixture/provider drift: `checkout-page.spec.ts` needs `_CheckoutWizard`, `checkout-step.guard.spec.ts` has two expectation failures, and `checkout-review-step.spec.ts` has one fixture drift failure.
 
 ### Structural (design improvements)
 
@@ -161,7 +184,7 @@ For shared / leaf components, this is fine — they really do have stub children
 `catalog-image-url.pipe.spec.ts` imports `'../../../environments/environment'` and uses `environment.apiBaseUrl`. The test runs against the default `environment.ts` (not `.development.ts`). If those two diverge, the test will silently exercise the wrong base URL.
 
 **5.9 The test count is the metric, not the coverage**
-With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
+With 59 specs at ~88 lines each on average, this _looks_ thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
 
 ---
 
@@ -169,7 +192,7 @@ With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a
 
 ### Tier 1 — Fix remaining test failures
 
-1. **Fix the 10 remaining test failures.** Add missing `_CheckoutWizard` provider to `checkout-page.spec.ts` and `checkout-step.guard.spec.ts`. Update `photon-location-field.spec.ts` and `checkout-review-step.spec.ts` for the upstream refactors.
+1. **Fix the 120 remaining test failures across 27 specs.** Start with request isolation: flush or expect the option/image calls (`/api/options/sizes`, `/api/options/toppings`, `/api/pizzerias/images`) before `httpTesting.verify()`, and reset `TestBed`/globals cleanly after failures. Then fix checkout fixture drift: add `_CheckoutWizard` to `checkout-page.spec.ts`, update the two `checkout-step.guard.spec.ts` expectations, and refresh `checkout-review-step.spec.ts`.
 
 ### Tier 2 — Align with Angular recommendations
 
@@ -189,7 +212,7 @@ With 60 specs at ~86 lines each on average, this _looks_ thorough. But without a
 
 ## 7. One-line verdict
 
-The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the suite is currently **yellow (56/59 specs pass) with 3 checkout and photon-location-field specs failing from upstream refactors, has no coverage measurement, and is the only layer of testing**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The 18 guard-signature errors that previously blocked the suite entirely have been resolved upstream. Fix the 3 remaining failing specs, add coverage, and the story changes from "looks committed" to "actually trustworthy."
+The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the fresh upstream suite is **red (32/59 specs pass, 27 fail; 120 failed tests)**, has no coverage measurement, and is the only layer of testing. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The 18 guard-signature errors that previously blocked the suite entirely have been resolved upstream. Fix request isolation, `TestBed` hygiene, and checkout fixture drift, add coverage, and the story changes from "looks committed" to "actually trustworthy."
 
 ---
 
@@ -199,11 +222,11 @@ The unit-test _discipline_ here is genuinely good — patterns, structure, and b
 - `README-TESTING.md` — author's own testing documentation
 - `README-TEST-GUIDE.md` — Angular recommended + project pattern guide
 - `package.json` — scripts and dev dependencies (Angular 22.0.0, Vitest 4.1.6, TypeScript 6.0.3)
-- `pnpm exec ng test --watch=false` — current run output (56/59 specs pass, 3 fail: checkout-page, checkout-step.guard, checkout-review-step, photon-location-field)
+- `pnpm --dir realworld-angular run test` — current upstream HEAD `420001df2cf83e6e0b46335330f31308b9e5688a` run output (32/59 specs pass, 27 fail; 230 passed, 120 failed)
 - `pnpm exec ng lint` — current run output (19 errors, 0 warnings, across 8 files)
 - `angular-developer` skill references: `testing-fundamentals.md`, `component-harnesses.md`, `router-testing.md`, `resource.md`, `signal-forms.md`
 - MCP `search_documentation` — Angular 22 official testing documentation (testing fundamentals, @defer testing, data resolvers, router testing)
 - `find src -name "*.spec.ts" | wc -l` → 59
 - `find src -name "*.ts" -not -name "*.spec.ts" | wc -l` → 83
-- `wc -l` of all spec files → ~5,095 lines
-- `wc -l` of all source files → ~3,630 lines
+- `wc -l` of all spec files → ~5,175 lines
+- `wc -l` of all source files → ~3,820 lines

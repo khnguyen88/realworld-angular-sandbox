@@ -3,7 +3,7 @@
 This document is the workflow reference for syncing the sandbox with
 [realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular).
 
-## Current sync model (as of 2026-06-05)
+## Current sync model (as of 2026-06-11)
 
 - `realworld-angular/` is a **throwaway clone** of upstream, gitignored.
   Re-cloned from scratch on every sync via `scripts/sync-upstream.sh`.
@@ -38,15 +38,16 @@ sync commit is the user's (or LLM agent's) responsibility.
 
 ## Current pinned upstream SHA
 
-`264c697ec6e6a3c5e55db0b0c4db0bafd23e3b34`
+`420001df2cf83e6e0b46335330f31308b9e5688a`
 
 ## Sync log
 
-| Date       | Upstream SHA                               | Notes                                                                                    |
-| ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| 2026-06-09 | `264c697ec6e6a3c5e55db0b0c4db0bafd23e3b34` | 2 new commits: guard-spec fixes (18 TS2554 errors resolved) + Photon API simplification. |
-| 2026-06-07 | `3322c2d498f82bb00fd0e56fd048a23288c95ce1` | Re-sync — no new upstream commits. Build verified (same 4 CSS budget warnings).          |
-| 2026-06-05 | (this migration)                           | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history. |
+| Date       | Upstream SHA                               | Notes                                                                                           |
+| ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| 2026-06-11 | `420001df2cf83e6e0b46335330f31308b9e5688a` | Re-sync from GitHub HEAD using `scripts/sync-upstream.sh`; optional build verification not run. |
+| 2026-06-09 | `264c697ec6e6a3c5e55db0b0c4db0bafd23e3b34` | 2 new commits: guard-spec fixes (18 TS2554 errors resolved) + Photon API simplification.        |
+| 2026-06-07 | `3322c2d498f82bb00fd0e56fd048a23288c95ce1` | Re-sync — no new upstream commits. Build verified (same 4 CSS budget warnings).                 |
+| 2026-06-05 | (this migration)                           | Workflow changed: from `git cherry-pick` to `git clone` + throwaway. See commit history.        |
 
 ## Historical cherry-pick workflow (preserved for context)
 

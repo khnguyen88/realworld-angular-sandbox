@@ -26,7 +26,16 @@
       "WebSearch",
       "WebFetch(domain:vitest.dev)",
       "Bash(git *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "PowerShell(git *)",
+      "Bash(awk '/^### 3\\\\./{section=$0; next} /^#### /{print section \" | \" $0}' README-TEST-AGENT-GUIDE.md)",
+      "Bash(awk *)",
+      "WebFetch(domain:primeng.org)",
+      "PowerShell(\\(Get-Content \"C:\\\\_AAA\\\\JVR\\\\realworld-angular-sandbox\\\\README-TEST-AGENT-GUIDE.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(Select-String -Path README-TEST-GUIDE.md,README-TESTING.md,README-TEST-INSIGHTS.md,README-TEST-CHRONOLOGY.md -Pattern \"README-TEST-AGENT-GUIDE\\\\.md\" -List | ForEach-Object { $_.Path })",
+      "PowerShell(Select-String -Path README-TEST-GUIDE.md,README-TESTING.md,README-TEST-INSIGHTS.md,README-TEST-CHRONOLOGY.md -Pattern \"README-TEST-PRIMENG-AGENT-GUIDE\\\\.md\" -List | ForEach-Object { $_.Path })",
+      "Bash(pnpm *)",
+      "Bash(python *)"
     ]
   },
   "hooks": {
