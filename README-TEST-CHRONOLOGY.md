@@ -3,6 +3,15 @@
 > **Data source:** `realworld-angular/` git history (upstream [realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular))
 > **Generated:** 2026-06-08
 
+> **Testing Docs Index:**
+>
+> - **README-TEST-GUIDE.md** — How to write tests (Angular recommended + project patterns)
+> - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
+> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
+> - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
+> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
+> - **README-TEST-CHRONOLOGY.md** — This file: test creation history & evolution
+
 ---
 
 ## Quick Reference

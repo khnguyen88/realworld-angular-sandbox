@@ -7,6 +7,8 @@ test suite and Angular's official testing documentation.
 > **Testing Docs Index:**
 >
 > - **README-TEST-GUIDE.md** — This file: how to write tests (Angular recommended + project patterns)
+> - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
+> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
