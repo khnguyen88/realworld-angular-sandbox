@@ -1204,3 +1204,49 @@ When a component uses **PrimeNG** (`p-*` tags in its template, `import { ... } f
 | `Sidebar`      | `Drawer`     |
 
 If the codebase uses one of the v17/v18 names, the v20+ import is the renamed module — but the import path may still resolve to the old name during a migration.
+
+## 6. Common Mistakes Appendix
+
+The most common errors an LLM makes when writing Angular + Vitest tests. Each item is a single sentence; the recipes in §3 have more detail.
+
+1. **Forgetting `await fixture.whenStable()`** after `setInput`, after form mutation, after signal change. The set-and-assert path silently fails.
+2. **Forgetting `httpTesting.verify()` in `afterEach`** — un-flushed requests fail the next test, but a missing afterEach hook means the suite still passes while leaking requests.
+3. **Forgetting `TestBed.flushEffects()`** after a signal mutation that triggers an effect or `httpResource`.
+4. **Asserting only on the request, not the post-state** for services. The interesting assertion is the signal after the response.
+5. **Asserting `expect(result).toBeInstanceOf(UrlTree)` in a guard test** — that's a type check, not a behavior check. Serialize and compare the URL.
+6. **Missing `runInInjectionContext`** around a functional guard call. The guard uses `inject()` internally; without the context, the test fails.
+7. **Using `new <Service>(...)` instead of `TestBed.inject`** — DI wiring (interceptors, multi-providers) doesn't apply to direct construction.
+8. **Hardcoding selectors in component tests** that break on template refactors. Use `data-testid` or stable class names.
+9. **Asserting on child component internals** when the test uses `NO_ERRORS_SCHEMA`. The child is invisible to the test; use real imports if needed.
+10. **Subscribing to `output()` without unsubscribing** — the subscription leaks. Use `takeUntilDestroyed()` or explicit unsubscribe.
+11. **Using `setTimeout` in tests to wait for state** — slow and flaky. Use `vi.waitFor`, `vi.advanceTimersByTime`, or `await fixture.whenStable()`.
+12. **Wrapping pure pipes in `TestBed`** — pure pipes don't need it. `new <Pipe>(...)` is enough.
+13. **Asserting on `p-dialog` DOM before `visible` is `true`** — the dialog only renders when visible. Open it first, then query.
+14. **Forgetting `provideAnimationsAsync()` for PrimeNG tests** — see §5 and the PrimeNG companion.
+15. **Skipping the negative test** — `httpTesting.expectNone(...)` for "no HTTP when empty", `expect(...).toBeNull()` for "element should be absent". Negative tests catch over-firing.
+
+## 7. Quick Reference Table
+
+A condensed lookup. Use this when you need a quick reminder; the recipes in §3 have full templates.
+
+| Unit                   | Test setup essentials                                        | Key assertion shape                                       |
+| ---------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| Pipe                   | `new <Pipe>(...)`                                            | `expect(pipe.transform(input)).toBe(expected)`            |
+| Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                 | `req = expectOne(url); flush(...); expect(signal())`      |
+| Service (httpResource) | `flushEffects()` after inject                                | `expect(resource.value()).toBe(...)`                      |
+| Interceptor            | `provideHttpClient(withInterceptors([fn]))`                  | `expect(req.request.<prop>).toBe(expected)`               |
+| Component              | `TestBed.createComponent` + `NO_ERRORS_SCHEMA`               | `setInput(...) → whenStable → querySelector`              |
+| Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                 | `expect(closeFn).toHaveBeenCalledWith(result)`            |
+| Store                  | `flushEffects()` after mutation                              | `expect(store.<signal>()).toBe(<post-state>)`             |
+| Guard (sync)           | `runInInjectionContext` + 3-arg invocation                   | `expect(serializeUrl(result)).toBe('/expected')`          |
+| Guard (async)          | Same + `subscribe` + `httpTesting.flush`                     | Same as above                                             |
+| Resolver               | `RouterTestingHarness` + `withComponentInputBinding`         | `expect(component.<input>()).toBe(<resolved>)`            |
+| Directive              | `TestHostComponent` template                                 | `expect(querySelector('#id')).toBeNull()/.not.toBeNull()` |
+| Form (signal)          | `service.<form>.<field>().value.set(...)` + `flushEffects()` | `expect(derived()).toBe(<expected>)`                      |
+| Form (reactive)        | `ReactiveFormsModule` + `fixture.detectChanges()`            | Same shape, different mechanism                           |
+| linkedSignal           | `linkedSignal(() => source()[0])`                            | After source change: `expect(derived()).toBe(<new>)`      |
+| effect                 | `TestBed.runInInjectionContext(() => effect(...))`           | `expect(captured).toBe(<tracked-signal-value>)`           |
+| afterRenderEffect      | `await fixture.whenStable()` after mutation                  | `expect(phaseCallback).toHaveBeenCalledWith(<data>)`      |
+| @defer                 | `DeferBlockBehavior.Manual` + `getDeferBlocks()`             | `await render(DeferBlockState.<X>)` then assert           |
+| Page                   | `RouterTestingHarness` + `navigateByUrl`                     | `expect(routeNativeElement?.<query>(...)).<assert>`       |
+| PrimeNG component      | `provideAnimationsAsync()` + service stubs                   | Component-specific; see PrimeNG companion                 |
