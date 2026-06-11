@@ -1077,3 +1077,103 @@ describe('<PageComponent>', () => {
 - **Asserting on `harness.fixture.nativeElement` instead of `harness.routeNativeElement`** — the harness's fixture is the _root component containing the outlet_. The routed page renders inside `routeNativeElement`.
 - **Not testing the empty state** — most pages have an "empty list" state. The mock data with an empty array is the easiest test to write and one of the most useful.
 - **Not flushing effects between event and assertion** — the event handler may trigger a reactive update; without `flushEffects()`, the second `expectOne` fails.
+
+## 4. Cross-Cutting Concerns
+
+These patterns apply across multiple recipes. Read this section once, then refer back as needed.
+
+### 4.1 Async testing with Vitest
+
+Vitest provides Vitest-native async helpers. Use them in place of Jasmine patterns:
+
+- **`vi.waitFor(fn)`** — poll `fn` until it returns truthy or times out. Use for asserting on eventually-consistent state (e.g., a `resource().value()` after a microtask resolves).
+- **`vi.useFakeTimers()` / `vi.advanceTimersByTime(ms)`** — control time-dependent code (debounced search, polling, etc.). Call `vi.useRealTimers()` in `afterEach`.
+- **`await fixture.whenStable()`** — the Angular equivalent of "wait for the microtask queue to drain." Use after every signal input change, after every form mutation, after every router navigation.
+
+Never use `setTimeout` directly in tests to wait for state — it makes tests slow and flaky. Use one of the above.
+
+### 4.2 Provider strategies
+
+Three patterns for injecting test doubles:
+
+- **`useValue: { method: vi.fn() }`** — the simplest stub. Use for plain services, dialogs, route data.
+- **`useClass: <MockClass>`** — when the test needs a real class implementation (e.g., a service with a complex constructor). The mock class extends or replaces the real one.
+- **Real service + stubbed dependencies** — the strongest pattern. Inject the real class, but stub its collaborators. This catches integration issues `useValue` misses.
+
+For most recipes, `useValue` is enough. Use real-service-with-stubs when testing a service that has its own logic worth exercising.
+
+### 4.3 Signal-based inputs
+
+The v20+ default. Use `fixture.componentRef.setInput('<name>', <value>)`. Always `await fixture.whenStable()` after the call.
+
+```typescript
+fixture.componentRef.setInput('variant', 'outlined');
+await fixture.whenStable();
+// now assert
+```
+
+For tests that need a default input value, set it in the test host component's class field:
+
+```typescript
+@Component({ ... })
+class TestHost {
+  variant = input<'outlined' | 'text'>('text');
+}
+```
+
+### 4.4 Signal-based outputs
+
+Subscribe directly to the `output()` emitter. Clean up with `unsubscribe()` or by letting the component destroy.
+
+```typescript
+const emitted: string[] = [];
+const sub = fixture.componentInstance.remove.subscribe((item) => emitted.push(item));
+// ... trigger the event ...
+expect(emitted).toEqual(['expected']);
+sub.unsubscribe();
+```
+
+### 4.5 Reactive effects
+
+Whenever a signal mutation may trigger an effect, call `TestBed.flushEffects()` before asserting:
+
+```typescript
+store.addItem(...);
+TestBed.flushEffects();
+// now the effect has run, the HTTP has fired
+httpTesting.expectOne(...);
+```
+
+For resource-driven tests, the resource fires on construction in some setups and on first read in others. `TestBed.flushEffects()` after `TestBed.inject()` ensures the initial load runs.
+
+### 4.6 Zoneless apps
+
+Angular 20+ supports zoneless change detection. If the project uses `provideZonelessChangeDetection()` (check `app.config.ts`):
+
+- Every signal change requires a manual `fixture.detectChanges()` or `TestBed.flushEffects()`.
+- Some default behaviors (like `setTimeout`-triggered change detection) no longer work.
+- Async tests still need `await fixture.whenStable()`.
+
+The recipes in this guide assume zoneless mode by default (since that's the v20+ recommendation). If the project uses Zone.js, some steps can be dropped, but they're harmless to keep.
+
+### 4.7 Standalone components
+
+Angular 20+ default. Every component, directive, and pipe is standalone. Tests must import them in the host component's `imports:[]` array:
+
+```typescript
+@Component({
+  imports: [<ComponentA>, <ComponentB>, <DirectiveC>],
+  template: `...`,
+})
+class TestHost {}
+```
+
+Or override the component-under-test's `imports`:
+
+```typescript
+TestBed.configureTestingModule({}).overrideComponent(<ComponentName>, {
+  set: { imports: [<ChildA>, <ChildB>] },
+});
+```
+
+`NO_ERRORS_SCHEMA` is the escape hatch when you don't want to enumerate children. Use it when the test doesn't depend on child internals; use real imports when it does.
