@@ -27,10 +27,41 @@ new tests or maintaining existing ones.
 > actual spec file (linked throughout) for the full test list, including edge cases
 > the excerpts omit.
 
+## Current Testing Reality
+
+The upstream `realworld-angular` test suite currently compiles and runs but is **red**.
+Run the suite with:
+
+```bash
+pnpm --dir realworld-angular run test
+```
+
+Latest known result: **32/59 specs pass, 27/59 specs fail, 120 tests fail**. The dominant failure clusters are unhandled HTTP requests, `TestBed` already-instantiated errors, checkout fixture/provider drift, and checkout guard expectation drift.
+
+This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is green or production-ready. Use the checklist below to write better tests; treat the current suite status as a separate cleanup task.
+
+## Industry-Standard Testing Checklist
+
+A test is trustworthy when it is deterministic, isolated, and behavior-focused. Use this checklist when writing or reviewing Angular + Vitest tests:
+
+- **HTTP isolation:** use `HttpTestingController` for Angular HTTP calls and `provideHttpClientTesting()`.
+- **No leaked requests:** call `httpTesting.verify()` in `afterEach`.
+- **Effect flushing:** call `TestBed.flushEffects()` after signal/effect mutations that should trigger reactive work.
+- **Stable async waits:** call `await fixture.whenStable()` after input changes, state changes, or async interactions.
+- **User-facing assertions:** assert on rendered DOM, emitted values, route results, or state changes, not private fields.
+- **Accessibility assertions:** include roles, labels, `aria-*` state, and keyboard-relevant behavior where the UI exposes them.
+- **Route integration when it matters:** use `RouterTestingHarness` when the behavior under test is navigation, redirect, guard pipeline, or resolver-to-component data flow.
+- **Real imports when integration matters:** prefer real child component imports when the test is about parent/child behavior.
+- **Shallow tests when isolation matters:** keep `NO_ERRORS_SCHEMA` for leaf components whose children are tested separately.
+- **Negative paths:** cover empty, error, disabled, denied, and invalid states when the component exposes them.
+- **No stale providers:** use `TestBed.resetTestingModule()` only when reconfiguring providers inside the same `describe`.
+
 ---
 
 ## Table of Contents
 
+- [Current Testing Reality](#current-testing-reality)
+- [Industry-Standard Testing Checklist](#industry-standard-testing-checklist)
 - [Decision Flow: What Do I Test?](#decision-flow-what-do-i-test)
 - [Pipes](#pipes)
 - [Services](#services)
@@ -426,9 +457,10 @@ all the same features (interceptors, headers, params) — and tests use the same
 
 ### Project Pattern
 
-The pattern matches the project's existing `HttpTestingController` usage exactly. The
-only thing that differs from a plain service test is the `injector` option, which binds
-the resource to the test's `TestBed` injector so it sees the mock backend.
+The pattern matches the project's existing `HttpTestingController` usage exactly. Use
+`TestBed.flushEffects()` for effect-driven `httpResource` behavior, then assert on the
+resource signals after stabilization. The `injector` option binds the resource to the
+test's `TestBed` injector so it sees the mock backend.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
@@ -985,9 +1017,10 @@ describe('Button', () => {
 
 ### NO_ERRORS_SCHEMA Guidance
 
-- **Use when:** Testing a leaf component in isolation where child components have their own tests.
-- **Avoid when:** Testing integration between a parent and its children. Use explicit `imports: [ChildA, ChildB]` instead.
-- Angular docs warn against blanket `NO_ERRORS_SCHEMA` usage — it hides real template errors.
+- **Use when:** testing a leaf component in isolation where child components have their own tests.
+- **Avoid when:** the test needs to verify parent/child integration. Use explicit `imports: [ChildA, ChildB]` instead.
+- **Angular docs warn** that blanket `NO_ERRORS_SCHEMA` usage hides real template errors.
+- **Project reality:** the current suite uses shallow rendering heavily, which is valid for leaf components but means page specs do not prove child integration.
 
 ### Key rules
 
@@ -1612,7 +1645,8 @@ describe('PizzeriaListPage', () => {
 | -------------------------------------- | --------------------------------------------------------------------------- |
 | Testing page in its routing context    | **RouterTestingHarness** — verifies guards, resolvers, component activation |
 | Quick smoke test of page DOM structure | **provideRouter + NO_ERRORS_SCHEMA** — simpler setup, faster execution      |
-| New code or shared page component      | **RouterTestingHarness** — starts with modern approach                      |
+| New code or shared page component      | **RouterTestingHarness** — starts with the modern approach                  |
+| Testing route-sensitive behavior       | **RouterTestingHarness** — redirects, guard pipelines, resolver data flow   |
 
 ### Key rules
 
