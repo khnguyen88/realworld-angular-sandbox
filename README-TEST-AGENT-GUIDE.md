@@ -784,47 +784,55 @@ describe('<DirectiveName>', () => {
 
 #### Recipe template (signal forms)
 
+`form()` takes a `WritableSignal<TModel>` (not a plain object). The typical pattern when testing a service is to inject the real service and interact with its own form tree directly. When you need to construct a form tree inline in a test, create the model signal first.
+
 ```typescript
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { form } from '@angular/forms/signals';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { FieldTree, form } from '@angular/forms/signals';
 import { <ServiceName> } from '<relative-path>';
 
 describe('<ServiceName>', () => {
   let service: <ServiceName>;
-  let formTree: FieldTree<{
-    <field-name>: string;
-  }>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       // <providers-needed-by-the-service>
     });
     service = TestBed.inject(<ServiceName>);
-    formTree = TestBed.runInInjectionContext(() =>
-      form({
-        <field-name>: '<initial-value>',
-      }),
-    );
   });
 
   it('should have <field-name> in initial state', () => {
-    expect(formTree.<field-name>().value()).toBe('<initial-value>');
+    // Access the service's own FieldTree — don't reconstruct it in the test
+    expect(service.<formTree>.<field-name>().value()).toBe('<initial-value>');
   });
 
   it('should compute <derived-signal> from form state', () => {
-    formTree.<field-name>().value.set('<new-value>');
+    service.<formTree>.<field-name>().value.set('<new-value>');
     TestBed.flushEffects();
-    expect(<derivedSignalExpression>).toBe(<expected-derived-value>);
+    expect(service.<derivedSignal>()).toBe(<expected-derived-value>);
   });
 
   it('should <cross-field-effect> when <trigger-field> changes', () => {
-    formTree.<field1>().value.set('<value-1>');
-    formTree.<field2>().value.set('<value-2>');
+    service.<formTree>.<field1>().value.set('<value-1>');
+    service.<formTree>.<field2>().value.set('<value-2>');
     TestBed.flushEffects();
-    expect(formTree.<field3>().value()).toBe('<expected-cleared-value>');
+    expect(service.<formTree>.<field3>().value()).toBe('<expected-cleared-value>');
   });
 });
+```
+
+When you need a standalone form tree in a test (e.g., for a custom form control test), create the model signal explicitly:
+
+```typescript
+import { signal } from '@angular/core';
+import { form } from '@angular/forms/signals';
+
+const model = signal({ <field-name>: '<initial-value>' });
+const formTree = form(model);
+// formTree.<field-name>().value() === '<initial-value>'
+// formTree.<field-name>().value.set('<new-value>') also updates model()
 ```
 
 #### Common variants
@@ -835,9 +843,10 @@ describe('<ServiceName>', () => {
 
 #### Pitfalls
 
-- **Mutating the wrong control** — signal forms use `service.<form>.<field>().value.set(...)`, not `service.<form>.controls.<field>.setValue(...)`. The pattern is depth-first through the form tree.
+- **Mutating the wrong control** — signal forms: call `service.<formTree>.<field>().value.set(...)`, NOT `service.<form>.controls.<field>.setValue(...)` (that's reactive forms). FieldTree navigation is depth-first dot access, not `.controls[]`.
 - **Forgetting `TestBed.flushEffects()` after a mutation** — derived signals and effects need the reactive cycle to fire.
-- **Asserting on the underlying control's `.value` property (not the signal)** — `service.<form>.<field>()` (call it) returns the signal value; `service.<form>.<field>.value` (no call) is the writable signal.
+- **Passing a plain object to `form()`** — `form()` requires a `WritableSignal<TModel>`, not a plain object. Create `const model = signal({...})` first, then `form(model)`.
+- **Trying to import `FieldTree` as a value** — `FieldTree` is a TypeScript type, not a runtime value. Use `import type { FieldTree } from '@angular/forms/signals'` or let TypeScript infer it.
 
 ### 3.11 Signal Primitives (`linkedSignal`, `effect`, `afterRenderEffect`)
 
@@ -1258,24 +1267,24 @@ The most common errors an LLM makes when writing Angular + Vitest tests. Each it
 
 A condensed lookup. Use this when you need a quick reminder; the recipes in §3 have full templates.
 
-| Unit                   | Test setup essentials                                                       | Key assertion shape                                         |
-| ---------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Pipe                   | `new <Pipe>(...)`                                                           | `expect(pipe.transform(input)).toBe(expected)`              |
-| Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                                | `req = expectOne(url); flush(...); expect(signal())`        |
-| Service (httpResource) | `tick()` for initial request; `flushEffects()` for reloads                  | `expect(resource.value()).toBe(...)`                        |
-| Interceptor            | `provideHttpClient(withInterceptors([fn]))`                                 | `expect(req.request.<prop>).toBe(expected)`                 |
-| Component              | `TestBed.createComponent`; `NO_ERRORS_SCHEMA` only for shallow tests        | `setInput(...) → whenStable → querySelector`                |
-| Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                                | `expect(closeFn).toHaveBeenCalledWith(result)`              |
-| Store                  | `tick()`/`flushEffects()` as needed + `HttpTestingController`               | `expect(store.<signal>()).toBe(<post-state>)`               |
-| Guard (sync)           | `runInInjectionContext` + 3-arg invocation; harness for routing integration | `expect(serializeUrl(result)).toBe('/expected')`            |
-| Guard (async)          | Same + `subscribe` + `httpTesting.flush`                                    | Same as above                                               |
-| Resolver               | `RouterTestingHarness` + `withComponentInputBinding`                        | `expect(component.<input>()).toBe(<resolved>)`              |
-| Directive              | `TestHostComponent` template                                                | `expect(querySelector('#id')).toBeNull()/.not.toBeNull()`   |
-| Form (signal)          | `service.<form>.<field>().value.set(...)` + `flushEffects()`                | `expect(derived()).toBe(<expected>)`                        |
-| Form (reactive)        | `ReactiveFormsModule` + `fixture.detectChanges()`                           | Same shape, different mechanism                             |
-| linkedSignal           | `linkedSignal(() => source()[0])`                                           | After source change: `expect(derived()).toBe(<new>)`        |
-| effect                 | `TestBed.runInInjectionContext(() => effect(...))`                          | `expect(captured).toBe(<tracked-signal-value>)`             |
-| afterRenderEffect      | `await fixture.whenStable()` after mutation                                 | `expect(phaseCallback).toHaveBeenCalledWith(<data>)`        |
-| @defer                 | `DeferBlockBehavior.Manual` + `getDeferBlocks()`                            | `await render(DeferBlockState.<X>)` then assert             |
-| Page                   | `RouterTestingHarness` when routing/child integration matters               | `expect(routeNativeElement?.<query>(...)).<assert>`         |
-| PrimeNG component      | Conditional `provideAnimationsAsync()` + service stubs + MCP/docs preflight | Component-specific; see Angular 22 + PrimeNG v20+ companion |
+| Unit                   | Test setup essentials                                                                   | Key assertion shape                                         |
+| ---------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Pipe                   | `new <Pipe>(...)`                                                                       | `expect(pipe.transform(input)).toBe(expected)`              |
+| Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                                            | `req = expectOne(url); flush(...); expect(signal())`        |
+| Service (httpResource) | `tick()` for initial request; `flushEffects()` for reloads                              | `expect(resource.value()).toBe(...)`                        |
+| Interceptor            | `provideHttpClient(withInterceptors([fn]))`                                             | `expect(req.request.<prop>).toBe(expected)`                 |
+| Component              | `TestBed.createComponent`; `NO_ERRORS_SCHEMA` only for shallow tests                    | `setInput(...) → whenStable → querySelector`                |
+| Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                                            | `expect(closeFn).toHaveBeenCalledWith(result)`              |
+| Store                  | `tick()`/`flushEffects()` as needed + `HttpTestingController`                           | `expect(store.<signal>()).toBe(<post-state>)`               |
+| Guard (sync)           | `runInInjectionContext` + 3-arg invocation; harness for routing integration             | `expect(serializeUrl(result)).toBe('/expected')`            |
+| Guard (async)          | Same + `subscribe` + `httpTesting.flush`                                                | Same as above                                               |
+| Resolver               | `RouterTestingHarness` + `withComponentInputBinding`                                    | `expect(component.<input>()).toBe(<resolved>)`              |
+| Directive              | `TestHostComponent` template                                                            | `expect(querySelector('#id')).toBeNull()/.not.toBeNull()`   |
+| Form (signal)          | `signal({...})` → `form(model)`; `formTree.<field>().value.set(...)` + `flushEffects()` | `expect(service.<derivedSignal>()).toBe(<expected>)`        |
+| Form (reactive)        | `ReactiveFormsModule` + `fixture.detectChanges()`                                       | Same shape, different mechanism                             |
+| linkedSignal           | `linkedSignal(() => source()[0])`                                                       | After source change: `expect(derived()).toBe(<new>)`        |
+| effect                 | `TestBed.runInInjectionContext(() => effect(...))`                                      | `expect(captured).toBe(<tracked-signal-value>)`             |
+| afterRenderEffect      | `await fixture.whenStable()` after mutation                                             | `expect(phaseCallback).toHaveBeenCalledWith(<data>)`        |
+| @defer                 | `DeferBlockBehavior.Manual` + `getDeferBlocks()`                                        | `await render(DeferBlockState.<X>)` then assert             |
+| Page                   | `RouterTestingHarness` when routing/child integration matters                           | `expect(routeNativeElement?.<query>(...)).<assert>`         |
+| PrimeNG component      | Conditional `provideAnimationsAsync()` + service stubs + MCP/docs preflight             | Component-specific; see Angular 22 + PrimeNG v20+ companion |
