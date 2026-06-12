@@ -3,7 +3,7 @@
 > **Testing Docs Index:**
 >
 > - **README-TEST-AGENT-GUIDE.md** — This file: recipe book for LLMs writing tests
-> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
+> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-GUIDE.md** — Human-facing tour of realworld-angular test patterns
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists
@@ -11,17 +11,20 @@
 
 ## Who This Guide Is For
 
-You are an LLM that has been given a task like: "write tests for this Angular + Vitest codebase." This guide is your reference. It does **not** assume any specific project — every recipe is a template with `<substitution>` placeholders. The codebase under test provides the actual code.
+You are an LLM or coding agent that has been given a task like: "write tests for this Angular + Vitest codebase." This guide is your reference. It does **not** assume any specific project — every recipe is a template with `<substitution>` placeholders. The codebase under test provides the actual code.
 
-This guide does **not** serve humans learning what the realworld-angular project tests. Humans should read `README-TEST-GUIDE.md` instead.
+This guide does **not** serve humans learning what the `realworld-angular` project tests. Humans should read `README-TEST-GUIDE.md` instead.
+
+This guide is about **test quality**, not suite greenness. A codebase may have many specs and still be red because tests leak HTTP requests, reuse stale `TestBed` configuration, or assert against outdated fixtures. Use this guide to write deterministic, isolated tests; treat current suite failures as a separate cleanup task unless the user explicitly asks you to fix them.
 
 ## How to Use This Guide
 
-1. **Pre-flight** — confirm the project setup (see §1).
-2. **Identify the file under test** — match its type to the decision tree (§2).
-3. **Jump to the recipe** — each per-unit section in §3 follows the same 5-block template.
-4. **Substitute placeholders** — `<ServiceClassName>`, `<relative-path>`, etc. are replaced from the source.
-5. **Verify** — every recipe's "Common Variants" and "Pitfalls" sections list the most common LLM errors. Read them before writing.
+1. **Pre-flight** — confirm the project setup (see §1). If pre-flight fails, stop and tell the user.
+2. **Identify the file under test** — match its type to the decision tree (§2). Do not read every recipe; jump to the matching recipe.
+3. **Read the source before writing** — inspect the constructor, template, injected dependencies, route entries, and public API.
+4. **Substitute placeholders** — replace `<ServiceClassName>`, `<relative-path>`, and similar values from the source file.
+5. **Write user-facing assertions** — assert rendered DOM, emitted values, route results, request properties, or state changes instead of private fields.
+6. **Verify** — every recipe's "Common Variants" and "Pitfalls" sections list the most common LLM errors. Read them before writing.
 
 ## Universal "Always" List
 
@@ -29,9 +32,11 @@ Every test in this guide assumes these conventions:
 
 - **Vitest globals**: `import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'`. Never use Jasmine's `jasmine.*` or globals.
 - **TestBed + signal inputs**: after `fixture.componentRef.setInput(...)`, call `await fixture.whenStable()` before asserting on the DOM.
-- **HTTP tests**: `httpTesting.verify()` in `afterEach` to catch un-flushed requests.
-- **Reactive graphs**: `TestBed.flushEffects()` after every signal mutation that may trigger an effect.
+- **HTTP tests**: use `HttpTestingController` for Angular HTTP calls and `provideHttpClientTesting()`.
+- **No leaked requests**: call `httpTesting.verify()` in `afterEach` whenever a test can create HTTP requests.
+- **Reactive graphs**: call `TestBed.flushEffects()` after every signal mutation that may trigger an effect or `httpResource`.
 - **Substitutions**: this guide uses `<placeholder>` syntax. Replace with values from the source file.
+- **Scope discipline**: do not fix unrelated failing tests, production code, or CI configuration unless the user explicitly asks.
 
 ## Table of Contents
 
@@ -59,9 +64,11 @@ Example healthy target:
 }
 ```
 
+If the builder is `@angular/build:application` and the project uses a custom Vitest setup, confirm the actual test command from `package.json` before proceeding.
+
 ### 1.2 Confirm Vitest is installed
 
-Open `package.json`. Look for `"vitest"` in `devDependencies` and verify `jsdom` (or `happy-dom`) is also present. If vitest is absent, the project is not configured for unit testing as the Angular CLI ships it.
+Open `package.json`. Look for `"vitest"` in `devDependencies` and verify `jsdom` or `happy-dom` is also present. If vitest is absent, the project is not configured for unit testing as the Angular CLI ships it.
 
 ### 1.3 Confirm the Angular version
 
@@ -75,11 +82,16 @@ Search the test config and a sample spec for `jasmine.`, `fit(`, `fdescribe(`, o
 
 Some projects have a `src/test-providers.ts` or similar global providers file referenced from `angular.json`. If present, the `beforeEach` blocks in the recipes below can drop providers that the global file already supplies. If absent (the default), every spec is self-contained — apply the recipe verbatim.
 
-### 1.6 What to do if pre-flight fails
+### 1.6 Check current suite health without fixing it
+
+Run or inspect the latest test command if the user asks for suite status. If the suite is red, do not infer that the docs or recipes are wrong. Common red-suite causes are stale fixtures, unhandled HTTP requests, stale `TestBed` configuration, or expectation drift from upstream changes.
+
+### 1.7 What to do if pre-flight fails
 
 - **No vitest**: tell the user. Don't try to write tests; the project isn't set up for them.
 - **Wrong Angular version**: ask the user. The guide's recipes need translation for v19 and earlier.
 - **Mixed Jasmine/Vitest**: ask the user which runner to target, then proceed.
+- **Red suite**: continue only if the user asked for new tests or documentation. Do not silently fix unrelated failures.
 
 ## 2. Decision Tree
 
@@ -364,7 +376,7 @@ describe('<ComponentName>', () => {
 });
 ```
 
-`NO_ERRORS_SCHEMA` lets the test ignore child component selectors. Each child has its own tests. Use it when the test is about _this_ component, not the integration with its children.
+`NO_ERRORS_SCHEMA` lets the test ignore child component selectors. Each child has its own tests. Use it when the test is about _this_ component, not the integration with its children. Do not use it when the test's point is to verify child rendering, child events, or parent/child integration.
 
 #### Common variants
 
@@ -373,6 +385,7 @@ describe('<ComponentName>', () => {
 - **Component with router outlet** — see §3.13 Page Components.
 - **Component that uses `output()`** — subscribe to `componentInstance.<outputName>` and assert the captured emissions. Unsubscribe in cleanup or use a `takeUntil(destroyed)` pattern.
 - **Component with host bindings** — assert on `fixture.nativeElement` directly (`el.getAttribute('role')`, `el.classList.contains(...)`, `el.style.<property>`).
+- **Component with PrimeNG or external components** — read the Angular 22 + PrimeNG v20+ companion guide. Query the configured PrimeNG MCP when available for current selectors/events; if it is not visible, use the versioned PrimeNG docs or the component source.
 
 #### Pitfalls
 
@@ -998,6 +1011,8 @@ describe('@defer blocks', () => {
 
 #### Recipe template (RouterTestingHarness + real imports)
 
+Use this pattern when the test is about routing context, redirects, guards, resolvers, route parameters, or parent/child page integration. For a quick isolated page smoke test, `provideRouter([])` and `NO_ERRORS_SCHEMA` can be acceptable, but it will not prove child integration.
+
 ```typescript
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -1077,6 +1092,7 @@ describe('<PageComponent>', () => {
 - **Asserting on `harness.fixture.nativeElement` instead of `harness.routeNativeElement`** — the harness's fixture is the _root component containing the outlet_. The routed page renders inside `routeNativeElement`.
 - **Not testing the empty state** — most pages have an "empty list" state. The mock data with an empty array is the easiest test to write and one of the most useful.
 - **Not flushing effects between event and assertion** — the event handler may trigger a reactive update; without `flushEffects()`, the second `expectOne` fails.
+- **Skipping route-sensitive behavior** — if the user's task involves navigation, redirects, guards, or resolvers, use `RouterTestingHarness` rather than direct component creation.
 
 ## 4. Cross-Cutting Concerns
 
@@ -1182,16 +1198,18 @@ TestBed.configureTestingModule({}).overrideComponent(<ComponentName>, {
 
 When a component uses **PrimeNG** (`p-*` tags in its template, `import { ... } from 'primeng/<module>'` in its source), the test setup requires more than the standard `TestBed.configureTestingModule` block. The full pattern cookbook is in the companion file:
 
-> **[README-TEST-PRIMENG-AGENT-GUIDE.md](README-TEST-PRIMENG-AGENT-GUIDE.md)** — universal setup, service stubs, top 8-10 components, v20 renames table, pitfalls.
+> **[README-TEST-PRIMENG-AGENT-GUIDE.md](README-TEST-PRIMENG-AGENT-GUIDE.md)** — Angular 22 + PrimeNG v20+ universal setup, service stubs, component recipes, legacy v17/v18 renames table, pitfalls.
 
 **TL;DR for PrimeNG tests:**
 
-- Add `provideAnimationsAsync()` to the providers — PrimeNG v20+ depends on Angular's async animations engine. `NoopAnimationsModule` is the wrong choice.
+- Use `provideAnimationsAsync()` when the component path depends on animation events. Start without it for simple rendering assertions, then add it only when the component path depends on animation events or PrimeNG throws animation-related errors.
+- Avoid `NoopAnimationsModule` when testing transitions, open/close state, portal behavior, or any path that depends on animation events.
 - Stub the PrimeNG services the component injects:
   - `MessageService` → `{ add: vi.fn() }`
   - `ConfirmationService` → `{ confirm: vi.fn() }`
   - `DialogService` → `{ open: vi.fn().mockReturnValue(<ref>) }`
-- For the **current API** of any PrimeNG component, query `https://primeng.org/mcp` at write time. The MCP returns the live selector, events, and template syntax; the companion file gives the testing pattern.
+- For the **current API** of any PrimeNG component, query the configured PrimeNG MCP when available. If it is not visible in the session, use the versioned PrimeNG docs or the component source. The companion file gives the testing pattern.
+- Treat PrimeNG class selectors as version/theme-dependent. Prefer stable attributes, roles, labels, or rendered-DOM queries after the component is opened/triggered.
 
 **Renames to watch for in older codebases** (PrimeNG v17/v18 → v20+):
 
@@ -1222,31 +1240,32 @@ The most common errors an LLM makes when writing Angular + Vitest tests. Each it
 11. **Using `setTimeout` in tests to wait for state** — slow and flaky. Use `vi.waitFor`, `vi.advanceTimersByTime`, or `await fixture.whenStable()`.
 12. **Wrapping pure pipes in `TestBed`** — pure pipes don't need it. `new <Pipe>(...)` is enough.
 13. **Asserting on `p-dialog` DOM before `visible` is `true`** — the dialog only renders when visible. Open it first, then query.
-14. **Forgetting `provideAnimationsAsync()` for PrimeNG tests** — see §5 and the PrimeNG companion.
-15. **Skipping the negative test** — `httpTesting.expectNone(...)` for "no HTTP when empty", `expect(...).toBeNull()` for "element should be absent". Negative tests catch over-firing.
+14. **Treating `provideAnimationsAsync()` as mandatory for every PrimeNG test** — use it when animation events matter; do not add it blindly.
+15. **Using brittle PrimeNG class selectors everywhere** — component classes vary by PrimeNG version and theme. Query rendered DOM after opening/triggering the component.
+16. **Skipping the negative test** — `httpTesting.expectNone(...)` for "no HTTP when empty", `expect(...).toBeNull()` for "element should be absent". Negative tests catch over-firing.
 
 ## 7. Quick Reference Table
 
 A condensed lookup. Use this when you need a quick reminder; the recipes in §3 have full templates.
 
-| Unit                   | Test setup essentials                                        | Key assertion shape                                       |
-| ---------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| Pipe                   | `new <Pipe>(...)`                                            | `expect(pipe.transform(input)).toBe(expected)`            |
-| Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                 | `req = expectOne(url); flush(...); expect(signal())`      |
-| Service (httpResource) | `flushEffects()` after inject                                | `expect(resource.value()).toBe(...)`                      |
-| Interceptor            | `provideHttpClient(withInterceptors([fn]))`                  | `expect(req.request.<prop>).toBe(expected)`               |
-| Component              | `TestBed.createComponent` + `NO_ERRORS_SCHEMA`               | `setInput(...) → whenStable → querySelector`              |
-| Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                 | `expect(closeFn).toHaveBeenCalledWith(result)`            |
-| Store                  | `flushEffects()` after mutation                              | `expect(store.<signal>()).toBe(<post-state>)`             |
-| Guard (sync)           | `runInInjectionContext` + 3-arg invocation                   | `expect(serializeUrl(result)).toBe('/expected')`          |
-| Guard (async)          | Same + `subscribe` + `httpTesting.flush`                     | Same as above                                             |
-| Resolver               | `RouterTestingHarness` + `withComponentInputBinding`         | `expect(component.<input>()).toBe(<resolved>)`            |
-| Directive              | `TestHostComponent` template                                 | `expect(querySelector('#id')).toBeNull()/.not.toBeNull()` |
-| Form (signal)          | `service.<form>.<field>().value.set(...)` + `flushEffects()` | `expect(derived()).toBe(<expected>)`                      |
-| Form (reactive)        | `ReactiveFormsModule` + `fixture.detectChanges()`            | Same shape, different mechanism                           |
-| linkedSignal           | `linkedSignal(() => source()[0])`                            | After source change: `expect(derived()).toBe(<new>)`      |
-| effect                 | `TestBed.runInInjectionContext(() => effect(...))`           | `expect(captured).toBe(<tracked-signal-value>)`           |
-| afterRenderEffect      | `await fixture.whenStable()` after mutation                  | `expect(phaseCallback).toHaveBeenCalledWith(<data>)`      |
-| @defer                 | `DeferBlockBehavior.Manual` + `getDeferBlocks()`             | `await render(DeferBlockState.<X>)` then assert           |
-| Page                   | `RouterTestingHarness` + `navigateByUrl`                     | `expect(routeNativeElement?.<query>(...)).<assert>`       |
-| PrimeNG component      | `provideAnimationsAsync()` + service stubs                   | Component-specific; see PrimeNG companion                 |
+| Unit                   | Test setup essentials                                                       | Key assertion shape                                         |
+| ---------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Pipe                   | `new <Pipe>(...)`                                                           | `expect(pipe.transform(input)).toBe(expected)`              |
+| Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                                | `req = expectOne(url); flush(...); expect(signal())`        |
+| Service (httpResource) | `flushEffects()` after inject                                               | `expect(resource.value()).toBe(...)`                        |
+| Interceptor            | `provideHttpClient(withInterceptors([fn]))`                                 | `expect(req.request.<prop>).toBe(expected)`                 |
+| Component              | `TestBed.createComponent`; `NO_ERRORS_SCHEMA` only for shallow tests        | `setInput(...) → whenStable → querySelector`                |
+| Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                                | `expect(closeFn).toHaveBeenCalledWith(result)`              |
+| Store                  | `flushEffects()` after mutation + `HttpTestingController`                   | `expect(store.<signal>()).toBe(<post-state>)`               |
+| Guard (sync)           | `runInInjectionContext` + 3-arg invocation; harness for routing integration | `expect(serializeUrl(result)).toBe('/expected')`            |
+| Guard (async)          | Same + `subscribe` + `httpTesting.flush`                                    | Same as above                                               |
+| Resolver               | `RouterTestingHarness` + `withComponentInputBinding`                        | `expect(component.<input>()).toBe(<resolved>)`              |
+| Directive              | `TestHostComponent` template                                                | `expect(querySelector('#id')).toBeNull()/.not.toBeNull()`   |
+| Form (signal)          | `service.<form>.<field>().value.set(...)` + `flushEffects()`                | `expect(derived()).toBe(<expected>)`                        |
+| Form (reactive)        | `ReactiveFormsModule` + `fixture.detectChanges()`                           | Same shape, different mechanism                             |
+| linkedSignal           | `linkedSignal(() => source()[0])`                                           | After source change: `expect(derived()).toBe(<new>)`        |
+| effect                 | `TestBed.runInInjectionContext(() => effect(...))`                          | `expect(captured).toBe(<tracked-signal-value>)`             |
+| afterRenderEffect      | `await fixture.whenStable()` after mutation                                 | `expect(phaseCallback).toHaveBeenCalledWith(<data>)`        |
+| @defer                 | `DeferBlockBehavior.Manual` + `getDeferBlocks()`                            | `await render(DeferBlockState.<X>)` then assert             |
+| Page                   | `RouterTestingHarness` when routing/child integration matters               | `expect(routeNativeElement?.<query>(...)).<assert>`         |
+| PrimeNG component      | Conditional `provideAnimationsAsync()` + service stubs + MCP/docs preflight | Component-specific; see Angular 22 + PrimeNG v20+ companion |

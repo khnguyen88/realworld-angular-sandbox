@@ -35,7 +35,8 @@
       "PowerShell(Select-String -Path README-TEST-GUIDE.md,README-TESTING.md,README-TEST-INSIGHTS.md,README-TEST-CHRONOLOGY.md -Pattern \"README-TEST-AGENT-GUIDE\\\\.md\" -List | ForEach-Object { $_.Path })",
       "PowerShell(Select-String -Path README-TEST-GUIDE.md,README-TESTING.md,README-TEST-INSIGHTS.md,README-TEST-CHRONOLOGY.md -Pattern \"README-TEST-PRIMENG-AGENT-GUIDE\\\\.md\" -List | ForEach-Object { $_.Path })",
       "Bash(pnpm *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(claude mcp *)"
     ]
   },
   "hooks": {

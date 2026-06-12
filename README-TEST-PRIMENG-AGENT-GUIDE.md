@@ -1,9 +1,9 @@
-# PrimeNG v20+ Test Cookbook (for LLMs)
+# Angular 22 + PrimeNG v20+ Test Cookbook (for LLMs)
 
 > **Testing Docs Index:**
 >
 > - **README-TEST-AGENT-GUIDE.md** — Main LLM-portable test creation guide
-> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — This file: PrimeNG v20+ companion cookbook
+> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — This file: Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-GUIDE.md** — Human-facing tour of realworld-angular test patterns
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists
@@ -11,16 +11,20 @@
 
 ## Who This File Is For
 
-You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns.
+You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns for the current sandbox target: **Angular 22 + PrimeNG v20+**. Legacy PrimeNG v17/v18 rename notes are included as compatibility context.
 
 ## How to Use This File
 
-1. **Confirm the PrimeNG version** (see §1).
+1. **Confirm the Angular and PrimeNG versions** (see §1).
 2. **Apply the universal setup** (§2) in every test that uses PrimeNG components.
 3. **For each PrimeNG component in the code**, find the matching recipe in §4-§13.
-4. **For the current API of any component**, query `https://primeng.org/mcp` before writing assertions. The MCP returns the current selector, events, and template syntax.
+4. **For the current API of any component**, query the configured PrimeNG MCP when its tools or resources are available before writing assertions. If the MCP is configured but not visible in the session, use the versioned PrimeNG docs or the component source as the fallback source of truth.
 
-> **primeng.org MCP:** before writing assertions for any component in §4-§13, query `https://primeng.org/mcp` for the current `<ComponentName>` API. The patterns below are version-stable; the API details are not.
+> **PrimeNG MCP:** before writing assertions for any component in §4-§13, query the configured PrimeNG MCP for the current `<ComponentName>` API when available. The patterns below are version-stable; the API details are not. A configured MCP does not always mean tools or resources are active in the current session. If it is not visible, use the versioned PrimeNG docs or the component source. If the MCP is not installed in the agent environment, the optional setup command is:
+>
+> ```bash
+> claude mcp add primeng -s user -- npx -y @primeng/mcp
+> ```
 
 ## Current Suite Relevance
 
@@ -29,7 +33,7 @@ The realworld-angular suite is currently red, so this cookbook is a pattern guid
 ## Table of Contents
 
 - [Current Suite Relevance](#current-suite-relevance)
-- [§1. Pre-flight: Confirm PrimeNG Version](#1-pre-flight-confirm-primeng-version)
+- [§1. Pre-flight: Confirm Angular and PrimeNG Versions](#1-pre-flight-confirm-angular-and-primeng-versions)
 - [§2. Universal Test Setup](#2-universal-test-setup)
 - [§3. Service Stubs](#3-service-stubs)
 - [§4. p-table](#4-p-table)
@@ -43,15 +47,15 @@ The realworld-angular suite is currently red, so this cookbook is a pattern guid
 - [§12. Renames from v17/v18](#12-renames-from-v17v18)
 - [§13. Common Pitfalls](#13-common-pitfalls)
 
-## 1. Pre-flight: Confirm PrimeNG Version
+## 1. Pre-flight: Confirm Angular and PrimeNG Versions
 
-Open `package.json` and check `primeng` in `dependencies`. Confirm the major version:
+Open `package.json` and confirm both `@angular/core` and `primeng` versions. The current sandbox target is **Angular 22 + PrimeNG v20+**, so use that path unless the user explicitly asks for legacy-version guidance.
 
-- **v20+** — this guide. Signal-based components, async animations.
-- **v17/v18** — same patterns, but the renamed components still use the old names. See §12.
-- **v16 or earlier** — `BrowserAnimationsModule` (not async); no signal components. Stop and ask the user.
+- **Angular 22 + PrimeNG v20+** — this guide's primary target. Use signal-based components, Angular 22 guard/resolver/test conventions, and PrimeNG v20+ selectors/imports.
+- **PrimeNG v17/v18** — same high-level patterns, but use the legacy component names and imports listed in §12. Treat this as compatibility context, not the current sandbox target.
+- **PrimeNG v16 or earlier** — `BrowserAnimationsModule` instead of async animations; no signal components. Stop and ask the user.
 
-Also confirm `@angular/core` is **v20+** — PrimeNG v20 requires Angular 20+.
+If the Angular and PrimeNG major versions disagree with the expected pair, flag the mismatch before writing assertions.
 
 ## 2. Universal Test Setup
 
@@ -70,9 +74,9 @@ TestBed.configureTestingModule({
 });
 ```
 
-Use `provideAnimationsAsync()` when the PrimeNG component or interaction path depends on animation events. Start without extra animation setup for simple components, then add `provideAnimationsAsync()` if PrimeNG throws animation-related errors or interactions fail.
+Use `provideAnimationsAsync()` when the component path depends on animation events. Start without extra animation setup for simple rendering assertions, then add `provideAnimationsAsync()` if the interaction path depends on animation events or PrimeNG throws animation-related errors.
 
-Avoid `NoopAnimationsModule` when testing components that rely on animation events for transitions, open/close state, or portal behavior. It is not automatically wrong for every PrimeNG test, but it can suppress the events a component depends on.
+Avoid `NoopAnimationsModule` when testing transitions, open/close state, portal behavior, or any path that depends on animation events. It is not automatically wrong for every PrimeNG test, but it can suppress events a component depends on.
 
 ### 2.2 Theme CSS in jsdom
 
@@ -99,7 +103,7 @@ If `src/styles.css` doesn't import a PrimeNG theme, add one:
 
 ### 2.3 What you can skip
 
-- `BrowserAnimationsModule` — replaced by `provideAnimationsAsync()`.
+- `BrowserAnimationsModule` — use `provideAnimationsAsync()` only when animation setup is needed.
 - `NoopAnimationsModule` — see §2.1.
 - `FormsModule` / `ReactiveFormsModule` — only if the component under test uses ngModel or form controls. PrimeNG's own components handle their internal state.
 
@@ -176,7 +180,7 @@ If the dialog awaits `ref.onClose`, stub the observable:
 
 ## 4. p-table
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `Table` API — selector (`p-table`), events (`onPage`, `onSort`, `onFilter`), and template syntax (`<ng-template pTemplate="header">` vs the new signal-based form). The patterns below are version-stable; the API details are not.
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `Table` API — selector (`p-table`), events (`onPage`, `onSort`, `onFilter`), and template syntax (`<ng-template pTemplate="header">` vs the new signal-based form). If the MCP is not visible, use the PrimeNG v20+ docs or the component source. The patterns below are version-stable; the API details are not.
 
 ### 4.1 What to test
 
@@ -198,7 +202,6 @@ If the dialog awaits `ref.onClose`, stub the observable:
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { TableModule } from 'primeng/table';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <TableHostComponent> } from '<relative-path>';
@@ -211,7 +214,10 @@ describe('<TableHostComponent>', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideAnimationsAsync()],
+      providers: [
+        // Add provideAnimationsAsync() only when the component path depends on animation events
+        // ... per-component providers
+      ],
     }).overrideComponent(<TableHostComponent>, {
       set: { imports: [TableModule] },
     });
@@ -238,7 +244,10 @@ describe('<TableHostComponent>', () => {
 ```typescript
 beforeEach(async () => {
   TestBed.configureTestingModule({
-    providers: [provideAnimationsAsync(), provideHttpClientTesting()],
+    providers: [
+      provideHttpClientTesting(),
+      // Add provideAnimationsAsync() only when the component path depends on animation events
+    ],
   }).overrideComponent(<TableHostComponent>, {
     set: { imports: [TableModule] },
   });
@@ -279,14 +288,14 @@ it('should request page 2 when paginator advances', async () => {
 
 ### 4.6 Pitfalls
 
-- **Forgetting `provideAnimationsAsync()`** — `p-table` paginator and sort UI use animations; without the provider, the test runs but interactions silently fail.
+- **Using animation setup unnecessarily** — add `provideAnimationsAsync()` only when the interaction path depends on animation events or PrimeNG throws animation-related errors.
 - **Asserting on `p-table` before the table initializes** — `p-table` lazy-loads on the first change detection cycle. Always `await fixture.whenStable()` before querying rows.
 - **Selecting the wrong paginator button** — themes vary. Use `el.querySelector('.p-paginator-next')` as a starting point; fall back to other selectors if it's null.
 - **Server-side table: asserting only on the first request** — pagination tests must flush the first request, advance the page, then flush the second.
 
 ## 5. p-dialog
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `Dialog` API — selector (`p-dialog`), visibility binding (`[visible]`), events (`onShow`, `onHide`), and the close mechanism (header close button, ESC key, backdrop click).
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `Dialog` API — selector (`p-dialog`), visibility binding (`[visible]`), events (`onShow`, `onHide`), and the close mechanism (header close button, ESC key, backdrop click). If the MCP is not visible, use the PrimeNG v20+ docs or the component source.
 
 ### 5.1 What to test
 
@@ -305,7 +314,6 @@ it('should request page 2 when paginator advances', async () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -317,7 +325,9 @@ describe('<DialogHostComponent>', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideAnimationsAsync()],
+      providers: [
+        // Add provideAnimationsAsync() only when the component path depends on animation events
+      ],
     }).overrideComponent(<DialogHostComponent>, {
       set: { imports: [DialogModule, ButtonModule] },
     });
@@ -357,12 +367,12 @@ describe('<DialogHostComponent>', () => {
 ### 5.5 Pitfalls
 
 - **Querying `.p-dialog` before the dialog is open** — PrimeNG only inserts the dialog DOM when `visible` is true. Use `setInput('visible', true)` first, then `whenStable()`, then query.
-- **Missing `provideAnimationsAsync()`** — the dialog open/close transitions don't run; assertions on transition state fail.
+- **Using animation setup unnecessarily** — add `provideAnimationsAsync()` only when the interaction path depends on animation events or PrimeNG throws animation-related errors.
 - **Clicking the close button that doesn't exist** — if the dialog has no header (`[showHeader]="false"`), there's no `.p-dialog-header-close`. Use ESC keypress or backdrop click instead.
 
 ## 6. p-select / p-dropdown
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `Select` API (v20+) or `Dropdown` API (v17/v18). Confirm the selector, the `options` array shape (`{ label, value }`), the `[(ngModel)]` or signal form integration, and the `onChange` event payload.
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `Select` API (v20+) or `Dropdown` API (v17/v18). Confirm the selector, the `options` array shape (`{ label, value }`), the `[(ngModel)]` or signal form integration, and the `onChange` event payload. If the MCP is not visible, use the versioned PrimeNG docs or the component source.
 
 ### 6.1 What to test
 
@@ -381,7 +391,6 @@ describe('<DialogHostComponent>', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { SelectModule } from 'primeng/select';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <SelectHostComponent> } from '<relative-path>';
@@ -394,7 +403,9 @@ describe('<SelectHostComponent>', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideAnimationsAsync()],
+      providers: [
+        // Add provideAnimationsAsync() only when the component path depends on animation events
+      ],
     }).overrideComponent(<SelectHostComponent>, {
       set: { imports: [SelectModule] },
     });
@@ -430,7 +441,7 @@ describe('<SelectHostComponent>', () => {
 
 ## 7. p-datepicker / p-calendar
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `DatePicker` API (v20+) or `Calendar` API (v17/v18). Confirm the selector, the date format (`dateFormat`), the inline vs popup mode, and the change event payload (`Date` object or string).
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `DatePicker` API (v20+) or `Calendar` API (v17/v18). Confirm the selector, the date format (`dateFormat`), the inline vs popup mode, and the change event payload (`Date` object or string). If the MCP is not visible, use the versioned PrimeNG docs or the component source.
 
 ### 7.1 What to test
 
@@ -449,7 +460,6 @@ describe('<SelectHostComponent>', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { DatePickerModule } from 'primeng/datepicker';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <DatePickerHostComponent> } from '<relative-path>';
@@ -460,7 +470,9 @@ describe('<DatePickerHostComponent>', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideAnimationsAsync()],
+      providers: [
+        // Add provideAnimationsAsync() only when the component path depends on animation events
+      ],
     }).overrideComponent(<DatePickerHostComponent>, {
       set: { imports: [DatePickerModule] },
     });
@@ -495,7 +507,7 @@ describe('<DatePickerHostComponent>', () => {
 
 ## 8. p-confirmpopup
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `ConfirmPopup` API — selector, the `accept`/`reject` event payload, and the `ConfirmationService` integration.
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `ConfirmPopup` API — selector, the `accept`/`reject` event payload, and the `ConfirmationService` integration. If the MCP is not visible, use the PrimeNG v20+ docs or the component source.
 
 ### 8.1 What to test
 
@@ -512,7 +524,6 @@ describe('<DatePickerHostComponent>', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -530,7 +541,7 @@ describe('<TriggerComponent> confirm flow', () => {
     rejectFn = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        provideAnimationsAsync(),
+        // Add provideAnimationsAsync() only when the component path depends on animation events
         { provide: ConfirmationService, useValue: { confirm: vi.fn() } },
         { provide: MessageService, useValue: { add: vi.fn() } },
       ],
@@ -564,7 +575,7 @@ describe('<TriggerComponent> confirm flow', () => {
 
 ## 9. p-toast
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `Toast` API — the `key` for matching toasts, the `MessageService.add` payload shape (`severity`, `summary`, `detail`, `key`).
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `Toast` API — the `key` for matching toasts, the `MessageService.add` payload shape (`severity`, `summary`, `detail`, `key`). If the MCP is not visible, use the PrimeNG v20+ docs or the component source.
 
 ### 9.1 What to test
 
@@ -576,7 +587,6 @@ describe('<TriggerComponent> confirm flow', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -590,7 +600,7 @@ describe('<ToastHostComponent>', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       providers: [
-        provideAnimationsAsync(),
+        // Add provideAnimationsAsync() only when the component path depends on animation events
         { provide: MessageService, useValue: { add: vi.fn() } },
       ],
     }).overrideComponent(<ToastHostComponent>, {
@@ -626,7 +636,7 @@ describe('<ToastHostComponent>', () => {
 
 These three are simple enough that the recipes are short. Combine them in one test if the component uses all three.
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current API of each component before writing tests. The patterns below are version-stable.
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current API of each component before writing tests. If the MCP is not visible, use the versioned PrimeNG docs or the component source. The patterns below are version-stable.
 
 ### 10.1 p-inputtext
 
@@ -634,7 +644,9 @@ These three are simple enough that the recipes are short. Combine them in one te
 import { InputTextModule } from 'primeng/inputtext';
 
 TestBed.configureTestingModule({
-  providers: [provideAnimationsAsync()],
+  providers: [
+    // Add provideAnimationsAsync() only when the component path depends on animation events
+  ],
 }).overrideComponent(<HostComponent>, {
   set: { imports: [InputTextModule, ReactiveFormsModule] },
 });
@@ -687,7 +699,7 @@ The checkbox's clickable element is the wrapper `.p-checkbox` div, not the hidde
 
 ## 11. p-fileupload
 
-> **primeng.org MCP:** query `https://primeng.org/mcp` for the current `FileUpload` API — the upload mode (`auto` vs `manual`), the `onUpload` event payload, and the `choose` / `upload` / `cancel` button selectors.
+> **PrimeNG MCP:** when available, query the configured PrimeNG MCP for the current `FileUpload` API — the upload mode (`auto` vs `manual`), the `onUpload` event payload, and the `choose` / `upload` / `cancel` button selectors. If the MCP is not visible, use the PrimeNG v20+ docs or the component source.
 
 ### 11.1 What to test
 
@@ -704,7 +716,6 @@ The checkbox's clickable element is the wrapper `.p-checkbox` div, not the hidde
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { FileUploadModule } from 'primeng/fileupload';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { <FileUploadHostComponent> } from '<relative-path>';
@@ -719,7 +730,9 @@ describe('<FileUploadHostComponent>', () => {
   beforeEach(async () => {
     uploadHandler = vi.fn();
     TestBed.configureTestingModule({
-      providers: [provideAnimationsAsync()],
+      providers: [
+        // Add provideAnimationsAsync() only when the component path depends on animation events
+      ],
     }).overrideComponent(<FileUploadHostComponent>, {
       set: { imports: [FileUploadModule] },
     });
@@ -770,8 +783,8 @@ If the codebase predates PrimeNG v20, you'll see the old names. The pattern reci
 
 A consolidated list of mistakes when testing PrimeNG components.
 
-- **Missing `provideAnimationsAsync()`** — the most common error. PrimeNG v20+ components subscribe to animation events; without the provider, you get `NG0201` errors or silent test failures.
-- **Using `NoopAnimationsModule`** — the wrong choice. It suppresses the events PrimeNG depends on. Use `provideAnimationsAsync()` instead.
+- **Using animation setup unnecessarily** — add `provideAnimationsAsync()` only when the interaction path depends on animation events or PrimeNG throws animation-related errors.
+- **Using `NoopAnimationsModule` for every PrimeNG test** — it can be fine for static rendering, but avoid it for transitions, open/close state, portal behavior, or any path that depends on animation events.
 - **Forgetting `MessageService` for `p-confirmpopup` and `p-toast`** — these components inject `MessageService` directly. Stub it in the providers list.
 - **Using brittle PrimeNG class selectors everywhere** — component classes vary by PrimeNG version and theme. Query the rendered DOM after opening/triggering the component, then prefer stable attributes, roles, labels, or the closest stable wrapper.
 - **Asserting on portal-rendered DOM inside the component** — toasts, dialogs opened via `DialogService`, and overlays render in portals at `document.body`. Use `document.body.querySelector(...)` for those.

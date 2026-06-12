@@ -2,19 +2,24 @@
 
 A practical walkthrough of what to test and how to write it, based on the
 [realworld-angular](https://github.com/realworld-angular/realworld-angular)
-test suite and Angular's official testing documentation.
+test suite, Angular's official testing documentation, and current Angular
+testing guidance.
 
 > **Testing Docs Index:**
 >
 > - **README-TEST-GUIDE.md** — This file: how to write tests (Angular recommended + project patterns)
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
-> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
+> - **README-TEST-PRIMENG-AGENT-GUIDE.md** — Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
 > - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 Angular CLI projects now default to **Vitest** with **jsdom**. Run tests with
-`ng test`.
+`ng test`; this sandbox's pinned upstream app is tested with:
+
+```bash
+pnpm --dir realworld-angular run test
+```
 
 Each section below shows two approaches: the **Angular Recommended** way
 (per official docs and the Angular skill references) and the **Project Pattern**
@@ -68,7 +73,7 @@ A test is trustworthy when it is deterministic, isolated, and behavior-focused. 
 - [Interceptors](#interceptors)
 - [Stores / State](#stores--state)
 - [[Illustrative] Reactive Primitives](#illustrative-reactive-primitives)
-- [[Illustrative] httpResource (with real API hit)](#illustrative-httpresource-with-real-api-hit)
+- [[Illustrative] httpResource](#illustrative-httpresource-with-real-api-hit)
 - [Components](#components)
 - [Dialogs & Overlays](#dialogs--overlays)
 - [[Illustrative] @defer Blocks](#illustrative-defer-blocks)
@@ -115,6 +120,8 @@ For every unit you test, **cover these states**:
 - **Success path** (when everything works)
 - **Error / empty / edge case** (when things go wrong)
 - **State transition** (reacting to changes)
+
+Also ask what the test is proving. A component test should prove rendered UI or user-facing behavior; a service test should prove request shape and state changes; a guard test should prove allow/deny decisions and exact redirect URLs. If the test only proves an implementation detail, rewrite the assertion toward observable behavior.
 
 ---
 
@@ -437,7 +444,7 @@ describe('CartStore', () => {
 
 ---
 
-## [Illustrative] httpResource (with real API hit)
+## [Illustrative] httpResource
 
 > **Not based on realworld-angular** — illustrative example generated from Angular official documentation.
 
@@ -591,8 +598,8 @@ describe('TodoComponent (full fixture)', () => {
 - **Assert on `isLoading()`, `hasValue()`, `error()`, and `value()`** — these are the four
   signals `httpResource` exposes. Pick whichever is most relevant to the test.
 - **Reactive reload is implicit** — when the URL function's source signals change,
-  `httpResource` cancels the in-flight request and fires a new one. Use `TestBed.tick()`
-  after a signal change to flush the new request.
+  `httpResource` cancels the in-flight request and fires a new one. Use
+  `TestBed.flushEffects()` after a signal change to flush the new request.
 - **Alignment:** ✓ Project pattern matches Angular recommended. `httpResource` is a wrapper
   around `HttpClient`, so it uses the exact same test APIs.
 
@@ -1011,9 +1018,9 @@ describe('Button', () => {
 | Situation                                             | Use                                                                      |
 | ----------------------------------------------------- | ------------------------------------------------------------------------ |
 | Shared component library (Button, Input, Modal)       | **Harnesses** — consumed by many tests, template changes cascade         |
-| One-off page component                                | **querySelector** — harness overhead not justified for a single consumer |
+| One-off component or page component                   | **querySelector** — harness overhead not justified for a single consumer |
 | Test needs to verify a child component's internal DOM | **querySelector** or `fixture.debugElement.query(By.directive(...))`     |
-| New project or new feature                            | **Harnesses** — start with the modern approach                           |
+| New project or high-value shared component            | **Harnesses** — start with the modern approach                           |
 
 ### NO_ERRORS_SCHEMA Guidance
 
