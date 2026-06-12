@@ -59,7 +59,7 @@ A test is trustworthy when it is deterministic, isolated, and behavior-focused. 
 - **Real imports when integration matters:** prefer real child component imports when the test is about parent/child behavior.
 - **Shallow tests when isolation matters:** keep `NO_ERRORS_SCHEMA` for leaf components whose children are tested separately.
 - **Negative paths:** cover empty, error, disabled, denied, and invalid states when the component exposes them.
-- **No stale providers:** use `TestBed.resetTestingModule()` only when reconfiguring providers inside the same `describe`.
+- **No stale providers:** prefer scoped provider setup and `overrideProvider()` when possible; use `TestBed.resetTestingModule()` only when the test truly needs a fresh TestBed inside the same `describe`.
 
 ---
 
@@ -1259,15 +1259,7 @@ describe('ConfirmDialog', () => {
   });
 
   it('should not show message element when message is not provided', async () => {
-    // Reconfigure TestBed with different data
-    TestBed.resetTestingModule();
-    closeFn = vi.fn();
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
-        { provide: DIALOG_DATA, useValue: { title: 'Test' } },
-      ],
-    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    TestBed.overrideProvider(DIALOG_DATA, { useValue: { title: 'Test' } });
     fixture = TestBed.createComponent(ConfirmDialog);
     el = fixture.nativeElement;
     await fixture.whenStable();
@@ -1287,7 +1279,7 @@ import { PizzaOrderFormDialog } from './pizza-order-form-dialog';
 import { PizzaOrderFormDialogData } from '../../order.models';
 import { Pizza } from '../../../pizzerias/models/pizza.models';
 import { DecimalPipe, NgOptimizedImage } from '@angular/common';
-import { FormField, FormRoot } from '@angular/forms/signals';
+import { FormField } from '@angular/forms/signals';
 import { CatalogImageUrlPipe } from '../../../../shared/pipes/catalog-image-url.pipe';
 import { Button } from '../../../../shared/components/button/button';
 import { Modal } from '../../../../shared/components/modal/modal';
@@ -1317,7 +1309,6 @@ describe('PizzaOrderFormDialog', () => {
   let closeFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    TestBed.resetTestingModule();
     closeFn = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -1336,7 +1327,6 @@ describe('PizzaOrderFormDialog', () => {
           Button,
           Input,
           SizeOptionField,
-          FormRoot,
           FormField,
         ],
       },
@@ -1384,8 +1374,8 @@ describe('PizzaOrderFormDialog', () => {
 
 - Stub `DialogRef` with `{ close: vi.fn() }` — the simplest useful stub.
 - Provide `DIALOG_DATA` as a plain object — no need for the real injection token class.
-- Use `TestBed.resetTestingModule()` when reconfiguring providers with different data within the same `describe`.
-- For dialogs with real forms, use real `imports` instead of `NO_ERRORS_SCHEMA` so that `FormRoot` and `FormField` directives wire up correctly.
+- Prefer scoped provider setup or `overrideProvider()` when reconfiguring providers with different data within the same `describe`; use `TestBed.resetTestingModule()` only when a fresh TestBed is truly needed.
+- For dialogs with real forms, use real `imports` instead of `NO_ERRORS_SCHEMA` so that `FormField` directives wire up correctly.
 - Test the close flow: user action → `expect(closeFn).toHaveBeenCalled()`.
 - Test ARIA: dialog panel should have `role="document"` or `role="dialog"`, close button should have `aria-label`.
 - **Alignment:** ✓ Project pattern matches Angular recommended for dialog testing. Both use `DialogRef` + `DIALOG_DATA` stubs.
@@ -2307,24 +2297,18 @@ export class RatingControl implements ControlValueAccessor {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { Component } from '@angular/core';
-import { FormField, FormRoot, FormGroup, FormControl, Validators } from '@angular/forms/signals';
+import { Component, signal } from '@angular/core';
+import { form, FormField } from '@angular/forms/signals';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RatingControl } from './rating-control';
-
 @Component({
-  imports: [FormRoot, FormField, RatingControl],
-  template: `
-    <form #formRoot="formRoot" [formRoot]="form">
-      <app-rating-control [formField]="'rating'" />
-    </form>
-  `,
+  imports: [FormField, RatingControl],
+  template: ` <app-rating-control [formField]="rating" /> `,
   standalone: true,
 })
 class TestHostComponent {
-  form = new FormGroup({
-    rating: new FormControl(0, { validators: [Validators.required, Validators.min(1)] }),
-  });
+  readonly model = signal({ rating: 0 });
+  readonly rating = form(this.model).rating;
 }
 
 describe('RatingControl', () => {
@@ -2339,7 +2323,7 @@ describe('RatingControl', () => {
   });
 
   it('should render stars via writeValue', () => {
-    fixture.componentInstance.form.controls.rating.setValue(3);
+    fixture.componentInstance.model.set({ rating: 3 });
     TestBed.flushEffects();
     const filledStars = el.querySelectorAll('.rating .filled');
     expect(filledStars.length).toBe(3);
@@ -2349,21 +2333,21 @@ describe('RatingControl', () => {
     const buttons = el.querySelectorAll<HTMLButtonElement>('.rating button');
     buttons[4].click(); // select 5th star
     TestBed.flushEffects();
-    expect(fixture.componentInstance.form.controls.rating.value()).toBe(5);
+    expect(fixture.componentInstance.rating().value()).toBe(5);
   });
 
   it('should not select when disabled', () => {
-    fixture.componentInstance.form.controls.rating.disable();
+    fixture.componentInstance.rating().disabled.set(true);
     TestBed.flushEffects();
     const buttons = el.querySelectorAll<HTMLButtonElement>('.rating button');
     buttons[2].click();
     TestBed.flushEffects();
-    expect(fixture.componentInstance.form.controls.rating.value()).toBe(0);
+    expect(fixture.componentInstance.rating().value()).toBe(0);
   });
 
   it('should fail validation when value is 0', () => {
     TestBed.flushEffects();
-    expect(fixture.componentInstance.form.controls.rating.hasError('required')).toBe(true);
+    expect(fixture.componentInstance.rating().errors().length).toBeGreaterThan(0);
   });
 });
 ```
@@ -2421,7 +2405,7 @@ describe('RatingControl (reactive forms)', () => {
 ### Key rules
 
 - Create a `TestHostComponent` that wraps the custom control in a real form (signal forms for Angular v22+, reactive forms for v21 and earlier).
-- Signal forms: use `FormField` + `FormRoot`, call `TestBed.flushEffects()` after mutations.
+- Signal forms: create the form with `form(modelSignal)`, bind controls with `FormField`, and call `TestBed.flushEffects()` after mutations.
 - Reactive forms: use `ReactiveFormsModule`, call `fixture.detectChanges()` after mutations.
 - Test `writeValue` by setting the form control's value and asserting DOM output.
 - Test `onChange` by interacting with the DOM and asserting the form control's value updated.

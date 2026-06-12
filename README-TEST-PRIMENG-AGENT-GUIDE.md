@@ -11,7 +11,7 @@
 
 ## Who This File Is For
 
-You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns for the current sandbox target: **Angular 22 + PrimeNG v20+**. Legacy PrimeNG v17/v18 rename notes are included as compatibility context.
+You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns for the current sandbox target: **Angular 22 + PrimeNG v20+**. Treat PrimeNG major-version pairing as a version check: PrimeNG v20 aligns with Angular 20, PrimeNG v21 aligns with Angular 21, and so on. If the project's Angular and PrimeNG majors disagree, ask before writing version-specific assertions. Legacy PrimeNG v17/v18 rename notes are included as compatibility context.
 
 ## How to Use This File
 
@@ -20,7 +20,7 @@ You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeN
 3. **For each PrimeNG component in the code**, find the matching recipe in §4-§13.
 4. **For the current API of any component**, query the configured PrimeNG MCP when its tools or resources are available before writing assertions. If the MCP is configured but not visible in the session, use the versioned PrimeNG docs or the component source as the fallback source of truth.
 
-> **PrimeNG MCP:** before writing assertions for any component in §4-§13, query the configured PrimeNG MCP for the current `<ComponentName>` API when available. The patterns below are version-stable; the API details are not. A configured MCP does not always mean tools or resources are active in the current session. If it is not visible, use the versioned PrimeNG docs or the component source. If the MCP is not installed in the agent environment, the optional setup command is:
+> **PrimeNG MCP:** before writing assertions for any component in §4-§13, query the configured PrimeNG MCP for the current `<ComponentName>` API when available. The patterns below are version-stable; the API details are not. A configured MCP does not always mean tools or resources are active in the current session. If it is not visible, use the versioned PrimeNG docs or the component source as the fallback source of truth. If the MCP is not installed in the agent environment, the optional setup command is:
 >
 > ```bash
 > claude mcp add primeng -s user -- npx -y @primeng/mcp
@@ -52,6 +52,7 @@ The realworld-angular suite is currently red, so this cookbook is a pattern guid
 Open `package.json` and confirm both `@angular/core` and `primeng` versions. The current sandbox target is **Angular 22 + PrimeNG v20+**, so use that path unless the user explicitly asks for legacy-version guidance.
 
 - **Angular 22 + PrimeNG v20+** — this guide's primary target. Use signal-based components, Angular 22 guard/resolver/test conventions, and PrimeNG v20+ selectors/imports.
+- **PrimeNG major-version pairing** — PrimeNG follows Angular's major-version cadence: PrimeNG v20 aligns with Angular 20, v21 with Angular 21, and v22 with Angular 22. If the installed majors disagree with the guide's target, ask before writing version-specific assertions.
 - **PrimeNG v17/v18** — same high-level patterns, but use the legacy component names and imports listed in §12. Treat this as compatibility context, not the current sandbox target.
 - **PrimeNG v16 or earlier** — `BrowserAnimationsModule` instead of async animations; no signal components. Stop and ask the user.
 
@@ -93,13 +94,13 @@ PrimeNG components render with theme-dependent CSS classes. In `angular.json`, t
 }
 ```
 
-If `src/styles.css` doesn't import a PrimeNG theme, add one:
+If `src/styles.css` doesn't import a PrimeNG theme, add the project's current theme import. For PrimeNG v20+, prefer the current theme package/resource documented for that PrimeNG version rather than the legacy `primeng/resources/themes/lara-light-blue/theme.css` path.
 
 ```css
-@import 'primeng/resources/themes/lara-light-blue/theme.css';
+/* Use the theme import that matches the project's PrimeNG major version. */
 ```
 
-(Check the project's actual theme import path; `lara-light-blue` is a common default but not universal.)
+Do not rely on the legacy `lara-light-blue/theme.css` path unless the project still uses an older theme resource.
 
 ### 2.3 What you can skip
 
@@ -202,7 +203,7 @@ If the dialog awaits `ref.onClose`, stub the observable:
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { TableModule } from 'primeng/table';
+import { Table } from 'primeng/table';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <TableHostComponent> } from '<relative-path>';
 
@@ -219,7 +220,7 @@ describe('<TableHostComponent>', () => {
         // ... per-component providers
       ],
     }).overrideComponent(<TableHostComponent>, {
-      set: { imports: [TableModule] },
+      set: { imports: [Table] },
     });
     fixture = TestBed.createComponent(<TableHostComponent>);
     fixture.componentRef.setInput('rows', <mockRows>);
@@ -249,7 +250,7 @@ beforeEach(async () => {
       // Add provideAnimationsAsync() only when the component path depends on animation events
     ],
   }).overrideComponent(<TableHostComponent>, {
-    set: { imports: [TableModule] },
+    set: { imports: [Table] },
   });
   fixture = TestBed.createComponent(<TableHostComponent>);
   el = fixture.nativeElement;
@@ -267,9 +268,11 @@ it('should request page 2 when paginator advances', async () => {
   httpTesting.expectOne((r) => r.url.includes('<data-url>')).flush(<paged-response-page-1>);
   await fixture.whenStable();
 
-  // Find the paginator next button and click it
-  const nextButton = el.querySelector<HTMLButtonElement>('.p-paginator-next')!;
-  nextButton.click();
+  // Prefer stable attributes/roles first; use paginator class selectors only as a fallback.
+  const nextButton = el.querySelector<HTMLButtonElement>('[data-testid="<next-page-button>"]')
+    ?? el.querySelector<HTMLButtonElement>('.p-paginator-next');
+  expect(nextButton).not.toBeNull();
+  nextButton!.click();
   await fixture.whenStable();
 
   const req2 = httpTesting.expectOne((r) => r.url.includes('<data-url>'));
@@ -290,7 +293,7 @@ it('should request page 2 when paginator advances', async () => {
 
 - **Using animation setup unnecessarily** — add `provideAnimationsAsync()` only when the interaction path depends on animation events or PrimeNG throws animation-related errors.
 - **Asserting on `p-table` before the table initializes** — `p-table` lazy-loads on the first change detection cycle. Always `await fixture.whenStable()` before querying rows.
-- **Selecting the wrong paginator button** — themes vary. Use `el.querySelector('.p-paginator-next')` as a starting point; fall back to other selectors if it's null.
+- **Selecting the wrong paginator button** — themes vary. Use `el.querySelector('.p-paginator-next')` only as a fallback; prefer stable attributes, roles, or text first.
 - **Server-side table: asserting only on the first request** — pagination tests must flush the first request, advance the page, then flush the second.
 
 ## 5. p-dialog
@@ -350,8 +353,10 @@ describe('<DialogHostComponent>', () => {
   it('should close when close button is clicked', async () => {
     fixture.componentRef.setInput('visible', true);
     await fixture.whenStable();
-    const closeButton = el.querySelector<HTMLButtonElement>('.p-dialog-header-close')!;
-    closeButton.click();
+    const closeButton = el.querySelector<HTMLButtonElement>('[aria-label="Close"]')
+      ?? el.querySelector<HTMLButtonElement>('.p-dialog-header-close');
+    expect(closeButton).not.toBeNull();
+    closeButton!.click();
     await fixture.whenStable();
     expect(fixture.componentInstance.visible()).toBe(false);
   });
@@ -368,7 +373,7 @@ describe('<DialogHostComponent>', () => {
 
 - **Querying `.p-dialog` before the dialog is open** — PrimeNG only inserts the dialog DOM when `visible` is true. Use `setInput('visible', true)` first, then `whenStable()`, then query.
 - **Using animation setup unnecessarily** — add `provideAnimationsAsync()` only when the interaction path depends on animation events or PrimeNG throws animation-related errors.
-- **Clicking the close button that doesn't exist** — if the dialog has no header (`[showHeader]="false"`), there's no `.p-dialog-header-close`. Use ESC keypress or backdrop click instead.
+- **Clicking the close button that doesn't exist** — if the dialog has no header (`[showHeader]="false"`), there may be no close button. Use ESC keypress or backdrop click instead.
 
 ## 6. p-select / p-dropdown
 
@@ -667,12 +672,15 @@ it('should reflect the bound value', async () => {
 import { ButtonModule } from 'primeng/button';
 
 it('should fire click handler when clicked', () => {
-  el.querySelector<HTMLButtonElement>('button.p-button')!.click();
+  const button = el.querySelector<HTMLButtonElement>('[data-testid="<button>"]')
+    ?? el.querySelector<HTMLButtonElement>('button.p-button');
+  expect(button).not.toBeNull();
+  button!.click();
   expect(<handler-stub>).toHaveBeenCalled();
 });
 ```
 
-`p-button` renders a `<button>` with the `.p-button` class. The click event bubbles naturally.
+`p-button` often renders a `<button>` with the `.p-button` class. Prefer a stable test id or role when available; use the class only as a fallback.
 
 ### 10.3 p-checkbox
 
@@ -716,7 +724,7 @@ The checkbox's clickable element is the wrapper `.p-checkbox` div, not the hidde
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload } from 'primeng/fileupload';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { <FileUploadHostComponent> } from '<relative-path>';
 
@@ -734,7 +742,7 @@ describe('<FileUploadHostComponent>', () => {
         // Add provideAnimationsAsync() only when the component path depends on animation events
       ],
     }).overrideComponent(<FileUploadHostComponent>, {
-      set: { imports: [FileUploadModule] },
+      set: { imports: [FileUpload] },
     });
     fixture = TestBed.createComponent(<FileUploadHostComponent>);
     el = fixture.nativeElement;
@@ -743,13 +751,16 @@ describe('<FileUploadHostComponent>', () => {
 
   it('should trigger <upload-handler> when upload button is clicked', async () => {
     const fileInput = el.querySelector<HTMLInputElement>('input[type="file"]')!;
-    // Simulate file selection
-    Object.defineProperty(fileInput, 'files', { value: [<mockFile>] });
+    const files = new DataTransfer();
+    files.items.add(<mockFile>);
+    fileInput.files = files.files;
     fileInput.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
-    // Click the upload button
-    el.querySelector<HTMLButtonElement>('.p-fileupload-upload')!.click();
+    const uploadButton = el.querySelector<HTMLButtonElement>('[data-testid="<upload-button>"]')
+      ?? el.querySelector<HTMLButtonElement>('.p-fileupload-upload');
+    expect(uploadButton).not.toBeNull();
+    uploadButton!.click();
     await fixture.whenStable();
 
     expect(uploadHandler).toHaveBeenCalledWith(<mockFile>);
@@ -759,7 +770,7 @@ describe('<FileUploadHostComponent>', () => {
 
 ### 11.4 Pitfalls
 
-- **`Object.defineProperty` for the `files` property** — `<input type="file">` doesn't accept programmatic file assignment via `.files =`. Use `Object.defineProperty` to bypass the read-only protection.
+- **Mocking the `files` property** — jsdom's `FileList` can be component/version-sensitive. Prefer `DataTransfer` when supported; if PrimeNG reads a stricter `FileList`, fall back to a custom `FileList`-shaped mock or `Object.defineProperty`.
 - **Missing `dispatchEvent(new Event('change'))`** — setting `files` alone doesn't trigger PrimeNG's change handler. Dispatch the event manually.
 - **Wrong button selector** — upload/cancel selectors are version/theme-dependent. Query the rendered file upload after it is initialized and prefer stable labels/roles when available.
 
@@ -788,9 +799,9 @@ A consolidated list of mistakes when testing PrimeNG components.
 - **Forgetting `MessageService` for `p-confirmpopup` and `p-toast`** — these components inject `MessageService` directly. Stub it in the providers list.
 - **Using brittle PrimeNG class selectors everywhere** — component classes vary by PrimeNG version and theme. Query the rendered DOM after opening/triggering the component, then prefer stable attributes, roles, labels, or the closest stable wrapper.
 - **Asserting on portal-rendered DOM inside the component** — toasts, dialogs opened via `DialogService`, and overlays render in portals at `document.body`. Use `document.body.querySelector(...)` for those.
-- **Importing the wrong module** — `primeng/dropdown` is v17/v18; `primeng/select` is v20+. The codebase's PrimeNG version determines which import path to use.
-- **Setting `files` on an `<input type="file">` without `Object.defineProperty`** — the `files` property is read-only; the assignment silently fails.
+- **Importing the wrong module** — use PrimeNG standalone component imports for v20+ where available (`Table`, `Dialog`, `Select`, etc.); `primeng/dropdown` is v17/v18 and `primeng/select` is v20+.
+- **Mocking file input selection** — the `files` property is read-only. Prefer `DataTransfer` when jsdom supports it; use `Object.defineProperty` only as a fallback.
 - **Asserting on a closed dialog** — PrimeNG only inserts the dialog DOM when `visible` is true. Open it first, then query.
 - **Asserting on a hidden checkbox `<input>`** — the actual clickable element is the `.p-checkbox` wrapper.
-- **Not providing theme CSS in `angular.json`** — components render with `undefined` styles. Add the theme import to `test.options.styles`.
+- **Not providing theme CSS in `angular.json`** — components render with `undefined` styles. Add the project's current PrimeNG theme import to `test.options.styles`.
 - **Stubbing services with `useClass` instead of `useValue`** — for `MessageService`, `ConfirmationService`, etc., `useValue: { add: vi.fn() }` is the right pattern. `useClass` requires implementing the full service.

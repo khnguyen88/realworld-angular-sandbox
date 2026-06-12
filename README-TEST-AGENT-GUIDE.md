@@ -34,7 +34,7 @@ Every test in this guide assumes these conventions:
 - **TestBed + signal inputs**: after `fixture.componentRef.setInput(...)`, call `await fixture.whenStable()` before asserting on the DOM.
 - **HTTP tests**: use `HttpTestingController` for Angular HTTP calls and `provideHttpClientTesting()`.
 - **No leaked requests**: call `httpTesting.verify()` in `afterEach` whenever a test can create HTTP requests.
-- **Reactive graphs**: call `TestBed.flushEffects()` after every signal mutation that may trigger an effect or `httpResource`.
+- **Reactive graphs**: call `TestBed.flushEffects()` after signal mutations that may trigger effects. For `httpResource`, use `TestBed.tick()` for the initial request and `TestBed.flushEffects()` for reloads caused by tracked signal changes.
 - **Substitutions**: this guide uses `<placeholder>` syntax. Replace with values from the source file.
 - **Scope discipline**: do not fix unrelated failing tests, production code, or CI configuration unless the user explicitly asks.
 
@@ -237,8 +237,9 @@ describe('<ServiceName>', () => {
 
 #### Common variants
 
-- **httpResource-based service** — the resource fires automatically; use `TestBed.flushEffects()` to drive it, then `httpTesting.expectOne(...).flush(...)`, then assert `service.<resourceName>.value()`.
-- **Service with `effect()` calling another method** — flush twice: once to trigger the resource, once after the effect-driven call.
+- **httpResource-based service** — the resource fires automatically; use `TestBed.tick()` to drive the initial request, then `httpTesting.expectOne(...).flush(...)`, then `await TestBed.inject(ApplicationRef).whenStable()` or assert after the fixture stabilizes.
+- **httpResource reloads** — after tracked source signals change, use `TestBed.flushEffects()` to drive the new request, then flush and stabilize again.
+- **Service with `effect()` calling another method** — flush with `TestBed.flushEffects()` after the mutation that should trigger the effect.
 - **Service with no HTTP** — drop `provideHttpClientTesting()`; `TestBed.inject(<ServiceName>)` alone is enough.
 - **Async service returning `Promise<T>`** — use `await service.method()`; `expectOne()` still works because `HttpTestingController` intercepts before the promise resolves.
 
@@ -453,15 +454,15 @@ describe('<DialogComponent>', () => {
 
 #### Common variants
 
-- **Dialog with form + HTTP** — add `provideHttpClientTesting()`, use `TestBed.resetTestingModule()` to reconfigure per test if the form data changes, and use `TestBed.flushEffects()` after form mutations.
+- **Dialog with form + HTTP** — add `provideHttpClientTesting()`, prefer scoped providers or `overrideProvider()` for per-test data, and use `TestBed.flushEffects()` after form mutations.
 - **Dialog opened by `DialogService.open()`** — the parent component test stubs `DialogService` with `{ open: vi.fn().mockReturnValue(<ref>) }` and asserts `open` was called with the right config.
-- **Reconfiguring `DIALOG_DATA` mid-suite** — use `TestBed.resetTestingModule()` followed by a fresh `TestBed.configureTestingModule(...)` in a new `it()` block.
+- **Reconfiguring `DIALOG_DATA` mid-suite** — prefer scoped provider setup or `overrideProvider()`; use `TestBed.resetTestingModule()` only when a fresh TestBed is truly needed.
 - **Dialog with `inject(DialogRef)` (newer pattern)** — same stub, but the component doesn't take it via constructor; the test provides it through `providers:` and DI resolves it.
 
 #### Pitfalls
 
 - **Stubbing `DialogRef` as a class** — the simplest stub is `{ close: vi.fn() }` as a `useValue`. Don't use `useClass` or a real instance.
-- **Forgetting `TestBed.resetTestingModule()`** — `DIALOG_DATA` is a single value per `configureTestingModule` call. Reusing a configured module for a test that needs different data silently uses the old data.
+- **Reusing `DIALOG_DATA` across tests with different data** — scope the provider setup or override the provider when data changes; don't reset the whole TestBed unless necessary.
 - **Not asserting the close result** — `closeFn` should be called with the form value (or whatever the dialog returns). `expect(closeFn).toHaveBeenCalledWith(...)` is the test.
 - **Hanging on `await dialogRef.closed`** — if the test awaits the closed promise, it will hang forever because the stubbed `close` is a `vi.fn()` that doesn't return an observable. Stub the close, don't await the closed promise.
 
@@ -537,14 +538,14 @@ describe('<StoreName>', () => {
 
 #### Common variants
 
-- **Store with `httpResource` only** — `TestBed.flushEffects()` after `TestBed.inject()` to fire the initial request, then `expectOne`/`match` and `flush`.
+- **Store with `httpResource` only** — use `TestBed.tick()` for the initial request, then `expectOne`/`match` and `flush`; use `TestBed.flushEffects()` for reloads caused by tracked signal changes.
 - **Store with `effect()`-driven HTTP** — flush after every mutation. If a mutation triggers two requests (e.g., the action + a side effect), `match()` returns both, flush each.
 - **Store with cross-entity constraint** — add an `it()` that performs the violating action and asserts the state was reset.
 - **Store with `linkedSignal` reset** — add an `it()` that changes the source signal, then asserts the linked signal reset to the new derived value.
 
 #### Pitfalls
 
-- **Forgetting `TestBed.flushEffects()`** — `httpResource` is effect-driven. Without `flushEffects()`, the test runs zero HTTP and `expectOne` fails with "no matching request."
+- **Forgetting to drive `httpResource`** — use `TestBed.tick()` for the initial request or `TestBed.flushEffects()` for reloads. Without that, the test runs zero HTTP and `expectOne` fails with "no matching request."
 - **Using `expectOne` when the action triggers multiple requests** — switch to `match()` (returns array) and flush each.
 - **Asserting on `value()` of an unresolved resource** — the resource is loading; `value()` is `undefined`. Flush the request first.
 - **Not testing the "no HTTP when empty" case** — the negative assertion (`expectNone`) is one of the most useful tests for a store. Don't skip it.
@@ -776,7 +777,7 @@ describe('<DirectiveName>', () => {
 
 #### Pre-flight
 
-- Identify the form library: **signal forms** (Angular v20+), **reactive forms** (`@angular/forms`), or **template-driven forms**.
+- Identify the form library: **signal forms** (Angular v22+ stable), **reactive forms** (`@angular/forms`), or **template-driven forms**.
 - List every form control and its initial value.
 - Identify computed signals that derive from form state — these are the _interesting_ assertions.
 - Note any `effect()` that watches form state and triggers side effects.
@@ -784,35 +785,44 @@ describe('<DirectiveName>', () => {
 #### Recipe template (signal forms)
 
 ```typescript
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { FieldTree, form } from '@angular/forms/signals';
 import { <ServiceName> } from '<relative-path>';
 
 describe('<ServiceName>', () => {
   let service: <ServiceName>;
+  let formTree: FieldTree<{
+    <field-name>: string;
+  }>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       // <providers-needed-by-the-service>
     });
     service = TestBed.inject(<ServiceName>);
+    formTree = TestBed.runInInjectionContext(() =>
+      form({
+        <field-name>: '<initial-value>',
+      }),
+    );
   });
 
   it('should have <field-name> in initial state', () => {
-    expect(service.<form>.<field>().value()).toBe(<initial-value>);
+    expect(formTree.<field-name>().value()).toBe('<initial-value>');
   });
 
   it('should compute <derived-signal> from form state', () => {
-    service.<form>.<field>().value.set(<new-value>);
+    formTree.<field-name>().value.set('<new-value>');
     TestBed.flushEffects();
-    expect(service.<derivedSignal>()).toBe(<expected-derived-value>);
+    expect(<derivedSignalExpression>).toBe(<expected-derived-value>);
   });
 
   it('should <cross-field-effect> when <trigger-field> changes', () => {
-    service.<form>.<field1>().value.set(<value-1>);
-    service.<form>.<field2>().value.set(<value-2>);
+    formTree.<field1>().value.set('<value-1>');
+    formTree.<field2>().value.set('<value-2>');
     TestBed.flushEffects();
-    expect(service.<form>.<field3>().value()).toBe(<expected-cleared-value>);
+    expect(formTree.<field3>().value()).toBe('<expected-cleared-value>');
   });
 });
 ```
@@ -1160,7 +1170,7 @@ TestBed.flushEffects();
 httpTesting.expectOne(...);
 ```
 
-For resource-driven tests, the resource fires on construction in some setups and on first read in others. `TestBed.flushEffects()` after `TestBed.inject()` ensures the initial load runs.
+For resource-driven tests, use `TestBed.tick()` to drive the initial `httpResource` request and `TestBed.flushEffects()` for reloads caused by tracked signal changes.
 
 ### 4.6 Zoneless apps
 
@@ -1229,7 +1239,7 @@ The most common errors an LLM makes when writing Angular + Vitest tests. Each it
 
 1. **Forgetting `await fixture.whenStable()`** after `setInput`, after form mutation, after signal change. The set-and-assert path silently fails.
 2. **Forgetting `httpTesting.verify()` in `afterEach`** — un-flushed requests fail the next test, but a missing afterEach hook means the suite still passes while leaking requests.
-3. **Forgetting `TestBed.flushEffects()`** after a signal mutation that triggers an effect or `httpResource`.
+3. **Forgetting to drive `httpResource`** after construction or tracked signal changes; use `TestBed.tick()` for the initial request and `TestBed.flushEffects()` for reloads.
 4. **Asserting only on the request, not the post-state** for services. The interesting assertion is the signal after the response.
 5. **Asserting `expect(result).toBeInstanceOf(UrlTree)` in a guard test** — that's a type check, not a behavior check. Serialize and compare the URL.
 6. **Missing `runInInjectionContext`** around a functional guard call. The guard uses `inject()` internally; without the context, the test fails.
@@ -1252,11 +1262,11 @@ A condensed lookup. Use this when you need a quick reminder; the recipes in §3 
 | ---------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Pipe                   | `new <Pipe>(...)`                                                           | `expect(pipe.transform(input)).toBe(expected)`              |
 | Service (HTTP)         | `provideHttpClientTesting()` + `httpTesting`                                | `req = expectOne(url); flush(...); expect(signal())`        |
-| Service (httpResource) | `flushEffects()` after inject                                               | `expect(resource.value()).toBe(...)`                        |
+| Service (httpResource) | `tick()` for initial request; `flushEffects()` for reloads                  | `expect(resource.value()).toBe(...)`                        |
 | Interceptor            | `provideHttpClient(withInterceptors([fn]))`                                 | `expect(req.request.<prop>).toBe(expected)`                 |
 | Component              | `TestBed.createComponent`; `NO_ERRORS_SCHEMA` only for shallow tests        | `setInput(...) → whenStable → querySelector`                |
 | Dialog                 | `DialogRef` + `DIALOG_DATA` `useValue` stubs                                | `expect(closeFn).toHaveBeenCalledWith(result)`              |
-| Store                  | `flushEffects()` after mutation + `HttpTestingController`                   | `expect(store.<signal>()).toBe(<post-state>)`               |
+| Store                  | `tick()`/`flushEffects()` as needed + `HttpTestingController`               | `expect(store.<signal>()).toBe(<post-state>)`               |
 | Guard (sync)           | `runInInjectionContext` + 3-arg invocation; harness for routing integration | `expect(serializeUrl(result)).toBe('/expected')`            |
 | Guard (async)          | Same + `subscribe` + `httpTesting.flush`                                    | Same as above                                               |
 | Resolver               | `RouterTestingHarness` + `withComponentInputBinding`                        | `expect(component.<input>()).toBe(<resolved>)`              |
