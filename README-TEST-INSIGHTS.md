@@ -6,24 +6,24 @@
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — This file: quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (latest run 58/59 specs pass)
+> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns; latest run 59/59 specs pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
-> **Status snapshot (2026-06-15):** Upstream realworld-angular was synced to GitHub HEAD `420001df2cf83e6e0b46335330f31308b9e5688a`. The suite still compiles and runs, and the latest local run is **almost green**: **58/59 specs pass, 349/350 tests pass**. The only remaining fresh failure is `PhotonLocationField` committing a selected suggestion without a matching Photon search request. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
+> **Status snapshot (2026-06-15):** Upstream realworld-angular was synced to GitHub HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef`. The suite compiles and passes completely. The latest local run is fully green: **59/59 specs pass, 350/350 tests pass**. No remaining failures. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
 
 ---
 
 ## TL;DR
 
-| Question                                   | Answer                                                                                                                                             |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| How many test files?                       | **59 `*.spec.ts`** co-located with source.                                                                                                         |
-| How much test code?                        | **~5,175 lines** of test code vs. **~3,820 lines** of source.                                                                                      |
-| Is the suite green?                        | **Almost** — `pnpm run test` compiles and runs but exits red: **58/59 specs pass, 349/350 tests pass**. One Photon location field test is failing. |
-| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have actionable gaps (components, pages, guards).                          |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with **known gaps** in component harness adoption and route integration testing.                     |
-| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds in `package.json`.                                                         |
-| Are there other test types?                | **None** — no e2e, no integration, no a11y, no visual regression.                                                                                  |
+| Question                                   | Answer                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| How many test files?                       | **59 `*.spec.ts`** co-located with source.                                                        |
+| How much test code?                        | **~5,175 lines** of test code vs. **~3,820 lines** of source.                                     |
+| Is the suite green?                        | **Yes** — `pnpm run test` exits 0: **59/59 specs pass, 350/350 tests pass**.                      |
+| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have gaps.                |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with known gaps in harnesses and route integration. |
+| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds.                          |
+| Are there other test types?                | **None** — no e2e, integration, a11y, or visual regression tests.                                 |
 
 ---
 
@@ -35,28 +35,20 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 ---
 
-## 2. Current Run Status — ALMOST GREEN
+## 2. Current Run Status — GREEN
 
-`pnpm run test` (i.e. `ng test`) still **compiles and runs**, but exits red because one test is failing. Results from the latest local run:
+`pnpm run test` (i.e. `ng test`) compiles, runs, and exits 0. Results from the latest local run:
 
-| Metric     | Value                                                                      |
-| ---------- | -------------------------------------------------------------------------- |
-| Spec files | **59** (1 removed: `photon-api.spec.ts` was deleted in upstream `264c697`) |
-| Passed     | **58 specs, 349 tests**                                                    |
-| Failed     | **1 spec, 1 test**                                                         |
-| Duration   | 14.11s                                                                     |
+| Metric     | Value                   |
+| ---------- | ----------------------- |
+| Spec files | **59**                  |
+| Passed     | **59 specs, 350 tests** |
+| Failed     | **0 specs, 0 tests**    |
+| Duration   | ~19.1s                  |
 
-**Fresh failing spec:**
+The earlier Photon request isolation failure and broad `TestBed` cascade failures have been resolved upstream. The suite is fully green.
 
-| File                                                                    | Failures | Error type / primary symptom                                                    |
-| ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- |
-| `shared/components/photon-location-field/photon-location-field.spec.ts` | 1        | `flushSearch()` expected a Photon request, but no matching request was present. |
-
-**Root cause:** The broad upstream `TestBed` cascade failures have been resolved. The remaining failure is isolated to `PhotonLocationField`: `should commit value when suggestion is selected` selects a suggestion but does not have a matching Photon HTTP request available when `flushSearch()` runs. Vitest/jsdom also logs `Window's scrollTo()` as not implemented during this spec run.
-
-**Lint status (unchanged):** `pnpm run lint` produces 19 errors (19 errors, 0 warnings) across 8 files — 14 `@typescript-eslint/no-explicit-any`, 1 `no-unused-vars`, 6 `no-empty-function` (IntersectionObserver stubs). These are pre-existing upstream issues.
-
-> **Bottom line:** The suite is now almost green: **58/59 specs pass, 349/350 tests pass**. The urgent cleanup is the single Photon location field request isolation failure; the broader order/pizzeria/checkout `TestBed` drift has been resolved.
+**Lint status:** `pnpm exec ng lint` reports **All files pass linting** (0 errors, 0 warnings).
 
 ---
 
@@ -133,41 +125,36 @@ Cross-checked all 10 test categories against `angular-developer` skill reference
 
 ## 5. Unit-Test Quality — Weaknesses
 
-### Blocking (must fix to make the suite green)
+There are no blocking test failures. The items below are structural design improvements and measurement gaps.
 
-**5.1 Test isolation and fixture drift across the suite**
-The latest local run is blocked by **1 remaining failure in 1 spec**. The earlier large request-isolation cluster has been resolved; the remaining issue is a Photon search request in `photon-location-field.spec.ts`.
+**5.1 No component harnesses**
+The project uses `querySelector` for DOM interaction across all 44 component/page specs. Angular recommends Component Harnesses as the standard approach. Harnesses insulate tests from internal template refactors — changing a CSS class or element structure in the component doesn't break tests using harnesses. The highest-value targets for harness adoption are Button, Input, and Modal (the most widely consumed shared components).
 
-### Structural (design improvements)
-
-**5.3 No component harnesses**
-The project uses `querySelector` for DOM interaction across all 34 component specs. Angular recommends Component Harnesses as the standard approach. Harnesses insulate tests from internal template refactors — changing a CSS class or element structure in the component doesn't break tests using harnesses. The highest-value targets for harness adoption are Button, Input, and Modal (the most widely consumed shared components).
-
-**5.4 No RouterTestingHarness**
+**5.2 No RouterTestingHarness**
 Guard and page tests don't use `RouterTestingHarness`, which Angular recommends as the standard tool for testing routing behavior. The project's `runInInjectionContext()` approach tests guards in isolation but doesn't verify that guards actually protect routes in a real navigation flow.
 
-**5.5 No code-coverage measurement**
+**5.3 No code-coverage measurement**
 There is no `vitest.config.ts`, no coverage script in `package.json`, no `coverage/` directory, no thresholds. For a reference project, this is a real gap — readers can't see the actual numbers.
 
-**5.6 Heavy reliance on `NO_ERRORS_SCHEMA`**
+**5.4 Heavy reliance on `NO_ERRORS_SCHEMA`**
 For shared / leaf components, this is fine — they really do have stub children. But for **page components** (e.g. `login-page.spec.ts`, `cart-page.spec.ts`) it means the test is verifying the page's own template renders the right _structural shape_ (form, inputs, submit) but not that the child components actually integrate correctly.
 
-**5.7 Coverage gaps beyond unit tests**
+**5.5 Coverage gaps beyond unit tests**
 `README-TESTING.md` already calls these out, but they bear repeating: no e2e, no integration tests against real API, no accessibility tests, no visual regression, no route-integration tests.
 
-**5.8 The pipe test imports `environment` from the file path, not the symbol**
+**5.6 The pipe test imports `environment` from the file path, not the symbol**
 `catalog-image-url.pipe.spec.ts` imports `'../../../environments/environment'` and uses `environment.apiBaseUrl`. The test runs against the default `environment.ts` (not `.development.ts`). If those two diverge, the test will silently exercise the wrong base URL.
 
-**5.9 The test count is the metric, not the coverage**
-With 59 specs at ~88 lines each on average, this _looks_ thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
+**5.7 The test count is the metric, not the coverage**
+With 59 specs averaging ~88 lines each, this _looks_ thorough. But without a coverage report, you can't tell whether the suite has 80% line coverage or 35%. The file count is a proxy, and a noisy one.
 
 ---
 
 ## 6. Improvement Roadmap
 
-### Tier 1 — Fix remaining test failures
+### Tier 1 — Maintain green suite
 
-1. **Fix the remaining Photon location field failure.** Ensure the selected-suggestion test has a matching Photon search request before selecting a suggestion, then call `httpTesting.verify()` cleanly.
+1. **Keep `pnpm run test` passing on every upstream sync.** Verify the suite before committing documentation updates or pulling upstream changes.
 
 ### Tier 2 — Align with Angular recommendations
 
@@ -187,7 +174,7 @@ With 59 specs at ~88 lines each on average, this _looks_ thorough. But without a
 
 ## 7. One-line verdict
 
-The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — but the latest local suite is still **almost green (58/59 specs pass, 349/350 tests pass)**, has no coverage measurement, and is the only layer of testing. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The 18 guard-signature errors and broad order/pizzeria/checkout `TestBed` drift have been resolved. Fix the remaining Photon request isolation failure, add coverage, and the story changes from "looks committed" to "actually trustworthy."
+The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — and the latest local suite is **fully green (59/59 specs pass, 350/350 tests pass)**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The remaining work is no longer about fixing failures; it is about adding coverage measurement, component harnesses, route-integration tests, and broader test types so the story changes from "committed and green" to "actually trustworthy."
 
 ---
 
@@ -197,8 +184,8 @@ The unit-test _discipline_ here is genuinely good — patterns, structure, and b
 - `README-TESTING.md` — author's own testing documentation
 - `README-TEST-GUIDE.md` — Angular recommended + project pattern guide
 - `package.json` — scripts and dev dependencies (Angular 22.0.0, Vitest 4.1.6, TypeScript 6.0.3)
-- `pnpm run test` — latest local upstream HEAD `420001df2cf83e6e0b46335330f31308b9e5688a` run output (58/59 specs pass, 349/350 tests pass; 1 Photon location field failure)
-- `pnpm exec ng lint` — current run output (19 errors, 0 warnings, across 8 files)
+- `pnpm run test` — latest local upstream HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef` run output (59/59 specs pass, 350/350 tests pass; exit code 0)
+- `pnpm exec ng lint` — current run output (0 errors, 0 warnings; all files pass linting)
 - `angular-developer` skill references: `testing-fundamentals.md`, `component-harnesses.md`, `router-testing.md`, `resource.md`, `signal-forms.md`
 - MCP `search_documentation` — Angular 22 official testing documentation (testing fundamentals, @defer testing, data resolvers, router testing)
 - `find src -name "*.spec.ts" | wc -l` → 59
