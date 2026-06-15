@@ -8,7 +8,7 @@ This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns)
+> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns; latest run 58/59 specs pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 ## Table of Contents
@@ -75,37 +75,28 @@ There is no watch mode script defined in `package.json`, but `ng test --watch` w
 After syncing the upstream clone to GitHub HEAD `420001df2cf83e6e0b46335330f31308b9e5688a`, the fresh full test run was:
 
 ```bash
-pnpm --dir realworld-angular run test
+pnpm run test
 ```
 
 Result: **exit=1**.
 
-| Scope      | Result                                |
-| ---------- | ------------------------------------- |
-| Spec files | **27 failed**, 32 passed, 59 total    |
-| Tests      | **120 failed**, 230 passed, 350 total |
-| Duration   | 19.13s                                |
+| Scope      | Result                              |
+| ---------- | ----------------------------------- |
+| Spec files | **1 failed**, 58 passed, 59 total   |
+| Tests      | **1 failed**, 349 passed, 350 total |
+| Duration   | 14.11s                              |
 
-The inventory below still describes the existing test suite structure, but the fresh run is not green. The largest visible failure groups were:
+The inventory below still describes the existing test suite structure. The suite is now almost green: only `src/app/shared/components/photon-location-field/photon-location-field.spec.ts` has one failing test.
 
-| Spec file / area                            | Failed tests |
-| ------------------------------------------- | ------------ |
-| `pizzeria-details-page.spec.ts`             | 31           |
-| `admin-order-row.spec.ts`                   | 17           |
-| `admin-pizza-row.spec.ts`                   | 17           |
-| `photon-location-field.spec.ts`             | 14           |
-| `order-details-page.spec.ts`                | 13           |
-| `order-list-page.spec.ts`                   | 13           |
-| `admin-pizza-list-page.spec.ts`             | 12           |
-| `admin-order-list-page.spec.ts`             | 11           |
-| `admin-pizzeria-configuration-page.spec.ts` | 11           |
+| Spec file / area                | Failed tests |
+| ------------------------------- | ------------ |
+| `photon-location-field.spec.ts` | 1            |
 
 Common failure modes in the fresh run:
 
-- 23 failure rows reported `Cannot configure the test module when the test module has already been instantiated`, typically before `TestBed.configureTestingModule()`.
-- Checkout guard expectations failed for navigation targets: one expected a `UrlTree`, and another expected `/checkout/review` but received `/checkout/delivery`.
-- Pizzeria API service expectations failed for admin pizzeria CRUD endpoints.
-- HTTP expectation failures included unmatched extra requests and open requests for `/api/options/sizes`, `/api/pizzerias/images`, and `/api/options/toppings`.
+- One HTTP expectation failed because `should commit value when suggestion is selected` expected a Photon search request, but no matching request was present.
+- Vitest/jsdom logged `Window's scrollTo()` as not implemented during the Photon location field spec run.
+- The earlier broad `TestBed` cascade failures have been resolved.
 
 ## Test Inventory
 

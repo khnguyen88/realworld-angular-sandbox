@@ -11,14 +11,14 @@ testing guidance.
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
+> - **README-TESTING.md** — Factual inventory of what exists (latest run 58/59 specs pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 Angular CLI projects now default to **Vitest** with **jsdom**. Run tests with
 `ng test`; this sandbox's pinned upstream app is tested with:
 
 ```bash
-pnpm --dir realworld-angular run test
+pnpm run test
 ```
 
 Each section below shows two approaches: the **Angular Recommended** way
@@ -34,16 +34,16 @@ new tests or maintaining existing ones.
 
 ## Current Testing Reality
 
-The upstream `realworld-angular` test suite currently compiles and runs but is **red**.
+The upstream `realworld-angular` test suite currently compiles and runs and is **almost green**.
 Run the suite with:
 
 ```bash
-pnpm --dir realworld-angular run test
+pnpm run test
 ```
 
-Latest known result: **32/59 specs pass, 27/59 specs fail, 120 tests fail**. The dominant failure clusters are unhandled HTTP requests, `TestBed` already-instantiated errors, checkout fixture/provider drift, and checkout guard expectation drift.
+Latest local result: **58/59 specs pass, 349/350 tests pass**. The only remaining failure is in `PhotonLocationField`: the selected-suggestion test expected a Photon search request, but no matching request was present. The earlier broad `TestBed` cascade failures have been resolved.
 
-This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is green or production-ready. Use the checklist below to write better tests; treat the current suite status as a separate cleanup task.
+This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is green or production-ready. Use the checklist below to write better tests; treat the remaining Photon request isolation failure as a separate cleanup task.
 
 ## Industry-Standard Testing Checklist
 

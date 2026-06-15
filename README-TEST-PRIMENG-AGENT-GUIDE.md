@@ -28,7 +28,7 @@ You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeN
 
 ## Current Suite Relevance
 
-The realworld-angular suite is currently red, so this cookbook is a pattern guide, not proof that every PrimeNG test in the suite passes. Use it to write clearer PrimeNG tests, then validate against the current test run and fix request isolation or fixture drift in the affected specs separately.
+The realworld-angular suite is currently almost green, so this cookbook is a pattern guide, not proof that every PrimeNG test in the suite passes. Use it to write clearer PrimeNG tests, then validate against the current test run and fix the remaining Photon request isolation issue separately.
 
 ## Table of Contents
 
