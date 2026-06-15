@@ -8,7 +8,7 @@ This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns; latest run 58/59 specs pass)
+> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns; latest run 59/59 specs pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 ## Table of Contents
@@ -72,31 +72,21 @@ There is no watch mode script defined in `package.json`, but `ng test --watch` w
 
 ### Latest Fresh Sync Test Run
 
-After syncing the upstream clone to GitHub HEAD `420001df2cf83e6e0b46335330f31308b9e5688a`, the fresh full test run was:
+After syncing the upstream clone to GitHub HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef`, the fresh full test run was:
 
 ```bash
 pnpm run test
 ```
 
-Result: **exit=1**.
+Result: **exit=0**.
 
-| Scope      | Result                              |
-| ---------- | ----------------------------------- |
-| Spec files | **1 failed**, 58 passed, 59 total   |
-| Tests      | **1 failed**, 349 passed, 350 total |
-| Duration   | 14.11s                              |
+| Scope      | Result                    |
+| ---------- | ------------------------- |
+| Spec files | **59 passed**, 59 total   |
+| Tests      | **350 passed**, 350 total |
+| Duration   | ~8.9s                     |
 
-The inventory below still describes the existing test suite structure. The suite is now almost green: only `src/app/shared/components/photon-location-field/photon-location-field.spec.ts` has one failing test.
-
-| Spec file / area                | Failed tests |
-| ------------------------------- | ------------ |
-| `photon-location-field.spec.ts` | 1            |
-
-Common failure modes in the fresh run:
-
-- One HTTP expectation failed because `should commit value when suggestion is selected` expected a Photon search request, but no matching request was present.
-- Vitest/jsdom logged `Window's scrollTo()` as not implemented during the Photon location field spec run.
-- The earlier broad `TestBed` cascade failures have been resolved.
+The inventory below describes the existing test suite structure. The suite is fully green.
 
 ## Test Inventory
 
@@ -121,7 +111,7 @@ Common failure modes in the fresh run:
 
 | Feature                                       | Spec Files |
 | --------------------------------------------- | ---------- |
-| Core (services, guards, interceptors, layout) | 8          |
+| Core (services, guards, interceptors, layout) | 7          |
 | Shared (components, directives, pipes)        | 18         |
 | Auth                                          | 2          |
 | Cart                                          | 2          |
@@ -139,7 +129,7 @@ Common failure modes in the fresh run:
 
 > **Angular Alignment:** ✓ Fully aligned with official recommendations
 
-Services that make HTTP requests are tested with Angular's `HttpTestingController`. The pattern is consistent across all 6 service specs:
+Services that make HTTP requests are tested with Angular's `HttpTestingController`. The pattern is consistent across all 5 service specs:
 
 - Configure `TestBed` with `provideHttpClientTesting()`
 - Inject both the service under test and `HttpTestingController`
@@ -149,14 +139,12 @@ Services that make HTTP requests are tested with Angular's `HttpTestingControlle
 **Example** from `src/app/core/services/auth.spec.ts`:
 
 ```ts
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { Auth } from './auth';
 import { User } from '../models/user.model';
 
-const mockUser: User = {
-  id: '1',
-  email: 'test@example.com',
-  role: 'CUSTOMER',
-  name: 'Test User',
-};
+const mockUser: User = { id: '1', email: 'test@example.com', role: 'CUSTOMER', name: 'Test User' };
 const mockAdmin: User = {
   id: '2',
   email: 'admin@example.com',
@@ -177,16 +165,49 @@ describe('Auth', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify(); // ensures no outstanding HTTP requests
+    httpTesting.verify();
   });
 
-  it('should POST credentials and update user signal', () => {
-    service.login('test@example.com', 'password').subscribe();
-    const req = httpTesting.expectOne('/api/auth/login');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
-    req.flush(mockUser); // respond with mock data
-    expect(service.user()).toEqual(mockUser); // assert signal state
+  it('should have null user initially', () => {
+    expect(service.user()).toBeNull();
+  });
+
+  describe('init()', () => {
+    it('should set user signal on success', () => {
+      service.init().subscribe();
+      const req = httpTesting.expectOne('/api/auth/me');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockUser);
+      expect(service.user()).toEqual(mockUser);
+      expect(service.isAuthenticated()).toBe(true);
+    });
+
+    it('should keep user null on error', () => {
+      service.init().subscribe();
+      const req = httpTesting.expectOne('/api/auth/me');
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      expect(service.user()).toBeNull();
+      expect(service.isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('login()', () => {
+    it('should POST credentials and update user signal', () => {
+      service.login('test@example.com', 'password').subscribe();
+      const req = httpTesting.expectOne('/api/auth/login');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
+      req.flush(mockUser);
+      expect(service.user()).toEqual(mockUser);
+    });
+  });
+
+  describe('computed signals', () => {
+    it('isCustomer should be true when role is CUSTOMER', () => {
+      service.user.set(mockUser);
+      expect(service.isCustomer()).toBe(true);
+      expect(service.isAdmin()).toBe(false);
+    });
   });
 });
 ```
@@ -208,7 +229,9 @@ The `CartStore` (`src/app/features/cart/cart.store.spec.ts`) tests a signal-base
 - `httpTesting.match()` with a predicate captures matching requests without failing if none exist, useful when multiple requests fire reactively
 
 ```ts
-import { CartData } from './cart.store';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { CartStore, CartData } from './cart.store';
 
 const mockCartData: CartData = {
   pizzeria: { id: 'p1', name: 'Roma', image: 'roma.jpg' },
@@ -225,18 +248,54 @@ const mockCartData: CartData = {
   total: 23,
 };
 
-it('should not make an HTTP request when cart is empty', () => {
-  TestBed.flushEffects();
-  httpTesting.expectNone(() => true); // no request of any kind should fire
-});
+describe('CartStore', () => {
+  let store: CartStore;
+  let httpTesting: HttpTestingController;
 
-it('should trigger a POST to /api/orders/cart after adding item', () => {
-  store.addItem('pizza1', 1, 's1', [], 'p1');
-  TestBed.flushEffects();
-  const req = httpTesting.expectOne((r) => r.url.includes('/api/orders/cart'));
-  expect(req.request.method).toBe('POST');
-  expect(req.request.body.pizzeriaId).toBe('p1');
-  req.flush(mockCartData);
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    store = TestBed.inject(CartStore);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  describe('initial state', () => {
+    it('should have empty items', () => {
+      expect(store.items()).toEqual([]);
+    });
+
+    it('should not make an HTTP request when cart is empty', () => {
+      TestBed.flushEffects();
+      httpTesting.expectNone(() => true);
+    });
+  });
+
+  describe('addItem()', () => {
+    it('should trigger a POST to /api/orders/cart after adding item', () => {
+      store.addItem('pizza1', 1, 's1', [], 'p1');
+      void store.cart();
+      TestBed.flushEffects();
+      const req = httpTesting.expectOne((r) => r.url.includes('/api/orders/cart'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.pizzeriaId).toBe('p1');
+      req.flush(mockCartData);
+    });
+
+    it('should increment quantity when adding same item again', () => {
+      store.addItem('pizza1', 1, 's1', [], 'p1');
+      store.addItem('pizza1', 2, 's1', [], 'p1');
+      expect(store.items().length).toBe(1);
+      expect(store.items()[0].quantity).toBe(3);
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+    });
+  });
 });
 ```
 
@@ -284,6 +343,13 @@ it('should not add withCredentials to Photon API requests', () => {
   expect(req.request.withCredentials).toBe(false);
   req.flush({});
 });
+
+it('should add withCredentials to non-Photon external requests', () => {
+  http.get('https://api.realworldangular.org/api/auth/me').subscribe();
+  const req = httpTesting.expectOne('https://api.realworldangular.org/api/auth/me');
+  expect(req.request.withCredentials).toBe(true);
+  req.flush({});
+});
 ```
 
 This pattern tests the interceptor as a black box — the test only asserts the resulting request properties, not internal implementation.
@@ -312,36 +378,112 @@ beforeEach(() => {
 Guards are called inside the injection context and return either `boolean` or `UrlTree`:
 
 ```ts
-it('should return true when user is authenticated', () => {
-  authStub.isAuthenticated.mockReturnValue(true);
-  const result = TestBed.runInInjectionContext(() =>
-    authGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
-  );
-  expect(result).toBe(true);
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter, PartialMatchRouteSnapshot } from '@angular/router';
+import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
+import { authGuard, guestGuard } from './auth.guard';
+import { Auth } from '../../services/auth';
+import { UrlTree } from '@angular/router';
+
+const authStub: Mocked<Pick<Auth, 'isAuthenticated'>> = {
+  isAuthenticated: vi.fn(),
+};
+
+describe('authGuard', () => {
+  let router: Router;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: Auth, useValue: authStub }],
+    });
+    router = TestBed.inject(Router);
+  });
+
+  it('should return true when user is authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(true);
+    const result = TestBed.runInInjectionContext(() =>
+      authGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should return a UrlTree to /auth/login when not authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(false);
+    const result = TestBed.runInInjectionContext(() =>
+      authGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/auth/login');
+  });
 });
 
-it('should return a UrlTree to /auth/login when not authenticated', () => {
-  authStub.isAuthenticated.mockReturnValue(false);
-  const result = TestBed.runInInjectionContext(() =>
-    authGuard({ path: '' } as Route, [] as unknown as UrlSegment[]),
-  );
-  expect(result).toBeInstanceOf(UrlTree);
-  expect(router.serializeUrl(result as UrlTree)).toBe('/auth/login');
+describe('guestGuard', () => {
+  let router: Router;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: Auth, useValue: authStub }],
+    });
+    router = TestBed.inject(Router);
+  });
+
+  it('should return true when user is not authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(false);
+    const result = TestBed.runInInjectionContext(() =>
+      guestGuard({}, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should return a UrlTree to / when authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(true);
+    const result = TestBed.runInInjectionContext(() =>
+      guestGuard({}, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/');
+  });
 });
 ```
 
-The `roleGuard` tests follow the same pattern but mock the `Auth.user` signal:
+The `roleGuard` tests mock the `Auth.user` signal and verify allowed roles:
 
 ```ts
+import { signal } from '@angular/core';
+import { roleGuard } from './role.guard';
+import { User } from '../../models/user.model';
+
 const userSignal = signal<User | null>(null);
 const authStub = { user: userSignal };
 
-it('should return true when user has required role', () => {
-  userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
-  const result = TestBed.runInInjectionContext(() =>
-    roleGuard(['CUSTOMER'])({} as Route, [] as unknown as UrlSegment[]),
-  );
-  expect(result).toBe(true);
+describe('roleGuard', () => {
+  let router: Router;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: Auth, useValue: authStub }],
+    });
+    router = TestBed.inject(Router);
+    userSignal.set(null);
+  });
+
+  it('should return UrlTree to /auth/login when no user is set', () => {
+    const guard = roleGuard('CUSTOMER');
+    const result = TestBed.runInInjectionContext(() =>
+      guard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/auth/login');
+  });
+
+  it('should return true when user role matches', () => {
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    const guard = roleGuard('CUSTOMER');
+    const result = TestBed.runInInjectionContext(() =>
+      guard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBe(true);
+  });
 });
 ```
 
@@ -359,28 +501,71 @@ All component tests follow the standalone Angular testing pattern:
 **Basic component test** from `src/app/shared/components/button/button.spec.ts`:
 
 ```ts
-beforeEach(async () => {
-  TestBed.configureTestingModule({}).overrideComponent(Button, {
-    set: { schemas: [NO_ERRORS_SCHEMA] },
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Button } from './button';
+
+describe('Button', () => {
+  let fixture: ComponentFixture<Button>;
+  let el: HTMLElement;
+  let buttonEl: HTMLButtonElement;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({}).overrideComponent(Button, {
+      set: { schemas: [NO_ERRORS_SCHEMA] },
+    });
+    fixture = TestBed.createComponent(Button);
+    el = fixture.nativeElement;
+    buttonEl = el.querySelector('button')!;
+    await fixture.whenStable();
   });
-  fixture = TestBed.createComponent(Button);
-  el = fixture.nativeElement;
-  buttonEl = el.querySelector('button')!;
-  await fixture.whenStable();
-});
 
-it('should apply variant and palette classes', async () => {
-  fixture.componentRef.setInput('variant', 'outlined');
-  fixture.componentRef.setInput('palette', 'danger');
-  await fixture.whenStable();
-  expect(buttonEl.className).toContain('btn--outlined-danger');
-});
+  it('should render a button element', () => {
+    expect(buttonEl).not.toBeNull();
+  });
 
-it('should show loading spinner when isLoading is true', async () => {
-  fixture.componentRef.setInput('isLoading', true);
-  await fixture.whenStable();
-  expect(buttonEl.querySelector('.btn-spinner')).not.toBeNull();
-  expect(buttonEl.getAttribute('aria-busy')).toBe('true');
+  it('should apply variant and palette classes', async () => {
+    fixture.componentRef.setInput('variant', 'outlined');
+    fixture.componentRef.setInput('palette', 'danger');
+    await fixture.whenStable();
+    expect(buttonEl.className).toContain('btn--outlined-danger');
+  });
+
+  it('should apply size class', async () => {
+    fixture.componentRef.setInput('size', 'sm');
+    await fixture.whenStable();
+    expect(buttonEl.className).toContain('btn--sm');
+  });
+
+  it('should set type attribute', async () => {
+    fixture.componentRef.setInput('type', 'submit');
+    await fixture.whenStable();
+    expect(buttonEl.type).toBe('submit');
+  });
+
+  it('should be disabled when isDisabled is true', async () => {
+    fixture.componentRef.setInput('isDisabled', true);
+    await fixture.whenStable();
+    expect(buttonEl.disabled).toBe(true);
+  });
+
+  it('should show loading spinner when isLoading is true', async () => {
+    fixture.componentRef.setInput('isLoading', true);
+    await fixture.whenStable();
+    expect(buttonEl.querySelector('.btn-spinner')).not.toBeNull();
+    expect(buttonEl.getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('should be disabled when isLoading is true', async () => {
+    fixture.componentRef.setInput('isLoading', true);
+    await fixture.whenStable();
+    expect(buttonEl.disabled).toBe(true);
+  });
+
+  it('should project content', () => {
+    expect(el.textContent).toContain('');
+  });
 });
 ```
 
@@ -389,14 +574,16 @@ it('should show loading spinner when isLoading is true', async () => {
 Page tests additionally provide `provideRouter([])` and interact with form elements by dispatching DOM events:
 
 ```ts
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { LoginPage } from './login-page';
+import { Auth } from '../../../../core/services/auth';
 import { User } from '../../../../core/models/user.model';
 
-const mockUser: User = {
-  id: '1',
-  email: 'test@example.com',
-  role: 'CUSTOMER',
-  name: 'Test',
-};
+const mockUser: User = { id: '1', email: 'test@example.com', role: 'CUSTOMER', name: 'Test' };
 
 describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
@@ -414,24 +601,44 @@ describe('LoginPage', () => {
     await fixture.whenStable();
   });
 
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('should render the login heading', () => {
+    expect(el.textContent).toContain('Welcome back');
+  });
+
+  it('should render the register link', () => {
+    const link = el.querySelector('a[href="/auth/register"]');
+    expect(link).not.toBeNull();
+  });
+
   it('should call POST /api/auth/login on form submit with valid credentials', async () => {
-    const emailInput = el.querySelector<HTMLInputElement>('input[autocomplete="email"]');
+    const auth = TestBed.inject(Auth);
+    auth.user.set(null);
+
+    const emailInput =
+      el.querySelector<HTMLInputElement>('rw-input[label="Email"] input, input[type="email"]') ??
+      el.querySelector<HTMLInputElement>('input[autocomplete="email"]');
     const passwordInput = el.querySelector<HTMLInputElement>(
       'input[autocomplete="current-password"]',
     );
 
-    emailInput.value = 'test@example.com';
-    emailInput.dispatchEvent(new Event('input'));
-    passwordInput.value = 'password123';
-    passwordInput.dispatchEvent(new Event('input'));
+    if (emailInput && passwordInput) {
+      emailInput.value = 'test@example.com';
+      emailInput.dispatchEvent(new Event('input'));
+      passwordInput.value = 'password123';
+      passwordInput.dispatchEvent(new Event('input'));
 
-    const form = el.querySelector('form');
-    form?.dispatchEvent(new Event('submit'));
-    await fixture.whenStable();
+      const form = el.querySelector('form');
+      form?.dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
 
-    const req = httpTesting.expectOne('/api/auth/login');
-    expect(req.request.method).toBe('POST');
-    req.flush(mockUser);
+      const req = httpTesting.expectOne('/api/auth/login');
+      expect(req.request.method).toBe('POST');
+      req.flush(mockUser);
+    }
   });
 });
 ```
@@ -449,19 +656,23 @@ Key conventions:
 Dialog components receive data via Angular CDK's `DIALOG_DATA` injection token and close via `DialogRef`. Tests provide mock values for both:
 
 ```ts
-import { ConfirmDialogData, ConfirmDialogResult } from './confirm-dialog';
-
-const defaultData: ConfirmDialogData = {
-  title: 'Are you sure?',
-  message: 'This action cannot be undone.',
-  confirmLabel: 'Confirm',
-  cancelLabel: 'Cancel',
-};
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ConfirmDialog, ConfirmDialogData, ConfirmDialogResult } from './confirm-dialog';
 
 describe('ConfirmDialog', () => {
   let fixture: ComponentFixture<ConfirmDialog>;
   let el: HTMLElement;
   let closeFn: ReturnType<typeof vi.fn>;
+
+  const defaultData: ConfirmDialogData = {
+    title: 'Are you sure?',
+    message: 'This action cannot be undone.',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+  };
 
   beforeEach(async () => {
     closeFn = vi.fn();
@@ -478,6 +689,30 @@ describe('ConfirmDialog', () => {
 
   it('should render the title from data', () => {
     expect(el.textContent).toContain('Are you sure?');
+  });
+
+  it('should render the message from data', () => {
+    expect(el.textContent).toContain('This action cannot be undone.');
+  });
+
+  it('should render cancel and confirm buttons', () => {
+    expect(el.textContent).toContain('Cancel');
+    expect(el.textContent).toContain('Confirm');
+  });
+
+  it('should not show message when not provided', async () => {
+    TestBed.resetTestingModule();
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: { title: 'Test' } },
+      ],
+    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    el = fixture.nativeElement;
+    await fixture.whenStable();
+    expect(el.querySelector('.confirm-dialog__message')).toBeNull();
   });
 });
 ```
@@ -524,13 +759,25 @@ TestBed.flushEffects();
 Structural directives (like `*rwRole`) are tested using a **host component** pattern. A minimal test component is declared inline with the directive applied in its template, and the directive's dependency (`Auth`) is stubbed with a `signal`:
 
 ```ts
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { RoleDirective } from './role.directive';
+import { Auth } from '../../core/services/auth';
+import { User } from '../../core/models/user.model';
+
 const userSignal = signal<User | null>(null);
-const authStub = { user: userSignal };
+
+const authStub = {
+  user: userSignal,
+};
 
 @Component({
   imports: [RoleDirective],
   template: `
+    <span *rwRole="'GUEST'" id="guest-content">Guest only</span>
     <span *rwRole="'CUSTOMER'" id="customer-content">Customer only</span>
+    <span *rwRole="'PIZZERIA_ADMIN'" id="admin-content">Admin only</span>
+    <span *rwRole="['CUSTOMER', 'PIZZERIA_ADMIN']" id="auth-content">Authenticated</span>
     <span *rwRole="'CUSTOMER'; else guestTpl" id="customer-or-else">Customer</span>
     <ng-template #guestTpl><span id="else-content">Please sign in</span></ng-template>
   `,
@@ -542,16 +789,35 @@ class TestHostComponent {}
 Tests then manipulate the signal and observe which content is rendered:
 
 ```ts
-it('should react to user signal changes', async () => {
-  expect(el.querySelector('#customer-content')).toBeNull();
+describe('RoleDirective', () => {
+  let fixture: ComponentFixture<TestHostComponent>;
+  let el: HTMLElement;
 
-  userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
-  await fixture.whenStable();
-  expect(el.querySelector('#customer-content')).not.toBeNull();
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: Auth, useValue: authStub }],
+    });
+    userSignal.set(null);
+    fixture = TestBed.createComponent(TestHostComponent);
+    await fixture.whenStable();
+    el = fixture.nativeElement;
+  });
 
-  userSignal.set(null);
-  await fixture.whenStable();
-  expect(el.querySelector('#customer-content')).toBeNull();
+  it('should show GUEST content when user is null', () => {
+    expect(el.querySelector('#guest-content')).not.toBeNull();
+  });
+
+  it('should react to user signal changes', async () => {
+    expect(el.querySelector('#customer-content')).toBeNull();
+
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    await fixture.whenStable();
+    expect(el.querySelector('#customer-content')).not.toBeNull();
+
+    userSignal.set(null);
+    await fixture.whenStable();
+    expect(el.querySelector('#customer-content')).toBeNull();
+  });
 });
 ```
 
@@ -564,6 +830,7 @@ This tests both the initial render and reactivity to dynamic signal changes.
 Pure pipes are the simplest tests — instantiate directly, no `TestBed` needed:
 
 ```ts
+import { describe, it, expect } from 'vitest';
 import { CatalogImageUrlPipe } from './catalog-image-url.pipe';
 import { environment } from '../../../environments/environment';
 
@@ -575,9 +842,24 @@ describe('CatalogImageUrlPipe', () => {
     expect(result).toBe(`${environment.apiBaseUrl}/images/pizzerias/my-pizzeria.jpg`);
   });
 
+  it('should build a pizza image URL', () => {
+    const result = pipe.transform('margherita.png', 'pizza');
+    expect(result).toBe(`${environment.apiBaseUrl}/images/pizzas/margherita.png`);
+  });
+
   it('should encode special characters in the filename', () => {
     const result = pipe.transform('my pizza #1.jpg', 'pizza');
     expect(result).toContain(encodeURIComponent('my pizza #1.jpg'));
+  });
+
+  it('should use the pizzerias segment for pizzeria kind', () => {
+    const result = pipe.transform('test.jpg', 'pizzeria');
+    expect(result).toContain('/images/pizzerias/');
+  });
+
+  it('should use the pizzas segment for pizza kind', () => {
+    const result = pipe.transform('test.jpg', 'pizza');
+    expect(result).toContain('/images/pizzas/');
   });
 });
 ```
@@ -601,7 +883,7 @@ The following test types are **not present** in this codebase:
 | **Performance tests**     | Missing        | No Lighthouse CI, bundle size budgets for tests, or benchmark tests.                                                                                             |
 | **Accessibility tests**   | Missing        | No `axe-core`, `pa11y`, or Angular CDK a11y test helpers.                                                                                                        |
 | **Route integration**     | Partial        | Guide now documents `RouterTestingHarness` pattern in `README-TEST-GUIDE.md`. Guards tested with `runInInjectionContext()` cover logic but not full integration. |
-| **Component harnesses**   | Missing        | No harness usage in 34+ component specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization.                              |
+| **Component harnesses**   | Missing        | No harness usage in 44 component/page specs. Guide documents the recommended pattern. See `README-TEST-INSIGHTS.md` for prioritization.                          |
 | **Test coverage reports** | Not configured | No coverage thresholds or reporting scripts defined.                                                                                                             |
 
 ### Recommendations
