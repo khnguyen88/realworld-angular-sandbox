@@ -11,7 +11,7 @@ testing guidance.
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (latest run 58/59 specs pass)
+> - **README-TESTING.md** — Factual inventory of what exists (latest run 59/59 specs pass, 350/350 tests pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 Angular CLI projects now default to **Vitest** with **jsdom**. Run tests with
@@ -34,16 +34,16 @@ new tests or maintaining existing ones.
 
 ## Current Testing Reality
 
-The upstream `realworld-angular` test suite currently compiles and runs and is **almost green**.
+The upstream `realworld-angular` test suite currently compiles and runs and is **fully green**.
 Run the suite with:
 
 ```bash
 pnpm run test
 ```
 
-Latest local result: **58/59 specs pass, 349/350 tests pass**. The only remaining failure is in `PhotonLocationField`: the selected-suggestion test expected a Photon search request, but no matching request was present. The earlier broad `TestBed` cascade failures have been resolved.
+Latest local result: **59/59 specs pass, 350/350 tests pass**. The earlier `PhotonLocationField` failure has been resolved upstream.
 
-This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is green or production-ready. Use the checklist below to write better tests; treat the remaining Photon request isolation failure as a separate cleanup task.
+This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is production-ready beyond unit tests. Use the checklist below to write better tests; treat any future failures as a separate cleanup task.
 
 ## Industry-Standard Testing Checklist
 
@@ -155,9 +155,24 @@ describe('CatalogImageUrlPipe', () => {
     expect(result).toBe(`${environment.apiBaseUrl}/images/pizzerias/my-pizzeria.jpg`);
   });
 
+  it('should build a pizza image URL', () => {
+    const result = pipe.transform('margherita.png', 'pizza');
+    expect(result).toBe(`${environment.apiBaseUrl}/images/pizzas/margherita.png`);
+  });
+
   it('should encode special characters in the filename', () => {
     const result = pipe.transform('my pizza #1.jpg', 'pizza');
     expect(result).toContain(encodeURIComponent('my pizza #1.jpg'));
+  });
+
+  it('should use the pizzerias segment for pizzeria kind', () => {
+    const result = pipe.transform('test.jpg', 'pizzeria');
+    expect(result).toContain('/images/pizzerias/');
+  });
+
+  it('should use the pizzas segment for pizza kind', () => {
+    const result = pipe.transform('test.jpg', 'pizza');
+    expect(result).toContain('/images/pizzas/');
   });
 });
 ```
@@ -200,8 +215,15 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Auth } from './auth';
+import { User } from '../models/user.model';
 
-const mockUser: User = { id: '1', email: 'test@example.com', role: 'CUSTOMER', name: 'Test' };
+const mockUser: User = { id: '1', email: 'test@example.com', role: 'CUSTOMER', name: 'Test User' };
+const mockAdmin: User = {
+  id: '2',
+  email: 'admin@example.com',
+  role: 'PIZZERIA_ADMIN',
+  name: 'Admin User',
+};
 
 describe('Auth', () => {
   let service: Auth;
@@ -224,22 +246,89 @@ describe('Auth', () => {
     expect(service.user()).toBeNull();
   });
 
-  // Success path
-  it('should POST credentials and update user signal', () => {
-    service.login('user@example.com', 'password').subscribe();
-    const req = httpTesting.expectOne('/api/auth/login');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ email: 'user@example.com', password: 'password' });
-    req.flush(mockUser); // respond with success
-    expect(service.user()).toEqual(mockUser);
+  it('should have isAuthenticated false initially', () => {
+    expect(service.isAuthenticated()).toBe(false);
   });
 
-  // Error path
-  it('should keep user null on error', () => {
-    service.init().subscribe();
-    const req = httpTesting.expectOne('/api/auth/me');
-    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-    expect(service.user()).toBeNull();
+  describe('init()', () => {
+    it('should set user signal on success', () => {
+      service.init().subscribe();
+      const req = httpTesting.expectOne('/api/auth/me');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockUser);
+      expect(service.user()).toEqual(mockUser);
+      expect(service.isAuthenticated()).toBe(true);
+    });
+
+    it('should keep user null on error', () => {
+      service.init().subscribe();
+      const req = httpTesting.expectOne('/api/auth/me');
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      expect(service.user()).toBeNull();
+      expect(service.isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('login()', () => {
+    it('should POST credentials and update user signal', () => {
+      service.login('test@example.com', 'password').subscribe();
+      const req = httpTesting.expectOne('/api/auth/login');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
+      req.flush(mockUser);
+      expect(service.user()).toEqual(mockUser);
+    });
+  });
+
+  describe('register()', () => {
+    it('should POST credentials and update user signal', () => {
+      service.register('test@example.com', 'password').subscribe();
+      const req = httpTesting.expectOne('/api/auth/register');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ email: 'test@example.com', password: 'password' });
+      req.flush(mockUser);
+      expect(service.user()).toEqual(mockUser);
+    });
+  });
+
+  describe('registerPizzeriaOwner()', () => {
+    it('should POST to register-pizzeria-owner and update user signal', () => {
+      service.registerPizzeriaOwner('owner@example.com', 'password').subscribe();
+      const req = httpTesting.expectOne('/api/auth/register-pizzeria-owner');
+      expect(req.request.method).toBe('POST');
+      req.flush(mockAdmin);
+      expect(service.user()).toEqual(mockAdmin);
+    });
+  });
+
+  describe('logout()', () => {
+    it('should POST to logout endpoint', () => {
+      service.logout().subscribe();
+      const req = httpTesting.expectOne('/api/auth/logout');
+      expect(req.request.method).toBe('POST');
+      req.flush(null);
+    });
+  });
+
+  describe('computed signals', () => {
+    it('isCustomer should be true when role is CUSTOMER', () => {
+      service.user.set(mockUser);
+      expect(service.isCustomer()).toBe(true);
+      expect(service.isAdmin()).toBe(false);
+    });
+
+    it('isAdmin should be true when role is PIZZERIA_ADMIN', () => {
+      service.user.set(mockAdmin);
+      expect(service.isAdmin()).toBe(true);
+      expect(service.isCustomer()).toBe(false);
+    });
+
+    it('isAuthenticated should reflect user signal', () => {
+      service.user.set(mockUser);
+      expect(service.isAuthenticated()).toBe(true);
+      service.user.set(null);
+      expect(service.isAuthenticated()).toBe(false);
+    });
   });
 });
 ```
@@ -309,10 +398,17 @@ describe('credentialsInterceptor', () => {
     req.flush([]);
   });
 
-  it('should not add withCredentials to Photon external API', () => {
+  it('should not add withCredentials to Photon API requests', () => {
     http.get('https://photon.komoot.io/api/?q=rome').subscribe();
     const req = httpTesting.expectOne('https://photon.komoot.io/api/?q=rome');
     expect(req.request.withCredentials).toBe(false);
+    req.flush({});
+  });
+
+  it('should add withCredentials to non-Photon external requests', () => {
+    http.get('https://api.realworldangular.org/api/auth/me').subscribe();
+    const req = httpTesting.expectOne('https://api.realworldangular.org/api/auth/me');
+    expect(req.request.withCredentials).toBe(true);
     req.flush({});
   });
 });
@@ -361,7 +457,16 @@ import { CartStore, CartData } from './cart.store';
 
 const mockCartData: CartData = {
   pizzeria: { id: 'p1', name: 'Roma', image: 'roma.jpg' },
-  items: [{ id: 'item1', pizza: { id: 'pizza1', name: 'Margherita', ... }, quantity: 2, ... }],
+  items: [
+    {
+      id: 'item1',
+      pizza: { id: 'pizza1', name: 'Margherita', image: 'marg.jpg', basePrice: 9.5 },
+      quantity: 2,
+      size: { id: 's1', label: 'Large', price: 2 },
+      extraToppings: [],
+      totalPrice: 23,
+    },
+  ],
   total: 23,
 };
 
@@ -386,6 +491,10 @@ describe('CartStore', () => {
       expect(store.items()).toEqual([]);
     });
 
+    it('should have null pizzeria', () => {
+      expect(store.pizzeria()).toBeNull();
+    });
+
     it('should be empty', () => {
       expect(store.isEmpty()).toBe(true);
     });
@@ -404,11 +513,14 @@ describe('CartStore', () => {
       expect(store.isEmpty()).toBe(false);
     });
 
-    it('should increment quantity when adding same item', () => {
+    it('should increment quantity when adding same item again', () => {
       store.addItem('pizza1', 1, 's1', [], 'p1');
       store.addItem('pizza1', 2, 's1', [], 'p1');
       expect(store.items().length).toBe(1);
       expect(store.items()[0].quantity).toBe(3);
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
     });
 
     it('should clear and reset when adding item from different pizzeria', () => {
@@ -416,18 +528,119 @@ describe('CartStore', () => {
       store.addItem('pizza2', 1, null, [], 'p2');
       expect(store.pizzeria()).toEqual({ id: 'p2' });
       expect(store.items().length).toBe(1);
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+    });
+
+    it('should trigger a POST to /api/orders/cart after adding item', () => {
+      store.addItem('pizza1', 1, 's1', [], 'p1');
+      void store.cart();
+      TestBed.flushEffects();
+      const req = httpTesting.expectOne((r) => r.url.includes('/api/orders/cart'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.pizzeriaId).toBe('p1');
+      req.flush(mockCartData);
+    });
+  });
+
+  describe('updateQuantity()', () => {
+    beforeEach(() => {
+      store.addItem('pizza1', 2, null, [], 'p1');
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+    });
+
+    it('should update the quantity of an existing item', () => {
+      const itemId = store.items()[0].id;
+      store.updateQuantity(itemId, 5);
+      expect(store.items()[0].quantity).toBe(5);
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+    });
+
+    it('should remove item when quantity set to 0', () => {
+      const itemId = store.items()[0].id;
+      store.updateQuantity(itemId, 0);
+      expect(store.items().length).toBe(0);
+      expect(store.isEmpty()).toBe(true);
     });
   });
 
   describe('removeItem()', () => {
+    it('should remove the item from the cart', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+      const itemId = store.items()[0].id;
+      store.removeItem(itemId);
+      expect(store.items().length).toBe(0);
+    });
+
     it('should clear pizzeria when last item is removed', () => {
       store.addItem('pizza1', 1, null, [], 'p1');
-      // flush any httpResource-triggered requests
-      httpTesting.match((r) => r.url.includes('/api/orders/cart'))
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
         .forEach((r) => r.flush(mockCartData));
       const itemId = store.items()[0].id;
       store.removeItem(itemId);
       expect(store.pizzeria()).toBeNull();
+    });
+  });
+
+  describe('clear()', () => {
+    it('should reset items and pizzeria', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+      store.clear();
+      expect(store.items()).toEqual([]);
+      expect(store.pizzeria()).toBeNull();
+      expect(store.isEmpty()).toBe(true);
+    });
+  });
+
+  describe('hasItemsForOtherPizzeria()', () => {
+    it('should return false when cart is empty', () => {
+      expect(store.hasItemsForOtherPizzeria('p1')).toBe(false);
+    });
+
+    it('should return false when pizzeria matches', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+      expect(store.hasItemsForOtherPizzeria('p1')).toBe(false);
+    });
+
+    it('should return true when pizzeria differs', () => {
+      store.addItem('pizza1', 1, null, [], 'p1');
+      httpTesting
+        .match((r) => r.url.includes('/api/orders/cart'))
+        .forEach((r) => r.flush(mockCartData));
+      expect(store.hasItemsForOtherPizzeria('p2')).toBe(true);
+    });
+  });
+
+  describe('cart value from httpResource', () => {
+    it('should post cart body with correct pizzeriaId and items', () => {
+      store.addItem('pizza1', 2, 's1', ['t1'], 'p1');
+      void store.cart();
+      TestBed.flushEffects();
+      const req = httpTesting.expectOne((r) => r.url.includes('/api/orders/cart'));
+      expect(req.request.body.pizzeriaId).toBe('p1');
+      expect(req.request.body.items[0].pizzaId).toBe('pizza1');
+      expect(req.request.body.items[0].quantity).toBe(2);
+      req.flush(mockCartData);
+    });
+
+    it('should not make a request when cart returns undefined (empty)', () => {
+      TestBed.flushEffects();
+      httpTesting.expectNone((r) => r.url.includes('/api/orders/cart'));
     });
   });
 });
@@ -787,7 +1000,7 @@ describe('resource', () => {
     const userResource = TestBed.runInInjectionContext(() =>
       resource({
         params: () => ({ id: userId() }),
-        loader: async () => mockUser,
+        loader: async ({ params }) => mockUser,
       }),
     );
 
@@ -805,9 +1018,9 @@ describe('resource', () => {
     TestBed.runInInjectionContext(() =>
       resource({
         params: () => ({ id: userId() }),
-        loader: async () => {
+        loader: async ({ params }) => {
           callCount++;
-          return { id: userId(), name: 'User' };
+          return { id: params.id, name: 'User' };
         },
       }),
     );
@@ -852,8 +1065,11 @@ Reference: `angular-developer` skill `resource.md`
 - For `afterRenderEffect`, call `await fixture.whenStable()` to let the render cycle complete.
 - **Never** use `effect` to propagate state between signals — use `computed()` or
   `linkedSignal()` instead. This is a critical Angular rule.
-- **resource() status flow:** `idle` → `loading` → `resolved` (or `error`). Use
+- **resource() status flow:** `idle` → `loading` → `resolved` (or `error`). When the
+  value is set locally via `.set()` or `.update()`, status becomes `local`. Use
   `vi.waitFor()` for async resolution in Vitest.
+- **Resource loader params:** the loader receives `{ params, previous, abortSignal }`.
+  Use `abortSignal` to cancel in-flight work when params change.
 - **Alignment:** N/A — standalone `resource()` and `afterRenderEffect` are not exercised
   in the realworld-angular test suite. The examples above are illustrative per the
   `angular-developer` skill references. `httpResource` testing is covered in Stores.
@@ -983,12 +1199,10 @@ describe('Button', () => {
     await fixture.whenStable();
   });
 
-  // Existence
   it('should render a button element', () => {
     expect(buttonEl).not.toBeNull();
   });
 
-  // CSS classes from inputs
   it('should apply variant and palette classes', async () => {
     fixture.componentRef.setInput('variant', 'outlined');
     fixture.componentRef.setInput('palette', 'danger');
@@ -996,19 +1210,39 @@ describe('Button', () => {
     expect(buttonEl.className).toContain('btn--outlined-danger');
   });
 
-  // Disabled state
+  it('should apply size class', async () => {
+    fixture.componentRef.setInput('size', 'sm');
+    await fixture.whenStable();
+    expect(buttonEl.className).toContain('btn--sm');
+  });
+
+  it('should set type attribute', async () => {
+    fixture.componentRef.setInput('type', 'submit');
+    await fixture.whenStable();
+    expect(buttonEl.type).toBe('submit');
+  });
+
   it('should be disabled when isDisabled is true', async () => {
     fixture.componentRef.setInput('isDisabled', true);
     await fixture.whenStable();
     expect(buttonEl.disabled).toBe(true);
   });
 
-  // Loading state + accessibility
-  it('should show loading spinner and set aria-busy', async () => {
+  it('should show loading spinner when isLoading is true', async () => {
     fixture.componentRef.setInput('isLoading', true);
     await fixture.whenStable();
     expect(buttonEl.querySelector('.btn-spinner')).not.toBeNull();
     expect(buttonEl.getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('should be disabled when isLoading is true', async () => {
+    fixture.componentRef.setInput('isLoading', true);
+    await fixture.whenStable();
+    expect(buttonEl.disabled).toBe(true);
+  });
+
+  it('should project content', () => {
+    expect(el.textContent).toContain('');
   });
 });
 ```
@@ -1253,13 +1487,28 @@ describe('ConfirmDialog', () => {
     await fixture.whenStable();
   });
 
-  it('should render the title and message from data', () => {
+  it('should render the title from data', () => {
     expect(el.textContent).toContain('Are you sure?');
+  });
+
+  it('should render the message from data', () => {
     expect(el.textContent).toContain('This action cannot be undone.');
   });
 
-  it('should not show message element when message is not provided', async () => {
-    TestBed.overrideProvider(DIALOG_DATA, { useValue: { title: 'Test' } });
+  it('should render cancel and confirm buttons', () => {
+    expect(el.textContent).toContain('Cancel');
+    expect(el.textContent).toContain('Confirm');
+  });
+
+  it('should not show message when not provided', async () => {
+    TestBed.resetTestingModule();
+    closeFn = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DialogRef<ConfirmDialogResult>, useValue: { close: closeFn } },
+        { provide: DIALOG_DATA, useValue: { title: 'Test' } },
+      ],
+    }).overrideComponent(ConfirmDialog, { set: { schemas: [NO_ERRORS_SCHEMA] } });
     fixture = TestBed.createComponent(ConfirmDialog);
     el = fixture.nativeElement;
     await fixture.whenStable();
@@ -1413,7 +1662,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 @Component({
   selector: 'app-heavy',
   template: '<p>Heavy component loaded!</p>',
-  standalone: true,
 })
 class HeavyComponent {}
 
@@ -1430,7 +1678,6 @@ class HeavyComponent {}
       <p>Failed to load</p>
     }
   `,
-  standalone: true,
 })
 class TestDeferComponent {
   isReady = false;
@@ -1567,7 +1814,24 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PizzeriaListPage } from './pizzeria-list-page';
+import { Page } from '../../../../core/models/pagination.model';
+import { PizzeriaSummary } from '../../models/pizzeria.models';
 import { By } from '@angular/platform-browser';
+
+const mockPizzeria: PizzeriaSummary = {
+  id: '1',
+  name: 'Pizza Roma',
+  city: 'Rome',
+  country: 'Italy',
+  image: 'roma.jpg',
+  owner: { id: 'o1', name: 'Owner' },
+  _count: { pizzas: 5 },
+  createdAt: '2024-01-01',
+};
+
+function makePage(items: PizzeriaSummary[], totalPages = 1): Page<PizzeriaSummary> {
+  return { items, total: items.length, page: 1, limit: 12, totalPages };
+}
 
 describe('PizzeriaListPage', () => {
   let fixture: ComponentFixture<PizzeriaListPage>;
@@ -1578,6 +1842,7 @@ describe('PizzeriaListPage', () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClientTesting(), provideRouter([])],
     });
+
     fixture = TestBed.createComponent(PizzeriaListPage);
     el = fixture.nativeElement;
     httpTesting = TestBed.inject(HttpTestingController);
@@ -1588,20 +1853,33 @@ describe('PizzeriaListPage', () => {
     httpTesting.verify();
   });
 
-  // LOADING state
   it('should show loading indicator before response arrives', () => {
     expect(el.querySelector('[aria-label="Loading pizzerias"]')).not.toBeNull();
     httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([]));
   });
 
-  // POPULATED state
+  it('should include page=1 and limit=12 in the initial request', () => {
+    const req = httpTesting.expectOne((r) => r.url.includes('/api/pizzerias'));
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('limit')).toBe('12');
+    req.flush(makePage([]));
+  });
+
   it('should render pizzeria names after a successful response', async () => {
     httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([mockPizzeria]));
     await fixture.whenStable();
     expect(el.textContent).toContain('Pizza Roma');
   });
 
-  // ERROR state
+  it('should render multiple pizzeria cards', async () => {
+    const second: PizzeriaSummary = { ...mockPizzeria, id: '2', name: 'Napoli Express' };
+    httpTesting
+      .expectOne((r) => r.url.includes('/api/pizzerias'))
+      .flush(makePage([mockPizzeria, second]));
+    await fixture.whenStable();
+    expect(el.querySelectorAll('.pizzeria-card').length).toBe(2);
+  });
+
   it('should show error callout on HTTP error', async () => {
     httpTesting
       .expectOne((r) => r.url.includes('/api/pizzerias'))
@@ -1610,14 +1888,12 @@ describe('PizzeriaListPage', () => {
     expect(el.querySelector('rw-callout')).not.toBeNull();
   });
 
-  // EMPTY state
   it('should show empty state when items list is empty', async () => {
     httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([]));
     await fixture.whenStable();
     expect(el.querySelector('rw-empty-state')).not.toBeNull();
   });
 
-  // Pagination interaction
   it('should make a new request with updated page param when page changes', async () => {
     httpTesting
       .expectOne((r) => r.url.includes('/api/pizzerias'))
@@ -1633,6 +1909,22 @@ describe('PizzeriaListPage', () => {
     req2.flush(makePage([mockPizzeria], 3));
     await fixture.whenStable();
   });
+
+  it('should include search param after debounce when search input is typed', async () => {
+    httpTesting.expectOne((r) => r.url.includes('/api/pizzerias')).flush(makePage([]));
+    await fixture.whenStable();
+
+    const input = el.querySelector<HTMLInputElement>('#pizzeria-search')!;
+    input.value = 'roma';
+    input.dispatchEvent(new Event('input'));
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    TestBed.flushEffects();
+
+    const req2 = httpTesting.expectOne((r) => r.url.includes('/api/pizzerias'));
+    expect(req2.request.params.get('search')).toBe('roma');
+    req2.flush(makePage([]));
+    await fixture.whenStable();
+  }, 2000);
 });
 ```
 
@@ -1741,7 +2033,7 @@ All guard invocations in tests must include `{} as PartialMatchRouteSnapshot`.
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, UrlTree, PartialMatchRouteSnapshot } from '@angular/router';
 import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
-import { authGuard } from './auth.guard';
+import { authGuard, guestGuard } from './auth.guard';
 import { Auth } from '../../services/auth';
 
 const authStub: Mocked<Pick<Auth, 'isAuthenticated'>> = {
@@ -1758,31 +2050,49 @@ describe('authGuard', () => {
     router = TestBed.inject(Router);
   });
 
-  // Authenticated → allow
   it('should return true when user is authenticated', () => {
     authStub.isAuthenticated.mockReturnValue(true);
     const result = TestBed.runInInjectionContext(() =>
-      authGuard(
-        { path: '' } as Route,
-        [] as unknown as UrlSegment[],
-        {} as PartialMatchRouteSnapshot,
-      ),
+      authGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
     );
     expect(result).toBe(true);
   });
 
-  // Not authenticated → redirect to login
   it('should return a UrlTree to /auth/login when not authenticated', () => {
     authStub.isAuthenticated.mockReturnValue(false);
     const result = TestBed.runInInjectionContext(() =>
-      authGuard(
-        { path: '' } as Route,
-        [] as unknown as UrlSegment[],
-        {} as PartialMatchRouteSnapshot,
-      ),
+      authGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
     );
     expect(result).toBeInstanceOf(UrlTree);
     expect(router.serializeUrl(result as UrlTree)).toBe('/auth/login');
+  });
+});
+
+describe('guestGuard', () => {
+  let router: Router;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: Auth, useValue: authStub }],
+    });
+    router = TestBed.inject(Router);
+  });
+
+  it('should return true when user is not authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(false);
+    const result = TestBed.runInInjectionContext(() =>
+      guestGuard({}, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should return a UrlTree to / when authenticated', () => {
+    authStub.isAuthenticated.mockReturnValue(true);
+    const result = TestBed.runInInjectionContext(() =>
+      guestGuard({}, [], {} as PartialMatchRouteSnapshot),
+    );
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/');
   });
 });
 ```
@@ -1820,11 +2130,7 @@ describe('noPizzeriaGuard', () => {
     let result: unknown;
     (
       TestBed.runInInjectionContext(() =>
-        noPizzeriaGuard(
-          { path: '' } as Route,
-          [] as unknown as UrlSegment[],
-          {} as PartialMatchRouteSnapshot,
-        ),
+        noPizzeriaGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush(mockPizzeria);
@@ -1836,11 +2142,7 @@ describe('noPizzeriaGuard', () => {
     let result: unknown;
     (
       TestBed.runInInjectionContext(() =>
-        noPizzeriaGuard(
-          { path: '' } as Route,
-          [] as unknown as UrlSegment[],
-          {} as PartialMatchRouteSnapshot,
-        ),
+        noPizzeriaGuard({ path: '' }, [], {} as PartialMatchRouteSnapshot),
       ) as Observable<boolean | UrlTree>
     ).subscribe((r) => (result = r));
     httpTesting.expectOne('/api/pizzerias/admin/pizzeria').flush('Not found', {
@@ -1921,7 +2223,6 @@ const userResolver: ResolveFn<User> = (route) => {
 @Component({
   template: `<h1>{{ user().name }}</h1>
     <p>{{ user().email }}</p>`,
-  standalone: true,
 })
 class UserDetailPage {
   user = input.required<User>();
@@ -2014,15 +2315,21 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RoleDirective } from './role.directive';
 import { Auth } from '../../core/services/auth';
+import { User } from '../../core/models/user.model';
 
 const userSignal = signal<User | null>(null);
-const authStub = { user: userSignal };
+
+const authStub = {
+  user: userSignal,
+};
 
 @Component({
   imports: [RoleDirective],
   template: `
     <span *rwRole="'GUEST'" id="guest-content">Guest only</span>
     <span *rwRole="'CUSTOMER'" id="customer-content">Customer only</span>
+    <span *rwRole="'PIZZERIA_ADMIN'" id="admin-content">Admin only</span>
+    <span *rwRole="['CUSTOMER', 'PIZZERIA_ADMIN']" id="auth-content">Authenticated</span>
     <span *rwRole="'CUSTOMER'; else guestTpl" id="customer-or-else">Customer</span>
     <ng-template #guestTpl><span id="else-content">Please sign in</span></ng-template>
   `,
@@ -2044,30 +2351,71 @@ describe('RoleDirective', () => {
     el = fixture.nativeElement;
   });
 
-  // Shows when condition matches
   it('should show GUEST content when user is null', () => {
     expect(el.querySelector('#guest-content')).not.toBeNull();
   });
 
-  // Hides when condition doesn't match
   it('should hide GUEST content when user is authenticated', async () => {
     userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
     await fixture.whenStable();
     expect(el.querySelector('#guest-content')).toBeNull();
   });
 
-  // Shows else template when condition is false
-  it('should show else template when condition is false', () => {
+  it('should show CUSTOMER content when role matches', async () => {
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    await fixture.whenStable();
+    expect(el.querySelector('#customer-content')).not.toBeNull();
+  });
+
+  it('should hide CUSTOMER content when role does not match', () => {
+    expect(el.querySelector('#customer-content')).toBeNull();
+  });
+
+  it('should show PIZZERIA_ADMIN content for admin user', async () => {
+    userSignal.set({ id: '2', email: 'admin@b.com', role: 'PIZZERIA_ADMIN', name: 'Admin' });
+    await fixture.whenStable();
+    expect(el.querySelector('#admin-content')).not.toBeNull();
+  });
+
+  it('should hide PIZZERIA_ADMIN content for non-admin user', async () => {
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    await fixture.whenStable();
+    expect(el.querySelector('#admin-content')).toBeNull();
+  });
+
+  it('should show auth-content for any authenticated role', async () => {
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    await fixture.whenStable();
+    expect(el.querySelector('#auth-content')).not.toBeNull();
+
+    userSignal.set({ id: '2', email: 'admin@b.com', role: 'PIZZERIA_ADMIN', name: 'Admin' });
+    await fixture.whenStable();
+    expect(el.querySelector('#auth-content')).not.toBeNull();
+  });
+
+  it('should hide auth-content when not authenticated', () => {
+    expect(el.querySelector('#auth-content')).toBeNull();
+  });
+
+  it('should show else template when CUSTOMER condition is false', () => {
     expect(el.querySelector('#else-content')).not.toBeNull();
     expect(el.querySelector('#customer-or-else')).toBeNull();
   });
 
-  // Reacts to signal changes
+  it('should swap to main template and hide else when CUSTOMER condition becomes true', async () => {
+    userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
+    await fixture.whenStable();
+    expect(el.querySelector('#customer-or-else')).not.toBeNull();
+    expect(el.querySelector('#else-content')).toBeNull();
+  });
+
   it('should react to user signal changes', async () => {
     expect(el.querySelector('#customer-content')).toBeNull();
+
     userSignal.set({ id: '1', email: 'a@b.com', role: 'CUSTOMER', name: 'Test' });
     await fixture.whenStable();
     expect(el.querySelector('#customer-content')).not.toBeNull();
+
     userSignal.set(null);
     await fixture.whenStable();
     expect(el.querySelector('#customer-content')).toBeNull();
@@ -2114,30 +2462,39 @@ are flushed with `TestBed.flushEffects()`.
 
 ```typescript
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Routes } from '@angular/router';
+import { provideRouter, Routes, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CheckoutWizard } from './checkout-wizard';
 import { checkoutRoutes } from '../checkout.routes';
-import { CartStore } from '../../cart/cart.store';
-import { OrderApi } from '../../orders/order-api';
+import { CartStore, CartItem, CartData } from '../../cart/cart.store';
+import { OrderApi } from '../../orders/services/order-api';
 
 const cartStoreStub = {
-  totalPrice: signal(30),
-  pizzeria: signal<{ id: string } | null>({ id: 'p1' }),
-  items: signal([] as any[]),
-  cart: signal<any>(null),
-  isEmpty: signal(false),
+  totalPrice: signal(0),
+  pizzeria: signal<{ id: string } | null>(null),
+  items: signal<CartItem[]>([]),
+  cart: signal<CartData | null>(null),
+  isEmpty: signal(true),
   clear: vi.fn(),
 };
 
-const orderApiStub = { createOrder: vi.fn() };
+const orderApiStub = {
+  createOrder: vi.fn(),
+};
+
 const testRoutes: Routes = [{ path: 'checkout', children: checkoutRoutes }];
 
 describe('CheckoutWizard', () => {
   let service: CheckoutWizard;
+  let router: Router;
 
   beforeEach(async () => {
+    cartStoreStub.totalPrice.set(0);
+    cartStoreStub.pizzeria.set(null);
+    cartStoreStub.items.set([]);
+    cartStoreStub.cart.set(null);
+
     TestBed.configureTestingModule({
       providers: [
         provideRouter(testRoutes),
@@ -2147,6 +2504,23 @@ describe('CheckoutWizard', () => {
       ],
     });
     service = TestBed.inject(CheckoutWizard);
+    router = TestBed.inject(Router);
+    await router.navigateByUrl('/checkout/delivery');
+  });
+
+  it('should start on delivery step', () => {
+    expect(service.activeStep()).toBe('delivery');
+  });
+
+  it('should have all step statuses as null initially', () => {
+    const status = service.stepStatus();
+    expect(status.delivery).toBeNull();
+    expect(status.schedule).toBeNull();
+    expect(status.review).toBeNull();
+  });
+
+  it('should not be submitted initially', () => {
+    expect(service.submitted()).toBe(false);
   });
 
   describe('tipAmount', () => {
@@ -2159,6 +2533,65 @@ describe('CheckoutWizard', () => {
       service.checkoutForm.tip.type().value.set('ten');
       TestBed.flushEffects();
       expect(service.tipAmount()).toBe(2);
+    });
+
+    it('should compute 15% of total when tip type is fifteen', () => {
+      cartStoreStub.totalPrice.set(10);
+      service.checkoutForm.tip.type().value.set('fifteen');
+      TestBed.flushEffects();
+      expect(service.tipAmount()).toBe(1.5);
+    });
+
+    it('should compute 20% of total when tip type is twenty', () => {
+      cartStoreStub.totalPrice.set(50);
+      service.checkoutForm.tip.type().value.set('twenty');
+      TestBed.flushEffects();
+      expect(service.tipAmount()).toBe(10);
+    });
+
+    it('should return custom amount when tip type is custom', () => {
+      service.checkoutForm.tip.type().value.set('custom');
+      service.checkoutForm.tip.customAmount().value.set(3.5);
+      TestBed.flushEffects();
+      expect(service.tipAmount()).toBe(3.5);
+    });
+  });
+
+  describe('discountAmount', () => {
+    it('should return discount amount when code has value and discount is set', () => {
+      cartStoreStub.totalPrice.set(30);
+      service.discount.set(20);
+      service.checkoutForm.coupon.code().value.set('SAVE20');
+      TestBed.flushEffects();
+      expect(service.discountAmount()).toBe(6);
+    });
+
+    it('should return 0 when discount is 0', () => {
+      cartStoreStub.totalPrice.set(30);
+      service.checkoutForm.coupon.code().value.set('SAVE20');
+      TestBed.flushEffects();
+      expect(service.discountAmount()).toBe(0);
+    });
+
+    it('should return 0 when code is empty', () => {
+      cartStoreStub.totalPrice.set(30);
+      service.discount.set(20);
+      TestBed.flushEffects();
+      expect(service.discountAmount()).toBe(0);
+    });
+  });
+
+  describe('totalWithTip', () => {
+    it('should equal totalPrice when no tip', () => {
+      cartStoreStub.totalPrice.set(30);
+      expect(service.totalWithTip()).toBe(30);
+    });
+
+    it('should add tip amount to total price', () => {
+      cartStoreStub.totalPrice.set(20);
+      service.checkoutForm.tip.type().value.set('ten');
+      TestBed.flushEffects();
+      expect(service.totalWithTip()).toBe(22);
     });
   });
 
@@ -2173,6 +2606,32 @@ describe('CheckoutWizard', () => {
       service.checkoutForm.delivery.location().value.set({ city: 'Rome', country: 'Italy' });
       TestBed.flushEffects();
       expect(service.isStepValid('delivery')).toBe(true);
+    });
+
+    it('should return true for schedule when type is asap', () => {
+      expect(service.isStepValid('schedule')).toBe(true);
+    });
+  });
+
+  describe('validateStep', () => {
+    it('should validate and navigate on valid delivery', async () => {
+      service.checkoutForm.delivery.street().value.set('123 Main St');
+      service.checkoutForm.delivery.location().value.set({ city: 'Rome', country: 'Italy' });
+      TestBed.flushEffects();
+
+      await service.validateStep('delivery');
+      expect(service.stepStatus().delivery).toBe('success');
+    });
+
+    it('should not navigate on invalid delivery', async () => {
+      await service.validateStep('delivery');
+      expect(service.stepStatus().delivery).not.toBe('success');
+      expect(service.activeStep()).toBe('delivery');
+    });
+
+    it('should validate and navigate on valid schedule (asap)', async () => {
+      await service.validateStep('schedule');
+      expect(service.stepStatus().schedule).toBe('success');
     });
   });
 
@@ -2259,7 +2718,6 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
       multi: true,
     },
   ],
-  standalone: true,
 })
 export class RatingControl implements ControlValueAccessor {
   stars = [1, 2, 3, 4, 5];
@@ -2304,7 +2762,6 @@ import { RatingControl } from './rating-control';
 @Component({
   imports: [FormField, RatingControl],
   template: ` <app-rating-control [formField]="rating" /> `,
-  standalone: true,
 })
 class TestHostComponent {
   readonly model = signal({ rating: 0 });
@@ -2368,7 +2825,6 @@ import { RatingControl } from './rating-control';
       <app-rating-control formControlName="rating" />
     </form>
   `,
-  standalone: true,
 })
 class TestHostComponent {
   form = new FormGroup({
@@ -2450,7 +2906,7 @@ What you test instead:
 | Store               | httpResource patterns                        | httpTesting.match()                      | ✓ Mostly same            |
 | Wizard              | Real service + stubs                         | Real service + stubs                     | ✓ Same                   |
 | Custom Form Control | TestHostComponent + signal forms             | —                                        | Illustrative only        |
-| linkedSignal        | `new` + `TestBed.flushEffects()`             | —                                        | Illustrative only        |
+| linkedSignal        | `linkedSignal()` + `TestBed.flushEffects()`  | —                                        | Illustrative only        |
 | httpResource        | `HttpTestingController` + `{ injector }`     | `HttpTestingController` + `{ injector }` | ✓ Same                   |
 | resource            | `runInInjectionContext` + mock loader        | —                                        | Illustrative only        |
 | effect              | `runInInjectionContext` + `flushEffects()`   | —                                        | Illustrative only        |
