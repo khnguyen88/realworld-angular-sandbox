@@ -1,7 +1,7 @@
 # Test Chronology — Creation Order & Evolution
 
 > **Data source:** `realworld-angular/` git history (upstream [realworld-angular/realworld-angular](https://github.com/realworld-angular/realworld-angular))
-> **Generated:** 2026-06-08
+> **Generated:** 2026-06-15
 
 > **Testing Docs Index:**
 >
@@ -27,9 +27,10 @@
 | **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code           | 0 net    |
 | **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net    |
 | **8**  | 2026-06-11    | 10:27 Local  | `420001d` — upstream sync to GitHub HEAD | Ran full test suite after sync; documented current failures  | 59 specs |
+| **9**  | 2026-06-15    | Local        | `f1593bf` — green suite baseline         | Upstream resolved remaining failures; suite now 59/59 green  | 59 specs |
 
-**Historical final count:** 60 spec files with ~344 individual `it()` test blocks.  
-**Current observed count:** 59 spec files with 350 individual `it()` test blocks, as reported by the 2026-06-11 test run.
+**Historical final count:** 59 spec files with 350 individual `it()` test blocks.  
+**Current observed count:** 59 spec files with 350 individual `it()` test blocks, as reported by the 2026-06-15 test run.
 
 ---
 
@@ -572,23 +573,22 @@ These refactoring commits demonstrate a **test-as-first-class-citizen** mindset:
 
 ## Feature Cross-Reference: When Each Feature Got Tests
 
-| Feature               | Phase 1 (init)                       | Phase 3b (batch)                      | Phase 4   | Phase 5 | Total Specs |
-| --------------------- | ------------------------------------ | ------------------------------------- | --------- | ------- | ----------- |
-| **Core — Auth**       | auth.service, auth.guard, role.guard | ✓ (replaced)                          | —         | —       | 3           |
-| **Core — HTTP**       | credentials.interceptor              | ✓ + base-url.interceptor (replaced)   | —         | —       | 2           |
-| **Core — Geocoding**  | photon-api.service                   | ✓ (replaced)                          | —         | —       | 1           |
-| **Core — Layout**     | —                                    | header, footer                        | —         | —       | 2           |
-| **Shared Components** | —                                    | 16 components + 1 directive + 1 pipe  | load-more | —       | 18          |
-| **Auth Pages**        | —                                    | login, register                       | —         | —       | 2           |
-| **Cart**              | cart.store                           | ✓ (replaced) + cart-page              | —         | —       | 2           |
-| **Checkout**          | checkout-deactivate.guard            | cart-not-empty.guard, checkout-page   | —         | 6 specs | 8           |
-| **Orders**            | —                                    | 7 specs                               | —         | —       | 7           |
-| **Pizzerias**         | pizzeria-api.service                 | 10 more specs (replaced pizzeria-api) | —         | —       | 11          |
-| **Profile**           | —                                    | profile-page                          | —         | —       | 1           |
-| **Legal**             | —                                    | terms-and-conditions                  | —         | —       | 1           |
-| **Not Found**         | —                                    | not-found-page                        | —         | —       | 1           |
-| **Unauthorized**      | —                                    | unauthorized-page                     | —         | —       | 1           |
-| **App Root**          | app.spec                             | —                                     | —         | —       | 0 (deleted) |
+| Feature           | Phase 1 (init)                       | Phase 3b (batch)                      | Phase 4   | Phase 5 | Total Specs |
+| ----------------- | ------------------------------------ | ------------------------------------- | --------- | ------- | ----------- |
+| **Core — Auth**   | auth.service, auth.guard, role.guard | ✓ (replaced)                          | —         | —       | 3           |
+| **Core — HTTP**   | credentials.interceptor              | ✓ + base-url.interceptor (replaced)   | —         | —       | 2           |
+| **Core — Layout** | —                                    | header, footer                        | —         | —       | 2           |
+| **Shared**        | —                                    | 16 components + 1 directive + 1 pipe  | load-more | —       | 18          |
+| **Auth Pages**    | —                                    | login, register                       | —         | —       | 2           |
+| **Cart**          | cart.store                           | ✓ (replaced) + cart-page              | —         | —       | 2           |
+| **Checkout**      | checkout-deactivate.guard            | cart-not-empty.guard, checkout-page   | —         | 6 specs | 8           |
+| **Orders**        | —                                    | 7 specs                               | —         | —       | 7           |
+| **Pizzerias**     | pizzeria-api.service                 | 10 more specs (replaced pizzeria-api) | —         | —       | 11          |
+| **Profile**       | —                                    | profile-page                          | —         | —       | 1           |
+| **Legal**         | —                                    | terms-and-conditions                  | —         | —       | 1           |
+| **Not Found**     | —                                    | not-found-page                        | —         | —       | 1           |
+| **Unauthorized**  | —                                    | unauthorized-page                     | —         | —       | 1           |
+| **App Root**      | app.spec                             | —                                     | —         | —       | 0 (deleted) |
 
 ---
 
@@ -614,6 +614,21 @@ The failure is isolated to `PhotonLocationField`: `should commit value when sugg
 ### Evaluation
 
 This phase documents the post-sync health of the upstream clone, not a regression introduced by local edits. The current state is: the synced app builds its application bundle and starts the Vitest run, but the suite is not fully green. The next useful step is triage of the single Photon request isolation failure.
+
+---
+
+## Phase 9: Upstream Green Baseline — 2026-06-15 Local
+
+**Commit context:** `f1593bf` — current sandbox HEAD after upstream sync  
+**Command:** `pnpm run test`  
+**Result:** passed with exit code `0`; the suite is fully green.  
+**Observed totals:** 0 failed spec files, 59 passed spec files; 0 failed tests, 350 passed tests.
+
+The upstream project resolved the remaining `PhotonLocationField` request isolation failure. No local documentation changes affected the suite.
+
+### Evaluation
+
+This phase records the post-sync health of the upstream clone after the final failure was resolved. The current state is: the synced app builds its application bundle and starts the Vitest run, and every test passes. This is the baseline for future documentation updates.
 
 ---
 
