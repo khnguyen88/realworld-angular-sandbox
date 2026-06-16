@@ -54,3 +54,4 @@ realworld-angular/.angular/
 # End of upstream clone ignore block
 
 .agents/.worktrees/
+.worktrees/
