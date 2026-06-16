@@ -11,7 +11,7 @@ testing guidance.
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — Angular 22 + PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (latest run 59/59 specs pass, 350/350 tests pass)
+> - **README-TESTING.md** — Factual inventory of what exists (usually 58/59 or 59/59 specs pass; 347/350 to 350/350 tests pass)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 Angular CLI projects now default to **Vitest** with **jsdom**. Run tests with
@@ -34,14 +34,14 @@ new tests or maintaining existing ones.
 
 ## Current Testing Reality
 
-The upstream `realworld-angular` test suite currently compiles and runs and is **fully green**.
+The upstream `realworld-angular` test suite usually compiles and runs and is **mostly green**, but it has a known intermittent failure.
 Run the suite with:
 
 ```bash
 pnpm run test
 ```
 
-Latest local result: **59/59 specs pass, 350/350 tests pass**. The earlier `PhotonLocationField` failure has been resolved upstream.
+Observed local result range: **58/59 specs pass, 347/350 to 350/350 tests pass**. On a clean run it reaches **59/59 specs pass, 350/350 tests pass**. The intermittent failure is in `realworld-angular/src/app/shared/components/photon-location-field/photon-location-field.spec.ts` around line 53 (`flushSearch()` → `httpTesting.expectOne(...)` for the Photon request). The failure is an upstream request-isolation issue, not caused by local changes, and should be treated as a separate cleanup task.
 
 This guide documents Angular-recommended patterns and the project's current test patterns. It does **not** claim the suite is production-ready beyond unit tests. Use the checklist below to write better tests; treat any future failures as a separate cleanup task.
 
