@@ -8,7 +8,7 @@ This project uses [Vitest](https://vitest.dev/) with [jsdom](https://github.com/
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns; latest run 59/59 specs pass)
+> - **README-TESTING.md** — This file: factual inventory of what exists (59 specs, categories, patterns; latest run sometimes 59/59 specs pass, sometimes 58/59 due to a known intermittent Photon request-isolation failure)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
 ## Table of Contents
@@ -78,15 +78,17 @@ After syncing the upstream clone to GitHub HEAD `f1593bffe76e89c906afcaf7a9a2f1c
 pnpm run test
 ```
 
-Result: **exit=0**.
+Result: **mostly green** — the suite is reliable enough that it often exits 0, but it has a known intermittent failure.
 
-| Scope      | Result                    |
-| ---------- | ------------------------- |
-| Spec files | **59 passed**, 59 total   |
-| Tests      | **350 passed**, 350 total |
-| Duration   | ~8.9s                     |
+| Scope      | Result                                                                         |
+| ---------- | ------------------------------------------------------------------------------ |
+| Spec files | **59 passed**, 59 total (when green) or **58 passed** / 1 failed, 59 total     |
+| Tests      | **350 passed**, 350 total (when green) or **349 passed** / 1 failed, 350 total |
+| Duration   | ~8.9s                                                                          |
 
-The inventory below describes the existing test suite structure. The suite is fully green.
+The intermittent failure occurs in `src/app/shared/components/photon-location-field/photon-location-field.spec.ts` at line 53 (`flushSearch()` → `httpTesting.expectOne(...)` for the Photon request). The Photon request is sometimes not present when the test expects it, causing the Photon spec to fail in isolation. This is an upstream request-isolation issue, not a local documentation regression.
+
+The inventory below describes the existing test suite structure. The suite is mostly/usually green.
 
 ## Test Inventory
 
