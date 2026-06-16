@@ -9,25 +9,25 @@
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — Quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns)
+> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns; latest run sometimes 59/59 specs pass, sometimes 58/59 due to a known intermittent Photon request-isolation failure)
 > - **README-TEST-CHRONOLOGY.md** — This file: test creation history & evolution
 
 ---
 
 ## Quick Reference
 
-| Phase  | Date          | Time (Local) | Commit                                   | Action                                                       | Specs    |
-| ------ | ------------- | ------------ | ---------------------------------------- | ------------------------------------------------------------ | -------- |
-| **1**  | 2026-05-14    | 23:12 CEST   | `a1eb73e` — init                         | Created 9 skeleton specs                                     | +9       |
-| **2**  | 2026-05-18    | 00:57 CEST   | `43a4c77` — base URL interceptor         | Added 1 interceptor spec amid implementation work            | +1       |
-| **3a** | 2026-05-19    | 01:52 CEST   | `cdbf77a` — remove obsolete specs        | **Deleted all 10** Phase 1+2 specs                           | −10      |
-| **3b** | 2026-05-19    | 12:14 CEST   | `70dae9c` — add unit tests               | **Replaced with 54** comprehensive specs                     | +54      |
-| **4**  | 2026-05-23    | 00:19 CEST   | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component            | +1       |
-| **5**  | 2026-05-26    | 12:41 CEST   | `b7f434b` — checkout flow enhancement    | Added 6 checkout specs, deleted `checkout-deactivate` guard  | +6 −1    |
-| **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code           | 0 net    |
-| **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup) | 0 net    |
-| **8**  | 2026-06-11    | 10:27 Local  | `420001d` — upstream sync to GitHub HEAD | Ran full test suite after sync; documented current failures  | 59 specs |
-| **9**  | 2026-06-15    | Local        | `f1593bf` — green suite baseline         | Upstream resolved remaining failures; suite now 59/59 green  | 59 specs |
+| Phase  | Date          | Time (Local) | Commit                                   | Action                                                                                               | Specs    |
+| ------ | ------------- | ------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------- |
+| **1**  | 2026-05-14    | 23:12 CEST   | `a1eb73e` — init                         | Created 9 skeleton specs                                                                             | +9       |
+| **2**  | 2026-05-18    | 00:57 CEST   | `43a4c77` — base URL interceptor         | Added 1 interceptor spec amid implementation work                                                    | +1       |
+| **3a** | 2026-05-19    | 01:52 CEST   | `cdbf77a` — remove obsolete specs        | **Deleted all 10** Phase 1+2 specs                                                                   | −10      |
+| **3b** | 2026-05-19    | 12:14 CEST   | `70dae9c` — add unit tests               | **Replaced with 54** comprehensive specs                                                             | +54      |
+| **4**  | 2026-05-23    | 00:19 CEST   | `bd72c32` — pizzeria details enhancement | Added `load-more.spec.ts` alongside new component                                                    | +1       |
+| **5**  | 2026-05-26    | 12:41 CEST   | `b7f434b` — checkout flow enhancement    | Added 6 checkout specs, deleted `checkout-deactivate` guard                                          | +6 −1    |
+| **6**  | 2026-05-27+   | —            | `7d23826`, `3322c2d` — coupon features   | Refactored/extended existing specs for coupon code                                                   | 0 net    |
+| **7**  | 2026-05-19→27 | —            | 8 refactor commits                       | Enhanced existing specs (linting, type safety, mock cleanup)                                         | 0 net    |
+| **8**  | 2026-06-11    | 10:27 Local  | `420001d` — upstream sync to GitHub HEAD | Ran full test suite after sync; documented current failures                                          | 59 specs |
+| **9**  | 2026-06-15    | Local        | `f1593bf` — intermittent Photon baseline | Upstream issue narrowed to intermittent Photon request-isolation failure; suite mostly/usually green | 59 specs |
 
 **Historical final count:** 59 spec files with 350 individual `it()` test blocks.  
 **Current observed count:** 59 spec files with 350 individual `it()` test blocks, as reported by the 2026-06-15 test run.
@@ -617,18 +617,18 @@ This phase documents the post-sync health of the upstream clone, not a regressio
 
 ---
 
-## Phase 9: Upstream Green Baseline — 2026-06-15 Local
+## Phase 9: Intermittent Photon Failure Baseline — 2026-06-15 Local
 
 **Commit context:** `f1593bf` — current sandbox HEAD after upstream sync  
 **Command:** `pnpm run test`  
-**Result:** passed with exit code `0`; the suite is fully green.  
-**Observed totals:** 0 failed spec files, 59 passed spec files; 0 failed tests, 350 passed tests.
+**Result:** mostly green with a known intermittent failure. The suite sometimes exits `0` and sometimes exits `1`.  
+**Observed totals:** sometimes 0 failed spec files and 59 passed spec files with 0 failed tests and 350 passed tests; sometimes 1 failed spec file and 58 passed spec files with 1 failed test and 349 passed tests.
 
-The upstream project resolved the remaining `PhotonLocationField` request isolation failure. No local documentation changes affected the suite.
+The upstream project narrowed the remaining issue to an intermittent `PhotonLocationField` request-isolation failure in `src/app/shared/components/photon-location-field/photon-location-field.spec.ts` at line 53 (`flushSearch()` → `httpTesting.expectOne(...)` for the Photon request). The Photon request is sometimes not present when the test expects it. No local documentation changes affect the suite.
 
 ### Evaluation
 
-This phase records the post-sync health of the upstream clone after the final failure was resolved. The current state is: the synced app builds its application bundle and starts the Vitest run, and every test passes. This is the baseline for future documentation updates.
+This phase records the post-sync health of the upstream clone after the broad `TestBed` cascade failures were resolved. The current state is: the synced app builds its application bundle and starts the Vitest run, and the suite is mostly/usually green, with one spec that intermittently fails in isolation. This is the baseline for future documentation updates.
 
 ---
 
