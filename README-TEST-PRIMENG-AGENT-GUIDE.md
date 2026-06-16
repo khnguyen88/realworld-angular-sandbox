@@ -11,7 +11,7 @@
 
 ## Who This File Is For
 
-You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns for the current sandbox target: **Angular 22 + PrimeNG v20+**. Treat PrimeNG major-version pairing as a version check: PrimeNG v20 aligns with Angular 20, PrimeNG v21 aligns with Angular 21, and so on. If the project's Angular and PrimeNG majors disagree, ask before writing version-specific assertions. Legacy PrimeNG v17/v18 rename notes are included as compatibility context.
+You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeNG** for UI primitives. The main test creation guide (`README-TEST-AGENT-GUIDE.md`) covers the standard patterns; this file covers the **PrimeNG-specific** setup, service stubs, and per-component patterns for the current sandbox target: **Angular 22 + PrimeNG v20+**. PrimeNG's major version historically tracks Angular's (PrimeNG v22 aligns with Angular 22), but a project may run a slightly older PrimeNG on a newer Angular. If the installed majors disagree, ask before writing version-specific assertions. Legacy PrimeNG v17/v18 rename notes are included as compatibility context.
 
 ## How to Use This File
 
@@ -28,7 +28,7 @@ You are an LLM writing tests for an Angular + Vitest codebase that uses **PrimeN
 
 ## Current Suite Relevance
 
-The realworld-angular suite is currently almost green, so this cookbook is a pattern guide, not proof that every PrimeNG test in the suite passes. Use it to write clearer PrimeNG tests, then validate against the current test run and fix the remaining Photon request isolation issue separately.
+The `realworld-angular` sandbox currently does **not** depend on PrimeNG, and the upstream test suite is fully green (`59/59` specs, `350/350` tests). This cookbook is therefore a pattern reference for any future PrimeNG work in this Angular 22 codebase, not a record of existing PrimeNG tests. Use it to write new PrimeNG tests, then validate with `pnpm run test`.
 
 ## Table of Contents
 
@@ -49,10 +49,10 @@ The realworld-angular suite is currently almost green, so this cookbook is a pat
 
 ## 1. Pre-flight: Confirm Angular and PrimeNG Versions
 
-Open `package.json` and confirm both `@angular/core` and `primeng` versions. The current sandbox target is **Angular 22 + PrimeNG v20+**, so use that path unless the user explicitly asks for legacy-version guidance.
+Open `package.json` and confirm both `@angular/core` and `primeng` versions. The `realworld-angular` sandbox currently pins **Angular 22** and does **not** install PrimeNG; however, when this guide is applied to a PrimeNG project, the primary target is **Angular 22 + PrimeNG v20+**. Use that path unless the user explicitly asks for legacy-version guidance.
 
-- **Angular 22 + PrimeNG v20+** — this guide's primary target. Use signal-based components, Angular 22 guard/resolver/test conventions, and PrimeNG v20+ selectors/imports.
-- **PrimeNG major-version pairing** — PrimeNG follows Angular's major-version cadence: PrimeNG v20 aligns with Angular 20, v21 with Angular 21, and v22 with Angular 22. If the installed majors disagree with the guide's target, ask before writing version-specific assertions.
+- **Angular 22 + PrimeNG v20+** — this guide's primary target. Use signal-based components, Angular 22 guard/resolver/test conventions, and PrimeNG v20+ selectors/imports. Prefer standalone component/directive imports where PrimeNG v20+ exposes them; fall back to the `XxxModule` wrapper when a component is still module-based in v20+ (e.g., `Table`).
+- **PrimeNG major-version pairing** — PrimeNG historically tracks Angular's major-version cadence (v22 aligns with Angular 22). A project may run PrimeNG v20 or v21 on Angular 22; that is usually fine, but if the installed majors disagree with the guide's target, ask before writing version-specific assertions.
 - **PrimeNG v17/v18** — same high-level patterns, but use the legacy component names and imports listed in §12. Treat this as compatibility context, not the current sandbox target.
 - **PrimeNG v16 or earlier** — `BrowserAnimationsModule` instead of async animations; no signal components. Stop and ask the user.
 
@@ -65,19 +65,23 @@ Every PrimeNG test starts from this base. Customize per-component below.
 ### 2.1 The provider block
 
 ```typescript
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+
 TestBed.configureTestingModule({
   providers: [
     // provideAnimationsAsync() when the component path depends on animation events
     // ... per-component providers
   ],
 }).overrideComponent(<ComponentUnderTest>, {
-  set: { imports: [<PrimeNGModules>, <OtherChildren>] },
+  set: { imports: [<PrimeNGStandaloneImports>, <OtherChildren>] },
 });
 ```
 
 Use `provideAnimationsAsync()` when the component path depends on animation events. Start without extra animation setup for simple rendering assertions, then add `provideAnimationsAsync()` if the interaction path depends on animation events or PrimeNG throws animation-related errors.
 
 Avoid `NoopAnimationsModule` when testing transitions, open/close state, portal behavior, or any path that depends on animation events. It is not automatically wrong for every PrimeNG test, but it can suppress events a component depends on.
+
+For PrimeNG v20+, most components expose a standalone class import (e.g., `import { Dialog } from 'primeng/dialog'`). Use that in `overrideComponent` when available. A few components, notably `Table`, are still NgModule-based in v20+; use `import { TableModule } from 'primeng/table'` for those. The `XxxModule` wrappers continue to work for backward compatibility, but prefer the standalone class in new code.
 
 ### 2.2 Theme CSS in jsdom
 
@@ -114,10 +118,10 @@ PrimeNG components inject a few shared services. Stub them at the providers leve
 
 ### 3.1 `MessageService`
 
-Used by `p-toast`, `p-confirmpopup`, and any component that emits transient messages.
+Used by `p-toast`, `p-confirmpopup`, and any component that emits transient messages. Current API (`primeng/api`): `add(message)`, `addAll(messages)`, `clear(key?)`.
 
 ```typescript
-{ provide: MessageService, useValue: { add: vi.fn() } }
+{ provide: MessageService, useValue: { add: vi.fn(), addAll: vi.fn(), clear: vi.fn() } }
 ```
 
 Assert on the stub:
@@ -133,10 +137,10 @@ expect(messageService.add).toHaveBeenCalledWith({
 
 ### 3.2 `ConfirmationService`
 
-Used by `p-confirmpopup` and any component that triggers a confirmation dialog.
+Used by `p-confirmpopup` and any component that triggers a confirmation dialog. Current API (`primeng/api`): `confirm(confirmation)`, `close()`, `onAccept()`.
 
 ```typescript
-{ provide: ConfirmationService, useValue: { confirm: vi.fn() } }
+{ provide: ConfirmationService, useValue: { confirm: vi.fn(), close: vi.fn(), onAccept: vi.fn() } }
 ```
 
 Assert on the stub, including the accept/reject callbacks:
@@ -144,16 +148,18 @@ Assert on the stub, including the accept/reject callbacks:
 ```typescript
 const confirmationService = TestBed.inject(ConfirmationService);
 expect(confirmationService.confirm).toHaveBeenCalled();
-const call = confirmationService.confirm.mock.calls[0][0];
+const call = (confirmationService.confirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
 call.accept(); // trigger the accept path
 expect(<accept-side-effect>).toBe(<expected>);
 ```
 
 ### 3.3 `DialogService`
 
-Used by any component that programmatically opens a dialog.
+Used by any component that programmatically opens a dynamic dialog. Current API (`primeng/dynamicdialog`): `open(componentType, config)` returns a `DynamicDialogRef`.
 
 ```typescript
+import { of } from 'rxjs';
+
 const ref = { close: vi.fn(), onClose: of(<result>) };
 { provide: DialogService, useValue: { open: vi.fn().mockReturnValue(ref) } }
 ```
@@ -167,16 +173,18 @@ expect(dialogService.open).toHaveBeenCalledWith(<Component>, expect.objectContai
 
 ### 3.4 `DynamicDialogRef`
 
-Used inside a PrimeNG dialog opened via `DialogService`. The parent component stubs `DialogService`; the dialog itself injects `DynamicDialogRef`.
+Used inside a PrimeNG dialog opened via `DialogService`. The parent component stubs `DialogService`; the dialog itself injects `DynamicDialogRef`. Current API: `close(result?)`, `destroy()`, and observables (`onClose`, `onDestroy`, etc.).
 
 ```typescript
-{ provide: DynamicDialogRef, useValue: { close: vi.fn() } }
+{ provide: DynamicDialogRef, useValue: { close: vi.fn(), destroy: vi.fn() } }
 ```
 
 If the dialog awaits `ref.onClose`, stub the observable:
 
 ```typescript
-{ provide: DynamicDialogRef, useValue: { close: vi.fn(), onClose: of(<result>) } }
+import { of } from 'rxjs';
+
+{ provide: DynamicDialogRef, useValue: { close: vi.fn(), destroy: vi.fn(), onClose: of(<result>) } }
 ```
 
 ## 4. p-table
@@ -203,7 +211,7 @@ If the dialog awaits `ref.onClose`, stub the observable:
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { Table } from 'primeng/table';
+import { TableModule } from 'primeng/table';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <TableHostComponent> } from '<relative-path>';
 
@@ -220,7 +228,7 @@ describe('<TableHostComponent>', () => {
         // ... per-component providers
       ],
     }).overrideComponent(<TableHostComponent>, {
-      set: { imports: [Table] },
+      set: { imports: [TableModule] },
     });
     fixture = TestBed.createComponent(<TableHostComponent>);
     fixture.componentRef.setInput('rows', <mockRows>);
@@ -240,9 +248,13 @@ describe('<TableHostComponent>', () => {
 });
 ```
 
+> **Note on imports:** `p-table` is still NgModule-based in PrimeNG v20+, so use `TableModule`. If you are on a future PrimeNG version where `Table` is exported standalone, switch to `import { Table } from 'primeng/table';`.
+
 ### 4.4 Recipe template (server-side / lazy table)
 
 ```typescript
+import { TableModule } from 'primeng/table';
+
 beforeEach(async () => {
   TestBed.configureTestingModule({
     providers: [
@@ -250,7 +262,7 @@ beforeEach(async () => {
       // Add provideAnimationsAsync() only when the component path depends on animation events
     ],
   }).overrideComponent(<TableHostComponent>, {
-    set: { imports: [Table] },
+    set: { imports: [TableModule] },
   });
   fixture = TestBed.createComponent(<TableHostComponent>);
   el = fixture.nativeElement;
@@ -317,8 +329,8 @@ it('should request page 2 when paginator advances', async () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
+import { Button } from 'primeng/button';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <DialogHostComponent> } from '<relative-path>';
 
@@ -332,7 +344,7 @@ describe('<DialogHostComponent>', () => {
         // Add provideAnimationsAsync() only when the component path depends on animation events
       ],
     }).overrideComponent(<DialogHostComponent>, {
-      set: { imports: [DialogModule, ButtonModule] },
+      set: { imports: [Dialog, Button] },
     });
     fixture = TestBed.createComponent(<DialogHostComponent>);
     el = fixture.nativeElement;
@@ -396,7 +408,7 @@ describe('<DialogHostComponent>', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { SelectModule } from 'primeng/select';
+import { Select } from 'primeng/select';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <SelectHostComponent> } from '<relative-path>';
 
@@ -412,7 +424,7 @@ describe('<SelectHostComponent>', () => {
         // Add provideAnimationsAsync() only when the component path depends on animation events
       ],
     }).overrideComponent(<SelectHostComponent>, {
-      set: { imports: [SelectModule] },
+      set: { imports: [Select] },
     });
     fixture = TestBed.createComponent(<SelectHostComponent>);
     fixture.componentRef.setInput('options', <mockOptions>);
@@ -440,7 +452,7 @@ describe('<SelectHostComponent>', () => {
 
 ### 6.5 Pitfalls
 
-- **Forgetting to import `SelectModule`** — the component renders as a blank `<p-select>` element. The override must include the module.
+- **Forgetting to import `Select`** — the component renders as a blank `<p-select>` element. The override must include the standalone class (or `SelectModule` as a fallback).
 - **Asserting on the option list before the panel is open** — PrimeNG renders options only when the panel is open. To assert on options, click to open first.
 - **Wrong value type** — if `value` is an object, the test must pass the same object reference, not a copy.
 
@@ -465,7 +477,7 @@ describe('<SelectHostComponent>', () => {
 
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { DatePickerModule } from 'primeng/datepicker';
+import { DatePicker } from 'primeng/datepicker';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { <DatePickerHostComponent> } from '<relative-path>';
 
@@ -479,7 +491,7 @@ describe('<DatePickerHostComponent>', () => {
         // Add provideAnimationsAsync() only when the component path depends on animation events
       ],
     }).overrideComponent(<DatePickerHostComponent>, {
-      set: { imports: [DatePickerModule] },
+      set: { imports: [DatePicker] },
     });
     fixture = TestBed.createComponent(<DatePickerHostComponent>);
     el = fixture.nativeElement;
@@ -530,7 +542,7 @@ describe('<DatePickerHostComponent>', () => {
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmPopup } from 'primeng/confirmpopup';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { <TriggerComponent> } from '<relative-path>';
 
@@ -547,11 +559,11 @@ describe('<TriggerComponent> confirm flow', () => {
     TestBed.configureTestingModule({
       providers: [
         // Add provideAnimationsAsync() only when the component path depends on animation events
-        { provide: ConfirmationService, useValue: { confirm: vi.fn() } },
-        { provide: MessageService, useValue: { add: vi.fn() } },
+        { provide: ConfirmationService, useValue: { confirm: vi.fn(), close: vi.fn(), onAccept: vi.fn() } },
+        { provide: MessageService, useValue: { add: vi.fn(), addAll: vi.fn(), clear: vi.fn() } },
       ],
     }).overrideComponent(<TriggerComponent>, {
-      set: { imports: [ConfirmPopupModule] },
+      set: { imports: [ConfirmPopup] },
     });
     fixture = TestBed.createComponent(<TriggerComponent>);
     el = fixture.nativeElement;
@@ -593,7 +605,7 @@ describe('<TriggerComponent> confirm flow', () => {
 ```typescript
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { MessageService } from 'primeng/api';
-import { ToastModule } from 'primeng/toast';
+import { Toast } from 'primeng/toast';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { <ToastHostComponent> } from '<relative-path>';
 
@@ -606,10 +618,10 @@ describe('<ToastHostComponent>', () => {
     TestBed.configureTestingModule({
       providers: [
         // Add provideAnimationsAsync() only when the component path depends on animation events
-        { provide: MessageService, useValue: { add: vi.fn() } },
+        { provide: MessageService, useValue: { add: vi.fn(), addAll: vi.fn(), clear: vi.fn() } },
       ],
     }).overrideComponent(<ToastHostComponent>, {
-      set: { imports: [ToastModule] },
+      set: { imports: [Toast] },
     });
     fixture = TestBed.createComponent(<ToastHostComponent>);
     el = fixture.nativeElement;
@@ -646,14 +658,14 @@ These three are simple enough that the recipes are short. Combine them in one te
 ### 10.1 p-inputtext
 
 ```typescript
-import { InputTextModule } from 'primeng/inputtext';
+import { InputText } from 'primeng/inputtext';
 
 TestBed.configureTestingModule({
   providers: [
     // Add provideAnimationsAsync() only when the component path depends on animation events
   ],
 }).overrideComponent(<HostComponent>, {
-  set: { imports: [InputTextModule, ReactiveFormsModule] },
+  set: { imports: [InputText, ReactiveFormsModule] },
 });
 
 it('should reflect the bound value', async () => {
@@ -669,7 +681,15 @@ it('should reflect the bound value', async () => {
 ### 10.2 p-button
 
 ```typescript
-import { ButtonModule } from 'primeng/button';
+import { Button } from 'primeng/button';
+
+TestBed.configureTestingModule({
+  providers: [
+    // Add provideAnimationsAsync() only when the component path depends on animation events
+  ],
+}).overrideComponent(<HostComponent>, {
+  set: { imports: [Button] },
+});
 
 it('should fire click handler when clicked', () => {
   const button = el.querySelector<HTMLButtonElement>('[data-testid="<button>"]')
@@ -680,13 +700,21 @@ it('should fire click handler when clicked', () => {
 });
 ```
 
-`p-button` often renders a `<button>` with the `.p-button` class. Prefer a stable test id or role when available; use the class only as a fallback.
+`p-button` often renders a `<button>` with the `.p-button` class. Prefer a stable test id or role when available; use the class only as a fallback. If you use the `pButton` directive on a native button instead, import `ButtonDirective` from `primeng/button`.
 
 ### 10.3 p-checkbox
 
 ```typescript
-import { CheckboxModule } from 'primeng/checkbox';
+import { Checkbox } from 'primeng/checkbox';
 import { FormsModule } from '@angular/forms';
+
+TestBed.configureTestingModule({
+  providers: [
+    // Add provideAnimationsAsync() only when the component path depends on animation events
+  ],
+}).overrideComponent(<HostComponent>, {
+  set: { imports: [Checkbox, FormsModule] },
+});
 
 it('should toggle checked state', async () => {
   fixture.componentRef.setInput('checked', false);
@@ -727,6 +755,8 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { FileUpload } from 'primeng/fileupload';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { <FileUploadHostComponent> } from '<relative-path>';
+
+// FileUpload is standalone in PrimeNG v20+; FileUploadModule still works as a fallback.
 
 const <mockFile> = new File(['<contents>'], 'test.txt', { type: 'text/plain' });
 
@@ -778,15 +808,22 @@ describe('<FileUploadHostComponent>', () => {
 
 If the codebase predates PrimeNG v20, you'll see the old names. The pattern recipes still apply; only the import path and selector change.
 
-| v17/v18        | v20+         | Notes                                                  |
-| -------------- | ------------ | ------------------------------------------------------ |
-| `Dropdown`     | `Select`     | Same `options` shape; `onChange` payload unchanged.    |
-| `Calendar`     | `DatePicker` | `dateFormat` → still works, plus new `datePickerType`. |
-| `TabView`      | `Tabs`       | `<p-tabView>` → `<p-tabs>`; `<p-tabPanel>` unchanged.  |
-| `OverlayPanel` | `Popover`    | `show`/`hide` events; `appendTo` still works.          |
-| `Sidebar`      | `Drawer`     | Same `(visible)` binding; new `position` input.        |
+| v17/v18         | v20+                                                    | Notes                                                                                      |
+| --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `Dropdown`      | `Select`                                                | Same `options` shape; `onChange` payload unchanged.                                        |
+| `Calendar`      | `DatePicker`                                            | `dateFormat` still works; selectors include `p-datepicker`.                                |
+| `TabView`       | `Tabs`                                                  | `<p-tabView>` → `<p-tabs>`; use `<p-tablist>`, `<p-tab>`, `<p-tabpanels>`, `<p-tabpanel>`. |
+| `OverlayPanel`  | `Popover`                                               | `show`/`hide` events; `appendTo` still works.                                              |
+| `Sidebar`       | `Drawer`                                                | Same `(visible)` binding; new `position` input.                                            |
+| `InputSwitch`   | `ToggleSwitch`                                          | Same boolean binding; new selector `p-toggleswitch`.                                       |
+| `Messages`      | `Message`                                               | Single component replaces both `Messages` and `InlineMessage`.                             |
+| `InlineMessage` | `Message`                                               | Merged into `Message`.                                                                     |
+| `Chips`         | `AutoComplete` in multiple mode without typeahead       | Replace chips input with multi-mode autocomplete.                                          |
+| `TabMenu`       | `Tabs` without panels                                   | Use the tab navigation part of `Tabs`.                                                     |
+| `Steps`         | `Stepper` without panels                                | Use the stepper navigation part of `Stepper`.                                              |
+| `AccordionTab`  | `AccordionPanel`, `AccordionHeader`, `AccordionContent` | New declarative accordion structure.                                                       |
 
-**How to detect:** open `package.json` and check the `primeng` version. If `^17.x` or `^18.x`, the codebase uses the old names.
+**How to detect:** open `package.json` and check the `primeng` version. If `^17.x` or `^18.x`, the codebase uses the old names. In v20 the old import paths are removed.
 
 **Migration in tests:** when the project upgrades, the recipes in this file work as-is; the writer only needs to update the import path and selector in `overrideComponent`. The patterns (animations, service stubs, query selectors via `.p-<component>`) are the same.
 
@@ -799,7 +836,7 @@ A consolidated list of mistakes when testing PrimeNG components.
 - **Forgetting `MessageService` for `p-confirmpopup` and `p-toast`** — these components inject `MessageService` directly. Stub it in the providers list.
 - **Using brittle PrimeNG class selectors everywhere** — component classes vary by PrimeNG version and theme. Query the rendered DOM after opening/triggering the component, then prefer stable attributes, roles, labels, or the closest stable wrapper.
 - **Asserting on portal-rendered DOM inside the component** — toasts, dialogs opened via `DialogService`, and overlays render in portals at `document.body`. Use `document.body.querySelector(...)` for those.
-- **Importing the wrong module** — use PrimeNG standalone component imports for v20+ where available (`Table`, `Dialog`, `Select`, etc.); `primeng/dropdown` is v17/v18 and `primeng/select` is v20+.
+- **Importing the wrong module** — prefer PrimeNG standalone class imports for v20+ where available (`Dialog`, `Select`, `DatePicker`, `Button`, etc.). `Table` is still module-based in v20+, so use `TableModule`. `primeng/dropdown` is v17/v18; `primeng/select` is v20+.
 - **Mocking file input selection** — the `files` property is read-only. Prefer `DataTransfer` when jsdom supports it; use `Object.defineProperty` only as a fallback.
 - **Asserting on a closed dialog** — PrimeNG only inserts the dialog DOM when `visible` is true. Open it first, then query.
 - **Asserting on a hidden checkbox `<input>`** — the actual clickable element is the `.p-checkbox` wrapper.
