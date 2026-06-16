@@ -6,24 +6,24 @@
 > - **README-TEST-AGENT-GUIDE.md** — LLM-facing recipe book for any Angular + Vitest project
 > - **README-TEST-PRIMENG-AGENT-GUIDE.md** — PrimeNG v20+ companion cookbook
 > - **README-TEST-INSIGHTS.md** — This file: quality evaluation & improvement roadmap
-> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns; latest run 59/59 specs pass)
+> - **README-TESTING.md** — Factual inventory of what exists (59 specs, categories, patterns; latest run sometimes 59/59 specs pass, sometimes 58/59 due to a known intermittent Photon request-isolation failure)
 > - **README-TEST-CHRONOLOGY.md** — Test creation history & evolution
 
-> **Status snapshot (2026-06-15):** Upstream realworld-angular was synced to GitHub HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef`. The suite compiles and passes completely. The latest local run is fully green: **59/59 specs pass, 350/350 tests pass**. No remaining failures. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
+> **Status snapshot (2026-06-15):** Upstream realworld-angular was synced to GitHub HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef`. The suite compiles and is mostly/usually green, but it has a known intermittent failure. The observed range is: sometimes **59/59 specs pass, 350/350 tests pass**; sometimes **58/59 specs pass, 349/350 tests pass** with the Photon spec failing. This document evaluates the suite against two external standards: Angular official docs (via MCP `search_documentation`) and Angular skill references.
 
 ---
 
 ## TL;DR
 
-| Question                                   | Answer                                                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| How many test files?                       | **59 `*.spec.ts`** co-located with source.                                                        |
-| How much test code?                        | **~5,175 lines** of test code vs. **~3,820 lines** of source.                                     |
-| Is the suite green?                        | **Yes** — `pnpm run test` exits 0: **59/59 specs pass, 350/350 tests pass**.                      |
-| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have gaps.                |
-| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with known gaps in harnesses and route integration. |
-| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds.                          |
-| Are there other test types?                | **None** — no e2e, integration, a11y, or visual regression tests.                                 |
+| Question                                   | Answer                                                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How many test files?                       | **59 `*.spec.ts`** co-located with source.                                                                                                                                                                                      |
+| How much test code?                        | **~5,175 lines** of test code vs. **~3,820 lines** of source.                                                                                                                                                                   |
+| Is the suite green?                        | **Mostly / usually** — `pnpm run test` often exits 0 with **59/59 specs pass, 350/350 tests pass**, but it can also fail with **58/59 specs pass, 349/350 tests pass** due to an intermittent Photon request-isolation failure. |
+| Angular Skill/MCP Cross-Check              | **7/10 categories aligned** with official recommendations. 3 categories have gaps.                                                                                                                                              |
+| How does it perform on the unit-test axis? | **Strong** in pattern discipline and breadth, with known gaps in harnesses and route integration.                                                                                                                               |
+| Is coverage measured?                      | **No** — no `vitest.config.ts`, no `@vitest/coverage-v8`, no thresholds.                                                                                                                                                        |
+| Are there other test types?                | **None** — no e2e, integration, a11y, or visual regression tests.                                                                                                                                                               |
 
 ---
 
@@ -35,18 +35,18 @@ That framing matters for the conclusions below: this is reference code whose pur
 
 ---
 
-## 2. Current Run Status — GREEN
+## 2. Current Run Status — MOSTLY GREEN
 
-`pnpm run test` (i.e. `ng test`) compiles, runs, and exits 0. Results from the latest local run:
+`pnpm run test` (i.e. `ng test`) compiles, runs, and usually exits 0. Results from local runs fall in one of two ranges:
 
-| Metric     | Value                   |
-| ---------- | ----------------------- |
-| Spec files | **59**                  |
-| Passed     | **59 specs, 350 tests** |
-| Failed     | **0 specs, 0 tests**    |
-| Duration   | ~19.1s                  |
+| Metric     | Value                                                                              |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Spec files | **59**                                                                             |
+| Passed     | **59 specs, 350 tests** (green run) or **58 specs, 349 tests** (intermittent fail) |
+| Failed     | **0 specs, 0 tests** (green run) or **1 spec, 1 test** (intermittent fail)         |
+| Duration   | ~19.1s                                                                             |
 
-The earlier Photon request isolation failure and broad `TestBed` cascade failures have been resolved upstream. The suite is fully green.
+The known intermittent failure is isolated to `src/app/shared/components/photon-location-field/photon-location-field.spec.ts` at line 53 (`flushSearch()` → `httpTesting.expectOne(...)` for the Photon request). The earlier broad `TestBed` cascade failures have been resolved upstream. The suite is mostly/usually green, with this single upstream request-isolation issue still flapping.
 
 **Lint status:** `pnpm exec ng lint` reports **All files pass linting** (0 errors, 0 warnings).
 
@@ -174,7 +174,7 @@ With 59 specs averaging ~88 lines each, this _looks_ thorough. But without a cov
 
 ## 7. One-line verdict
 
-The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — and the latest local suite is **fully green (59/59 specs pass, 350/350 tests pass)**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The remaining work is no longer about fixing failures; it is about adding coverage measurement, component harnesses, route-integration tests, and broader test types so the story changes from "committed and green" to "actually trustworthy."
+The unit-test _discipline_ here is genuinely good — patterns, structure, and breadth are all in order — and the latest local suite is **mostly green (often 59/59 specs pass, 350/350 tests pass; sometimes 58/59 specs pass, 349/350 tests pass due to an intermittent Photon request-isolation failure)**. The MCP/skill cross-check reveals 7/10 categories are aligned with Angular recommendations, with 3 categories (components, pages, guards) having actionable gaps. The remaining work includes fixing the upstream Photon request-isolation flakiness and adding coverage measurement, component harnesses, route-integration tests, and broader test types so the story changes from "committed and mostly green" to "actually trustworthy."
 
 ---
 
@@ -184,7 +184,7 @@ The unit-test _discipline_ here is genuinely good — patterns, structure, and b
 - `README-TESTING.md` — author's own testing documentation
 - `README-TEST-GUIDE.md` — Angular recommended + project pattern guide
 - `package.json` — scripts and dev dependencies (Angular 22.0.0, Vitest 4.1.6, TypeScript 6.0.3)
-- `pnpm run test` — latest local upstream HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef` run output (59/59 specs pass, 350/350 tests pass; exit code 0)
+- `pnpm run test` — latest local upstream HEAD `f1593bffe76e89c906afcaf7a9a2f1c45fdcebef` run output (range: 59/59 specs pass, 350/350 tests pass, exit code 0; or 58/59 specs pass, 349/350 tests pass, exit code 1, due to intermittent Photon request-isolation failure)
 - `pnpm exec ng lint` — current run output (0 errors, 0 warnings; all files pass linting)
 - `angular-developer` skill references: `testing-fundamentals.md`, `component-harnesses.md`, `router-testing.md`, `resource.md`, `signal-forms.md`
 - MCP `search_documentation` — Angular 22 official testing documentation (testing fundamentals, @defer testing, data resolvers, router testing)
